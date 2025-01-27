@@ -1,5 +1,3 @@
-Here’s your updated and merged `README.md` file that incorporates both the original content and the new best practices while maintaining a professional and detailed structure:
-
 ```markdown
 # frontend-vue
 
