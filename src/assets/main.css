@@ -1,35 +1,353 @@
-@import './base.css';
+/* ---------------------------------- */
+/* Global Styles */
+/* ---------------------------------- */
+@import url('https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400&display=swap');
 
-#app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  font-weight: normal;
+/* Apply the font globally */
+body {
+  font-family: 'Public Sans', sans-serif;
 }
 
-a,
-.green {
+
+.text-small {
+  font-size: 85%;
+}
+
+/* ---------------------------------- */
+/* Icons */
+/* ---------------------------------- */
+
+
+.bi {
+  color: #09b850;
+}
+.bi-green {
+  vertical-align: -0.105em;
+  fill: currentColor;
+  color: #09b850;
+}
+
+.bi-green-large {
+  font-size: 10rem;
+}
+.bi-green-medium {
+  font-size: 4rem;
+}
+
+.bi-white {
+  vertical-align: -0.105em;
+  fill: currentColor;
+  color: #ffffff!important;
+}
+
+.feather {
+  width: 16px;
+  height: 16px;
+  vertical-align: text-bottom;
+}
+
+.icon {
+  font-size: 2rem;
+  margin-bottom: 10px;
+  color: #007bff;
+}
+
+/* ---------------------------------- */
+/* Navbar Styles */
+/* ---------------------------------- */
+.navbar {
+  border-bottom: 1px solid #dee2e6; /* Subtle border for the navbar */
+}
+
+.navbar-brand {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  font-size: 1rem;
+  background-color: rgba(0, 0, 0, 0.25);
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.25);
+}
+
+.navbar .navbar-toggler {
+  top: 0.25rem;
+  right: 1rem;
+}
+
+.nav-link {
+  color: #000;
+  font-weight: 500;
+}
+
+.nav-link:hover {
+  color: #09b850;
+}
+
+/* ---------------------------------- */
+/* Buttons */
+/* ---------------------------------- */
+.btn-green {
+  background-color: #09b850 !important; /* Green background */
+  color: white; 
+  margin-right: 1em;
+}
+
+.button-green:hover {
+  background-color: #07a047; /* Darker green for hover */
+  color: white; /* Text color */
+}
+.btn-orange {
+  background-color: #ff6f00!important;
+  color: white!important;
+  border: none;
+}
+
+.btn-orange:hover {
+  background-color: #e65d00; /* Darker orange for hover */
+  color: white;
+}
+
+.btn-small {
+  width: 150px; /* Adjust width as needed */
+  color: #ffffff !important;
+}
+
+/* ---------------------------------- */
+/* Jumbotron Styles */
+/* ---------------------------------- */
+.jumbotron-bg {
+  background: url('@/assets/jb_background.svg') no-repeat top right;
+  background-size: cover;
+  padding: 4rem 2rem;
+  border-radius: 0.75rem; /* Maintain rounded corners */
+}
+
+
+/* ---------------------------------- */
+/* Section Backgrounds */
+/* ---------------------------------- */
+.section-about {
+  background-color: #ffffff;
+}
+
+.section-what-we-do {
+  background-color: #f8f9fa;
+}
+
+.section-faq {
+  background-color: #ffffff;
+}
+
+/* ---------------------------------- */
+/* Dropdown Toggle */
+/* ---------------------------------- */
+.dropdown-toggle {
+  outline: 0;
+}
+
+/* ---------------------------------- */
+/* Sidebar Styles */
+/* ---------------------------------- */
+.sidebar {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 100; /* Behind the navbar */
+  padding: 48px 0 0; /* Height of navbar */
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.1);
+}
+
+.sidebar .nav-link {
+  font-weight: 500;
+  color: #333;
+}
+
+.sidebar .nav-link .feather {
+  margin-right: 4px;
+  color: #727272;
+}
+
+.sidebar .nav-link.active {
+  color: #2470dc;
+}
+
+.sidebar .nav-link:hover .feather,
+.sidebar .nav-link.active .feather {
+  color: inherit;
+}
+
+.sidebar-heading {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.sidebar-sticky {
+  position: relative;
+  top: 0;
+  height: calc(100vh - 48px);
+  padding-top: 0.5rem;
+  overflow-x: hidden;
+  overflow-y: auto; /* Scrollable contents if viewport is shorter than content */
+}
+
+@media (max-width: 767.98px) {
+  .sidebar {
+    display: none;
+  }
+}
+
+/* ---------------------------------- */
+/* Footer Styles */
+/* ---------------------------------- */
+.footer-link {
+  color: #f8f9fa;
   text-decoration: none;
-  color: hsla(160, 100%, 37%, 1);
-  transition: 0.4s;
-  padding: 3px;
 }
 
-@media (hover: hover) {
-  a:hover {
-    background-color: hsla(160, 100%, 37%, 0.2);
+.footer-link:hover {
+  text-decoration: underline;
+}
+
+.footer-menu {
+  display: none;
+}
+
+@media (max-width: 767.98px) {
+  .footer-menu {
+    display: block;
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    background-color: #ffffff;
+    box-shadow: 0 -1px 5px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
   }
-}
 
-@media (min-width: 1024px) {
-  body {
+  .footer-menu ul {
+    margin: 0;
+    padding: 0;
     display: flex;
-    place-items: center;
+    justify-content: space-around;
+    list-style: none;
   }
 
-  #app {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    padding: 0 2rem;
+  .footer-menu a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-decoration: none;
+    color: #000;
+    padding: 10px;
   }
+
+  .footer-menu a:hover {
+    color: #09b850;
+  }
+}
+
+/* ---------------------------------- */
+/* Cards and Transactions */
+/* ---------------------------------- */
+.card-button {
+  transition: transform 0.2s;
+  cursor: pointer;
+}
+
+.card-button:hover {
+  transform: scale(1.05);
+}
+
+.transaction-item {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.transaction-item:hover {
+  background-color: #f8f9fa;
+}
+
+/* ---------------------------------- */
+/* Responsive Design */
+/* ---------------------------------- */
+.custom-width {
+  width: 100%; /* Default for smaller screens */
+}
+
+@media (min-width: 992px) {
+  .custom-width {
+    width: 60%;
+  }
+}
+
+.bd-placeholder-img {
+  font-size: 1.125rem;
+  text-anchor: middle;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+}
+
+@media (min-width: 768px) {
+  .bd-placeholder-img-lg {
+    font-size: 3.5rem;
+  }
+}
+
+
+
+.utility-card {
+  height: 100%;
+}
+.utility-card-icon {
+  font-size: 2rem !important;
+  color: #09b850;
+}
+
+
+
+/* ---------------------------------------- */
+/* testimonial video icon animation Design */
+/* ---------------------------------------- */
+.ripple-btn {
+  z-index: 10; /* Ensure the button is on top */
+  position: relative;
+}
+
+.ripple {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 50px;
+  height: 50px;
+  background: rgba(0, 255, 0, 0.4); /* Greenish waves */
+  border-radius: 50%;
+  animation: ripple-animation 3.5s infinite;
+  pointer-events: none; /* Prevent interference with button clicks */
+  z-index: 5; /* Ensure the ripples are behind the button */
+}
+
+.ripple:nth-child(2) {
+  animation-delay: 0.5s;
+}
+
+.ripple:nth-child(3) {
+  animation-delay: 1s;
+}
+
+@keyframes ripple-animation {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.5);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(4);
+  }
+}
+.navbar-brand {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  font-size: 1rem;
+  background-color: transparent;
+  box-shadow: none;
 }
