@@ -120,6 +120,13 @@ body {
   border-radius: 0.75rem; /* Maintain rounded corners */
 }
 
+/* Mobile-specific styles */
+@media (max-width: 768px) {
+  .jumbotron-bg {
+    background: url('@/assets/mobile_jb_background.svg') no-repeat top right;
+    background-size: cover;
+  }
+}
 
 /* ---------------------------------- */
 /* Section Backgrounds */
