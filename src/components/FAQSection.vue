@@ -1,5 +1,5 @@
 <template>
-    <section class="container-fluid px-4 py-3 mt-3 section-faq">
+    <section id="faq" class="container-fluid px-4 py-3 mt-3 section-faq">
       <div class="container px-4 py-3">
         <h2 class="pb-2 border-bottom d-flex align-items-center">
           <i class="bi bi-question-circle bi-green me-2"></i> FAQ
