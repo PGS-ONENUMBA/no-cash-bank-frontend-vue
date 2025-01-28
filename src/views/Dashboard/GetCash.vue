@@ -1,8 +1,8 @@
 <template>
   <div>
-    <h1>Get Cash</h1>
-    <!-- Include the reusable form component -->
-    <GetCashForm />
+    <h1>Get Cash - Dashboard</h1>
+    <!-- Pass the `isLoggedIn` prop to specify that the user is authenticated -->
+    <GetCashForm :isLoggedIn="true" />
   </div>
 </template>
 
@@ -10,7 +10,7 @@
 import GetCashForm from "@/components/forms/GetCashForm.vue";
 
 export default {
-  name: "PublicGetCash",
+  name: "DashboardGetCash",
   components: {
     GetCashForm, // Import the reusable component
   },

@@ -1,5 +1,8 @@
 <template>
   <div class="container py-5">
+    <h1 class="fs-3">
+      <i class="bi bi-check-circle"></i> Pay-4-Me (Dashboard)
+    </h1>
     <Pay4MeForm />
   </div>
 </template>
@@ -8,7 +11,7 @@
 import Pay4MeForm from '@/components/forms/Pay4MeForm.vue';
 
 export default {
-  name: 'PublicPay4Me',
+  name: 'DashboardPay4Me',
   components: {
     Pay4MeForm,
   },
@@ -16,5 +19,5 @@ export default {
 </script>
 
 <style scoped>
-/* Add your custom styles for public view */
+/* Add your custom styles for dashboard view */
 </style>
