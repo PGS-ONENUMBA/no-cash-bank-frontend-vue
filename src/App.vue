@@ -1,23 +1,17 @@
 <template>
-  <div>
-    <Navbar />
-    <router-view />
-    <Footer />
-  </div>
+  <router-view></router-view> <!-- Ensures correct layout is applied -->
 </template>
 
 <script>
-import Navbar from './components/Navbar.vue';
-import Footer from './components/Footer.vue';
 
 export default {
-  components: {
-    Navbar,
-    Footer,
-  },
+  name: "App"
 };
 </script>
 
 <style>
-/* Global styles here */
+/* Global styles if needed */
 </style>
+
+
+

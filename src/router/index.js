@@ -1,85 +1,95 @@
 /**
  * Vue Router Configuration
- * 
+ *
  * This file sets up routing for the Vue application. It defines:
  * - Path-to-component mapping for each route
  * - A global navigation guard to dynamically set the document title
  * - Route-based scroll behavior for smoother navigation
  * - Protected dashboard routes requiring authentication
- * 
+ *
  * Key Features:
  * - Public routes for non-authenticated users (e.g., Home, About, Login)
- * - Dashboard routes for authenticated users
+ * - Dashboard routes for authenticated users (using DashboardLayout)
  * - Catch-all route for 404 pages
- * - Dynamic hash-based modal handling
+ * - Secure authentication redirection
  */
 
-import { createRouter, createWebHistory } from 'vue-router'; // Import Vue Router modules
+import { createRouter, createWebHistory } from 'vue-router';
 
-// Public views (accessible to all users)
-import Home from '@/views/Public/Home.vue'; // Home page
-import About from '@/views/Public/About.vue'; // About Us page
-import Team from '@/views/Public/Team.vue'; // Our Team page
-import HowItWorks from '@/views/Public/How-It-Works.vue'; // How It Works page
-import Login from '@/views/Public/Login.vue'; // Login page
-import PublicGetCash from '@/views/Public/GetCash.vue'; // Get Cash page
-import PublicPay4Me from '@/views/Public/Pay4Me.vue'; // Pay-4-Me page
-import OnTheHouse from '@/views/Public/OnTheHouse.vue'; // On The House page
-import Privacy from '@/views/Privacy.vue'; // Privacy Policy page
-import Terms from '@/views/Terms.vue'; // Terms & Conditions page
-import ResetPassword from '@/views/Public/ResetPassword.vue'; // Password Reset page
-import NotFound from '@/views/404.vue'; // 404 Page Not Found
+// Import layouts
+import PublicLayout from '@/layouts/PublicLayout.vue';
+import DashboardLayout from '@/layouts/DashboardLayout.vue';
 
-// Dashboard views (restricted to authenticated users)
-// Dashboard views
-import DashboardLayout from "@/layouts/DashboardLayout.vue";
-import Dashboard from "@/views/Dashboard/Dashboard.vue";
-import DashboardGetCash from "@/views/Dashboard/GetCash.vue";
-import DashboardPay4Me from "@/views/Dashboard/Pay4Me.vue";
-import Transfer from "@/views/Dashboard/Transfer.vue";
-import Reports from "@/views/Dashboard/Reports.vue";
+// Public Views (accessible to all users)
+import Home from '@/views/Public/Home.vue';
+import About from '@/views/Public/About.vue';
+import Team from '@/views/Public/Team.vue';
+import HowItWorks from '@/views/Public/How-It-Works.vue';
+import Login from '@/views/Public/Login.vue';
+import PublicGetCash from '@/views/Public/GetCash.vue';
+import PublicPay4Me from '@/views/Public/Pay4Me.vue';
+import PublicOnTheHouse from '@/views/Public/OnTheHouse.vue';
+import Privacy from '@/views/Privacy.vue';
+import Terms from '@/views/Terms.vue';
+import ResetPassword from '@/views/Public/ResetPassword.vue';
+import NotFound from '@/views/404.vue';
+
+// Dashboard Views (restricted to authenticated users)
+import Dashboard from '@/views/Dashboard/Dashboard.vue';
+import DashboardGetCash from '@/views/Dashboard/GetCash.vue';
+import DashboardPay4Me from '@/views/Dashboard/Pay4Me.vue';
+import DashboardOnTheHouse from '@/views/Dashboard/OnTheHouse.vue';
+import Transfer from '@/views/Dashboard/Transfer.vue';
+import Reports from '@/views/Dashboard/Reports.vue';
+import Profile from '@/views/Dashboard/Profile.vue';
 
 /**
  * Route Definitions
- * 
+ *
  * Each route object contains:
  * - `path`: The URL path that triggers this route (e.g., `/about`)
- * - `name`: A unique name for the route, used programmatically in navigation (e.g., `{ name: 'About' }`)
+ * - `name`: A unique name for the route, used programmatically in navigation
  * - `component`: The Vue component to load for this route
- * - `meta`: Optional metadata for the route, such as a custom title for the document tab
+ * - `meta`: Optional metadata for the route, such as a custom title
  */
 const routes = [
-  // Public routes
-  { path: '/', name: 'Home', component: Home, meta: { title: 'Home' } },
-  { path: '/about', name: 'About', component: About, meta: { title: 'About Us' } },
-  { path: '/team', name: 'Team', component: Team, meta: { title: 'Our Team' } },
-  { path: '/how-it-works', name: 'HowItWorks', component: HowItWorks, meta: { title: 'How It Works' } },
-  { path: '/get-cash', name: 'GetCash', component: PublicGetCash, meta: { title: 'Get Cash' } },
-  { path: '/pay4me', name: 'Pay4Me', component: PublicPay4Me, meta: { title: 'Pay-4-Me' } },
-  { path: '/on-the-house', name: 'OnTheHouse', component: OnTheHouse, meta: { title: 'On The House' } },
-  { path: '/login', name: 'Login', component: Login, meta: { title: 'Login' } },
-  { path: '/privacy', name: 'Privacy', component: Privacy, meta: { title: 'Privacy' } },
-  { path: '/terms', name: 'Terms', component: Terms, meta: { title: 'Terms & Conditions' } },
-  { path: '/reset-password', name: 'ResetPassword', component: ResetPassword, meta: { title: 'Reset Password' } },
-
-  // Dashboard routes (protected)
-  // Dashboard routes (using DashboardLayout)
+  // 🔹 Public Routes (Using PublicLayout)
   {
-    path: "/dashboard",
-    component: DashboardLayout,
-    meta: { requiresAuth: true }, // Authentication required
+    path: '/',
+    component: PublicLayout,
     children: [
-      { path: "", name: "Dashboard", component: Dashboard },
-      { path: "get-cash", name: "DashboardGetCash", component: DashboardGetCash },
-      { path: "pay4me", name: "DashboardPay4Me", component: DashboardPay4Me },
-      { path: "transfer", name: "DashboardTransfer", component: Transfer },
-      { path: "reports", name: "DashboardReports", component: Reports },
+      { path: '', name: 'Home', component: Home, meta: { title: 'Home' } },
+      { path: 'about', name: 'About', component: About, meta: { title: 'About Us' } },
+      { path: 'team', name: 'Team', component: Team, meta: { title: 'Our Team' } },
+      { path: 'how-it-works', name: 'HowItWorks', component: HowItWorks, meta: { title: 'How It Works' } },
+      { path: 'get-cash', name: 'PublicGetCash', component: PublicGetCash, meta: { title: 'Get Cash' } },
+      { path: 'pay4me', name: 'PublicPay4Me', component: PublicPay4Me, meta: { title: 'Pay-4-Me' } },
+      { path: 'on-the-house', name: 'PublicOnTheHouse', component: PublicOnTheHouse, meta: { title: 'On The House' } },
+      { path: 'login', name: 'Login', component: Login, meta: { title: 'Login' } },
+      { path: 'privacy', name: 'Privacy', component: Privacy, meta: { title: 'Privacy' } },
+      { path: 'terms', name: 'Terms', component: Terms, meta: { title: 'Terms & Conditions' } },
+      { path: 'reset-password', name: 'ResetPassword', component: ResetPassword, meta: { title: 'Reset Password' } },
     ],
   },
 
-  // Catch-all route for 404 errors (must always be the last route)
+  // 🔹 Dashboard Routes (Using DashboardLayout) – Protected
   {
-    path: '/:pathMatch(.*)*', // Matches any route not defined above
+    path: '/dashboard',
+    component: DashboardLayout,
+    meta: { requiresAuth: true },
+    children: [
+      { path: '', name: 'Dashboard', component: Dashboard, meta: { title: 'Dashboard' } },
+      { path: 'get-cash', name: 'DashboardGetCash', component: DashboardGetCash, meta: { title: 'Get Cash' } },
+      { path: 'pay4me', name: 'DashboardPay4Me', component: DashboardPay4Me, meta: { title: 'Pay-4-Me' } },
+      { path: 'on-the-house', name: 'DashboardOnTheHouse', component: DashboardOnTheHouse, meta: { title: 'On The House' } },
+      { path: 'transfer', name: 'DashboardTransfer', component: Transfer, meta: { title: 'Transfer' } },
+      { path: 'reports', name: 'DashboardReports', component: Reports, meta: { title: 'Reports' } },
+      { path: 'profile', name: 'DashboardProfile', component: Profile, meta: { title: 'Profile Page' } },
+    ],
+  },
+  // 🔹 Catch-all Route (404)
+  {
+    path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: NotFound,
     meta: { title: '404 - Page Not Found' },
@@ -88,53 +98,60 @@ const routes = [
 
 /**
  * Router Instance
- * 
- * This object manages all routing functionality in the application:
- * - `history`: Enables clean, SEO-friendly URLs without hash symbols (e.g., `/about` instead of `/#/about`)
- * - `routes`: Specifies the route definitions from above
- * - `scrollBehavior`: Determines how scrolling is handled when navigating between routes
+ *
+ * This object manages routing functionality:
+ * - Uses `history` for SEO-friendly URLs
+ * - Defines route behaviors, including authentication checks
  */
 const router = createRouter({
-  history: createWebHistory(), // Use the browser's history mode for clean URLs
-  routes, // Apply the defined routes
+  history: createWebHistory(),
+  routes,
 
   /**
    * Scroll Behavior
-   * 
-   * This function handles scrolling when navigating between routes:
-   * - If `savedPosition` is available (e.g., user clicked back/forward), restore it
-   * - If a hash (e.g., `#faq`) is present, scroll to the specified element
-   * - Otherwise, scroll to the top of the page
+   *
+   * Controls scrolling when navigating:
+   * - Restores previous scroll position if available
+   * - Scrolls to hash targets if specified
+   * - Defaults to top of the page
    */
   scrollBehavior(to, from, savedPosition) {
     if (savedPosition) {
-      return savedPosition; // Restore the previous scroll position
+      return savedPosition;
     } else if (to.hash) {
       return {
-        el: to.hash, // Scroll to the element matching the hash
-        behavior: "smooth", // Smooth scrolling effect
+        el: to.hash,
+        behavior: 'smooth',
       };
     } else {
-      return { top: 0 }; // Default: Scroll to the top of the page
+      return { top: 0 };
     }
   },
 });
 
 /**
  * Navigation Guards
- * 
- * Global guard for route protection:
- * - Prevents access to dashboard routes without authentication
- * - Dynamically sets the document title based on route metadata
+ *
+ * - Protects dashboard routes from unauthorized access
+ * - Redirects authenticated users away from login
+ * - Dynamically updates document title
  */
 router.beforeEach((to, from, next) => {
-  const isAuthenticated = !!localStorage.getItem("authToken"); // Check for authentication token
+  const isAuthenticated = !!localStorage.getItem('authToken');
+
+  // Redirect to dashboard if already logged in
+  if (to.name === 'Login' && isAuthenticated) {
+    next({ name: 'Dashboard' });
+    return;
+  }
+
+  // Redirect to login if authentication is required
   if (to.meta.requiresAuth && !isAuthenticated) {
-    next({ name: "Login" }); // Redirect to login if not authenticated
+    next({ name: 'Login' });
   } else {
-    document.title = to.meta.title || 'No-Cash-Bank'; // Set the document title dynamically
-    next(); // Proceed to the next route
+    document.title = to.meta.title || 'No-Cash-Bank';
+    next();
   }
 });
 
-export default router; // Export the router instance for use in the Vue application
+export default router;

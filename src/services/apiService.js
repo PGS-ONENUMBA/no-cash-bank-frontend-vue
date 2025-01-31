@@ -1,25 +1,63 @@
 import axios from "axios";
+import { refreshToken, logout } from "./authService";
 
-// Create an axios instance with the base API URL
+// Set up API client
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL, // Base URL from environment variables
-  timeout: 10000, // Optional: Set a timeout
-  headers: {
-    "Content-Type": "application/json",
-  },
+  baseURL: "http://localhost:8001/no-cash-bank-env/core/wp-json",
+  headers: { "Content-Type": "application/json" },
 });
 
-// Example of an interceptor for handling authentication or errors
-apiClient.interceptors.request.use(
-  (config) => {
-    // Add Authorization token if available
-    const token = localStorage.getItem("authToken");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+/**
+ * Axios Request Interceptor:
+ * - Attaches Bearer Token to each request
+ * - Refreshes the token if expired
+ * - Logs out user if inactive for too long
+ */
+apiClient.interceptors.request.use(async (config) => {
+  let token = localStorage.getItem("authToken");
+  const tokenExpiry = localStorage.getItem("tokenExpiry");
+  const lastActive = localStorage.getItem("lastActive");
+
+  // Refresh token if expired
+  if (token && tokenExpiry && Date.now() > tokenExpiry) {
+    console.log("Token expired. Refreshing...");
+    token = await refreshToken();
+
+    if (!token) {
+      console.warn("Session expired. Logging out.");
+      logout();
+      return Promise.reject("Session expired. Please log in again.");
     }
-    return config;
-  },
-  (error) => {
+  }
+
+  // Attach token to request headers
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  return config;
+});
+
+/**
+ * Axios Response Interceptor:
+ * - Handles 401 errors by attempting token refresh
+ * - Logs out user if refresh fails
+ */
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 401) {
+      console.warn("Unauthorized request. Attempting to refresh token...");
+      const newToken = await refreshToken();
+
+      if (newToken) {
+        error.config.headers.Authorization = `Bearer ${newToken}`;
+        return apiClient(error.config); // Retry failed request
+      } else {
+        console.warn("Refresh failed. Logging out.");
+        logout();
+      }
+    }
     return Promise.reject(error);
   }
 );

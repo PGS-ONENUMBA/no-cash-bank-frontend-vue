@@ -1,28 +1,27 @@
 <template>
   <div>
-    <!-- Header Section -->
+    <!-- Dashboard Header (Minimal) -->
     <header class="navbar navbar-light sticky-top bg-white shadow">
       <a class="navbar-brand col-md-3 col-lg-2 px-3" href="#">
-        siteName
+        {{ siteName }}
       </a>
       <div class="navbar-nav">
         <div class="nav-item text-nowrap">
-          <a class="nav-link px-3" href="#">
-            <i class="bi bi-person-circle"></i>
+          <a class="nav-link px-3" href="#" @click="logout">
+            <i class="bi bi-box-arrow-right"></i> Logout
           </a>
         </div>
       </div>
     </header>
 
-    <!-- Main Container -->
     <div class="container-fluid">
       <div class="row">
-        <!-- Sidebar Section -->
+        <!-- Sidebar -->
         <SidebarMenu />
 
         <!-- Main Content -->
         <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
-          <router-view /> <!-- This renders the child route content -->
+          <router-view></router-view>
         </main>
       </div>
     </div>
@@ -36,10 +35,25 @@ export default {
   name: "DashboardLayout",
   components: {
     SidebarMenu,
-  }
+  },
+  data() {
+    return {
+      siteName: import.meta.env.VITE_SITE_NAME,
+    };
+  },
+  methods: {
+    logout() {
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("refresh_token");
+      localStorage.removeItem("refresh_token_expires_in");
+      localStorage.removeItem("tokenExpiry");
+      localStorage.removeItem("userData");
+      this.$router.push("/login");
+    },
+  },
 };
 </script>
 
 <style scoped>
-/* Optional styling for the layout */
+/* Dashboard-specific styles */
 </style>

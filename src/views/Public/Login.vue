@@ -1,26 +1,23 @@
 <template>
   <div>
     <!-- Main Content -->
-    <main class="container d-flex align-items-center justify-content-center vh-100">
+    <div class=" mt-5 pt-2 align-items-center justify-content-center vh-100">
       <div class="row justify-content-center mt-5">
-        <div class="col-md-8">
+        <div class="col-md-4">
           <div class="card shadow-sm">
             <div class="card-body">
               <h2 class="card-title text-center pb-3">Login</h2>
-              <p class="text-center">
-                Welcome to No-Cash-Bank, the innovative raffle-based banking platform.
-              </p>
               <form @submit.prevent="handleLogin">
-                <!-- Email Field -->
+                <!-- Username Field -->
                 <div class="mb-3">
-                  <label for="email" class="form-label">
-                    <i class="bi bi-envelope me-2"></i> Email
+                  <label for="username" class="form-label">
+                    <i class="bi bi-person me-2"></i> Username
                   </label>
                   <input
-                    type="email"
+                    type="text"
                     class="form-control"
-                    id="email"
-                    v-model="email"
+                    id="username"
+                    v-model="username"
                     required
                   />
                 </div>
@@ -71,73 +68,74 @@
                   <i class="bi bi-question-circle me-1"></i> Forgot your password?
                 </router-link>
               </div>
-              <!-- Back to Home Link -->
-              <div class="text-center mt-3">
-                <router-link to="/" class="text-decoration-none text-green">
-                  <i class="bi bi-arrow-left-circle me-1"></i> Back to Home
-                </router-link>
-              </div>
             </div>
           </div>
         </div>
       </div>
-    </main>
+    </div>
   </div>
 </template>
 
 <script>
 /**
  * Login Component
- * 
- * This component handles the user login process. It includes a form where users
- * can enter their email and password, along with a "Remember me" checkbox.
- * Upon submission, the form calls the `handleLogin` method, which sends
- * the credentials to the backend for authentication.
- * 
+ *
+ * Handles user authentication by sending login credentials to the backend API.
+ * On success, it stores the access token, refresh token, and user data in local storage.
+ *
  * Features:
- * - Real-time data binding with `v-model`.
- * - Displays loading state while the login request is being processed.
- * - Shows error messages in case of failed login attempts.
+ * - Real-time data binding with `v-model`
+ * - Displays a loading state during authentication
+ * - Shows an error message if login fails
+ * - Redirects authenticated users to the dashboard
  */
 
-import { login } from "@/services/authService"; // Import the reusable login function
+import { login } from "@/services/authService";
 
 export default {
   name: "Login",
   data() {
     return {
-      email: "", // Holds the user's email
-      password: "", // Holds the user's password
-      rememberMe: false, // Stores the "Remember me" checkbox state
-      loading: false, // Indicates whether a login request is in progress
-      errorMessage: null, // Stores error messages to display to the user
+      username: "", // Stores the user's entered username
+      password: "", // Stores the user's entered password
+      rememberMe: false, // Checkbox for "Remember me" option
+      loading: false, // Controls the loading state during login
+      errorMessage: null, // Stores error messages
     };
   },
   methods: {
     /**
-     * Handles the login process.
-     * 
-     * Sends the user's email and password to the backend for authentication.
-     * If successful, it stores the authentication token and redirects the user
-     * to the dashboard. If unsuccessful, it displays an error message.
+     * Handles the login process by sending user credentials to the API.
+     * If successful, stores the access token, refresh token, and user data.
      */
     async handleLogin() {
       this.loading = true;
       this.errorMessage = null;
 
       try {
-        const response = await login(this.email, this.password);
+        const response = await login(this.username, this.password);
 
-        // Extract the token from the response
-        const { token } = response.data;
+        // Destructure API response
+        const { token, refresh_token, refresh_token_expires_in, user_id, user_display_name, user_nicename, user_email, phone_number, wallet_balance } = response;
 
-        // Save the token in localStorage
+        // Store authentication token securely
         localStorage.setItem("authToken", token);
+        localStorage.setItem("tokenExpiry", Date.now() + 1200 * 1000); // Expires in 20 minutes
+        localStorage.setItem("refresh_token", refresh_token);
+        localStorage.setItem("refresh_token_expires_in", refresh_token_expires_in);
+        localStorage.setItem("userData", JSON.stringify({
+          user_id,
+          user_display_name,
+          user_nicename,
+          user_email,
+          phone_number,
+          wallet_balance
+        }));
 
         // Redirect the user to the dashboard
         this.$router.push({ name: "Dashboard" });
       } catch (error) {
-        // Display the error message to the user
+        // Handle API errors
         if (error.response && error.response.data) {
           this.errorMessage = error.response.data.message;
         } else {

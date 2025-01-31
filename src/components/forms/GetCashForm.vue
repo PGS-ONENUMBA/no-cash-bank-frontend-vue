@@ -1,5 +1,5 @@
 <template>
-    <main class="container py-5 mt-5">
+    <main class="container py-2 mt-2">
         <div class="row g-4 d-flex align-items-stretch">
         <!-- Left Column: Instructions -->
         <div class="col-lg-6 d-flex">

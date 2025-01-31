@@ -13,15 +13,20 @@ This document provides a comprehensive overview of the architecture for the No-C
   ├── components/            # Reusable Vue components
   │   ├── dashboard/         # Dashboard-specific components
   │   ├── forms/             # Reusable form components
-  │   └── shared/            # Shared components across the app
+  │   ├── shared/            # Shared components across the app
+  │   ├── Navbar.vue         # Main navigation bar
+  │   ├── Footer.vue         # Application-wide footer
   ├── layouts/               # Layout components
   │   ├── PublicLayout.vue   # Layout for public-facing pages
-  │   └── DashboardLayout.vue # Layout for dashboard pages
+  │   ├── DashboardLayout.vue # Layout for dashboard pages
   ├── router/                # Vue Router configuration
-  │   └── index.js           # Centralized routing setup
+  │   ├── index.js           # Centralized routing setup
   ├── services/              # API and utility services
   │   ├── apiService.js      # Axios instance and API base configuration
-  │   └── authService.js     # Authentication-related API calls
+  │   ├── authService.js     # Authentication-related API calls
+  |   ├── inactivityService.js
+  ├── store/                 # Vuex or Pinia store configuration (if applicable)
+  ├── styles/                # Global and scoped styles
   ├── views/                 # Page-level components
   │   ├── Public/            # Public-facing views
   │   │   ├── Home.vue
@@ -41,7 +46,7 @@ This document provides a comprehensive overview of the architecture for the No-C
   │   │   ├── Reports.vue
   ├── App.vue                # Root Vue component
   ├── main.js                # Entry point for the Vue app
-  └── env/                   # Environment-specific configurations
+  ├── env/                   # Environment-specific configurations
 ```
 
 ---
@@ -51,18 +56,19 @@ This document provides a comprehensive overview of the architecture for the No-C
 ### Components
 
 #### `components/shared/`
-- Shall Contains reusable form fields like input, select, and validation logic.
-- **Header.vue**: Application-wide header component.
-- **Footer.vue**: Application-wide footer component.
+- **SharedFormFields.vue**: Contains reusable form fields like input, select, and validation logic.
+- **Navbar.vue**: Global navigation component for public pages.
+- **Footer.vue**: Global footer component for public pages.
 
 #### `components/dashboard/`
 - **SidebarMenu.vue**: Sidebar navigation for dashboard views.
 - **FeatureCard.vue**: Reusable card component for dashboard features.
 
 #### `components/forms/`
-- **GetCashForm.vue**: Reusable form for the "Get Cash" feature.
-- **Pay4MeForm.vue**: Reusable form for the "Pay-4-Me" feature.
-- **OnTheHouseForm.vue**: Reusable form for the "On The House" feature.
+- **PublicGetCashForm.vue**: Reusable form for the "Get Cash" feature in the public section.
+- **PublicPay4MeForm.vue**: Reusable form for the "Pay-4-Me" feature in the public section.
+- **PublicOnTheHouseForm.vue**: Reusable form for the "On The House" feature in the public section.
+- **SharedFormFields.vue**: Contains common fields shared across multiple forms.
 
 ### Views
 
@@ -72,9 +78,9 @@ This document provides a comprehensive overview of the architecture for the No-C
 - **Login.vue**: Login page for users.
 - **ResetPassword.vue**: Password reset page.
 - **HowItWorks.vue**: Explains how the app works.
-- **GetCash.vue**: Public implementation of "Get Cash".
-- **Pay4Me.vue**: Public implementation of "Pay-4-Me".
-- **OnTheHouse.vue**: Public implementation of "On The House".
+- **GetCash.vue**: Public-facing "Get Cash" form.
+- **Pay4Me.vue**: Public-facing "Pay-4-Me" form.
+- **OnTheHouse.vue**: Public-facing "On The House" form.
 
 #### Dashboard Views
 - **Dashboard.vue**: Landing page after user login.
@@ -88,65 +94,75 @@ This document provides a comprehensive overview of the architecture for the No-C
 
 ## Routing
 
-Routing is configured in `src/router/index.js`. It uses Vue Router with lazy loading for improved performance. 
+Routing is configured in `src/router/index.js`. It uses Vue Router with layouts to separate public and dashboard views.
 
 ### Route Definitions
 
-#### Public Routes
+#### Public Routes (Using `PublicLayout.vue`)
 ```javascript
 {
   path: '/',
-  name: 'Home',
-  component: () => import('@/views/Public/Home.vue'),
-},
-{
-  path: '/about',
-  name: 'About',
-  component: () => import('@/views/Public/About.vue'),
-},
-{
-  path: '/login',
-  name: 'Login',
-  component: () => import('@/views/Public/Login.vue'),
+  component: PublicLayout,
+  children: [
+    { path: '', name: 'Home', component: Home },
+    { path: 'about', name: 'About', component: About },
+    { path: 'login', name: 'Login', component: Login },
+    { path: 'get-cash', name: 'PublicGetCash', component: PublicGetCash },
+  ],
 },
 ```
 
-#### Dashboard Routes
+#### Dashboard Routes (Using `DashboardLayout.vue`)
 ```javascript
 {
   path: '/dashboard',
-  name: 'Dashboard',
-  component: () => import('@/layouts/DashboardLayout.vue'),
+  component: DashboardLayout,
+  meta: { requiresAuth: true },
   children: [
-    {
-      path: '',
-      name: 'DashboardHome',
-      component: () => import('@/views/Dashboard/Dashboard.vue'),
-    },
-    {
-      path: 'get-cash',
-      name: 'DashboardGetCash',
-      component: () => import('@/components/forms/GetCashForm.vue'),
-    },
-    {
-      path: 'pay4me',
-      name: 'DashboardPay4Me',
-      component: () => import('@/components/forms/Pay4MeForm.vue'),
-    },
-    {
-      path: 'on-the-house',
-      name: 'DashboardOnTheHouse',
-      component: () => import('@/components/forms/OnTheHouseForm.vue'),
-    },
+    { path: '', name: 'Dashboard', component: Dashboard },
+    { path: 'get-cash', name: 'DashboardGetCash', component: GetCash },
   ],
 },
 ```
 
 ---
 
-## Environment Variables
+## Authentication
 
-Environment variables are configured in `.env` files:
+### Login Response
+Upon successful login, the API returns:
+```json
+{
+  "access_token": "<TOKEN>",
+  "refresh_token": "<TOKEN>",
+  "expires_in": 3600,
+  "user_data": {
+    "id": 1,
+    "username": "terungwa",
+    "email": "mzermichael@yahoo.com",
+    "phone_number": "",
+    "wallet_balance": ""
+  }
+}
+```
+
+### Authentication Guard
+Prevents access to dashboard routes if not logged in:
+```javascript
+router.beforeEach((to, from, next) => {
+  const isAuthenticated = !!localStorage.getItem('authToken');
+  if (to.meta.requiresAuth && !isAuthenticated) {
+    next({ name: 'Login' });
+  } else {
+    document.title = to.meta.title || 'No-Cash-Bank';
+    next();
+  }
+});
+```
+
+---
+
+## Environment Variables
 
 - **VITE_API_BASE_URL**: Base URL for API calls.
 - **VITE_SITE_NAME**: Application name.
@@ -156,30 +172,8 @@ Environment variables are configured in `.env` files:
 
 ## Development Guidelines
 
-1. **Reusable Components**:
-   - Create components for any UI element used in more than one place.
-   - Use `components/forms/` for shared forms to reduce duplication.
-
-2. **Routing**:
-   - Define routes in `src/router/index.js`.
-   - Use lazy loading for views and components.
-
-3. **State Management**:
-   - Use Vuex or Pinia if the app requires centralized state management.
-
-4. **Styling**:
-   - Use scoped styles in components.
-   - Global styles should go in `src/styles/`.
-
----
-
-## Notes for Developers
-
 - **CSP Compliance**: Ensure all inline scripts and styles comply with Content Security Policy (CSP) guidelines.
 - **Documentation**: Add comments to all new components and views.
 - **Testing**: Write unit tests for critical components and features.
 
 ---
-
-This document is a living guide and should be updated as the application evolves.
-

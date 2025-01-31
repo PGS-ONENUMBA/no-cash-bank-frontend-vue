@@ -1,6 +1,11 @@
 <template>
-    <div class="container vh-100 d-flex justify-content-center align-items-center">
-      <div class="card shadow-sm w-100" style="max-width: 500px;">
+  <div>
+    <!-- Main Content -->
+    <div class=" mt-5 pt-2 align-items-center justify-content-center vh-100">
+      <div class="row justify-content-center mt-5">
+        <div class="col-md-4">
+          <div class="card shadow-sm">
+
         <div class="card-body">
           <!-- Email Form -->
           <div v-if="!token || !tokenValid">
@@ -49,6 +54,9 @@
         </div>
       </div>
     </div>
+          </div>
+        </div>
+      </div>
   </template>
   
   <script>
