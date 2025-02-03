@@ -1,15 +1,15 @@
 import { defineStore } from "pinia";
-import { loginAPI } from "@/services/authService";
-import { debounce } from "lodash"; // For better performance
+import { loginAPI, refreshToken } from "@/services/authService";
+
 export const useAuthStore = defineStore("auth", {
   state: () => ({
     user: null,
     token: null,
     refreshToken: null,
     tokenExpiry: null,
-    inactivityTimeout: null, // Main inactivity timer
-    warningTimeout: null, // Warning timer
-    showWarning: false, // Controls warning display
+    inactivityTimeout: null,
+    warningTimeout: null,
+    showWarning: false,
   }),
 
   getters: {
@@ -19,85 +19,127 @@ export const useAuthStore = defineStore("auth", {
 
   actions: {
     /**
-     * Logs in the user and sets authentication state.
+     * ✅ Logs in the user and initializes session tracking.
      */
     async login(username, password) {
-        // console.log("🔹 Calling login API...");
-        
-        if (this.token) {
-          // console.warn("⚠ Already logged in, skipping API call.");
-          return;
-        }
-  
+      if (this.token) return;
+
+      try {
+        const data = await loginAPI(username, password);
+        const tokenExpiryMin = import.meta.env.VITE_TOKEN_EXPIRY_MIN || 20; // Default to 20 min
+
+        this.token = data.token;
+        this.refreshToken = data.refresh_token;
+        this.tokenExpiry = Date.now() + tokenExpiryMin * 60 * 1000;
+        this.user = data;
+
+        console.log(`🔑 Token expires in ${tokenExpiryMin} minutes`);
+
+        this.startInactivityTimer(); // Start tracking inactivity
+      } catch (error) {
+        throw error;
+      }
+    },
+
+    /**
+     * Handles refreshing the authentication token before expiration.
+     * 
+     * How Token Refresh Works:
+     * Every 60 seconds, refreshTokenIfNeeded() checks if the token will expire within 2 minutes.
+     * If expiry is close, it calls refreshToken() to get a new token.
+     * If refresh fails, it logs the user out.
+     * Logout is prevented as long as refresh works.
+     * The app keeps users logged in seamlessly, unless their refresh token also expires!
+     */
+    async refreshTokenIfNeeded() {
+      const bufferTimeMs = (import.meta.env.VITE_TOKEN_REFRESH_BUFFER_MIN || 2) * 60 * 1000; // Refresh 2 min before expiry
+
+      if (this.tokenExpiry && Date.now() > this.tokenExpiry - bufferTimeMs) {
+        console.log("🔄 Refreshing token before expiry...");
+
         try {
-          // console.log(`🔹 Sending login request for: ${username}`);
-          const data = await loginAPI(username, password);
-          // console.log("✅ Login successful. API Response:", data);
-  
-          this.token = data.token;
-          this.refreshToken = data.refresh_token;
-          this.tokenExpiry = Date.now() + 1200 * 1000; // 20 min expiry
-          this.user = data;
-
-          this.startInactivityTimer(); // Start tracking inactivity
-  
-          // console.log("✅ Setting authentication state...");
-          // console.log("🔄 Updated store values:", this.$state);
-  
-          return true;
+          const data = await refreshToken(this.refreshToken);
+          if (data?.token) {
+            this.token = data.token;
+            this.tokenExpiry = Date.now() + (import.meta.env.VITE_TOKEN_EXPIRY_MIN || 20) * 60 * 1000;
+            console.log("✅ Token refreshed successfully!");
+          } else {
+            console.warn("⚠ Token refresh failed, logging out...");
+            this.logout();
+          }
         } catch (error) {
-          // console.error("❌ Login failed:", error.message);
-          throw error;
+          console.error("❌ Token refresh error:", error);
+          this.logout();
         }
+      }
     },
 
     /**
-     * Logs out the user and clears authentication state.
+     * ✅ Logs out the user and redirects to the login page.
+     * @param {Object} routerInstance - Vue Router instance (must be passed from component)
      */
-    logout() {
-      // console.warn("⚠ Logging out...");
-      this.$reset();
+    logout(routerInstance) {
+      console.log("🚀 Logging out user...");
+
+      this.resetTimers();
+      this.$reset(); // Reset Pinia state
+
+      if (routerInstance) {
+        console.log("🔄 Redirecting to login...");
+        routerInstance.push("/login").catch((err) =>
+          console.warn("⚠ Router navigation error:", err)
+        );
+      } else {
+        console.warn("⚠ No router instance provided. Cannot redirect.");
+      }
     },
 
     /**
-     * Updates the authentication token.
+     * ✅ Starts inactivity tracking and token refresh.
+     * @param {Object} routerInstance - Vue Router instance
      */
-    setToken(newToken) {
-      // console.log("🔄 Updating token...");
-      this.token = newToken;
-      this.tokenExpiry = Date.now() + 1200 * 1000;
-    },
+    startInactivityTimer(routerInstance) {
+      this.resetTimers();
 
-    /**
-     * Starts the inactivity tracking.
-     */
-    startInactivityTimer() {
-      this.resetTimers(); // Reset any existing timers
+      const warningTimeMs = (import.meta.env.VITE_INACTIVITY_WARNING_MIN || 9) * 60 * 1000;
+      const autoLogoutTimeMs = (import.meta.env.VITE_AUTO_LOGOUT_MIN || 10) * 60 * 1000;
 
-      // Set warning before logout (e.g., 9 minutes)
+      console.log(
+        `🕒 Setting inactivity timers: Warning at ${warningTimeMs / 1000}s, Logout at ${
+          autoLogoutTimeMs / 1000
+        }s`
+      );
+
       this.warningTimeout = setTimeout(() => {
-        this.showWarning = true; // Show warning modal
-      }, 0.5 * 60 * 1000); // 9 minutes
+        this.showWarning = true;
+        console.log("⚠ Warning: User will be logged out soon!");
+      }, warningTimeMs);
 
-      // Set auto-logout after warning (e.g., 1 more minute)
       this.inactivityTimeout = setTimeout(() => {
         if (this.showWarning) {
-          this.logoutUser();
+          console.warn("⏳ Auto-logging out due to inactivity.");
+          this.logout(routerInstance);
         }
-      }, 1 * 60 * 1000); // 10 minutes
+      }, autoLogoutTimeMs);
+
+      // 🔄 Start periodic token refresh
+      this.tokenRefreshInterval = setInterval(() => {
+        this.refreshTokenIfNeeded();
+      }, 60 * 1000); // Check token refresh every 60 seconds
     },
 
     /**
-     * Resets the inactivity timers and warning.
+     * ✅ Resets inactivity timers and warning state.
      */
     resetTimers() {
       clearTimeout(this.warningTimeout);
       clearTimeout(this.inactivityTimeout);
+      clearInterval(this.tokenRefreshInterval); // Stop token refresh
       this.showWarning = false;
     },
 
     /**
-     * User cancels logout, reset timers.
+     * ✅ Cancels logout and resets timers.
      */
     cancelLogout() {
       this.resetTimers();

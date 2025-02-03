@@ -7,8 +7,8 @@
       </h1>
     </div>
 
-    <!-- ✅ Reusable Wallet Balance Component -->
-    <WalletBalance />
+      <!-- ✅ Provide the required "title" prop -->
+      <WalletBalance title="Available Balance" />
 
     <!-- Get Cash Form Component -->
     <GetCashForm :isLoggedIn="true" :walletBalance="walletBalance" />
@@ -31,7 +31,7 @@ import { useAuthStore } from "@/store/authStore";
 import { computed, onMounted } from "vue";
 import GetCashForm from "@/components/forms/GetCashForm.vue";
 import DashboardFooter from "@/components/dashboard/DashboardFooter.vue";
-import WalletBalance from "@/components/dashboard/WalletBalance.vue";
+import WalletBalance from "@/components/common/WalletBalance.vue";
 
 export default {
   name: "DashboardGetCash",

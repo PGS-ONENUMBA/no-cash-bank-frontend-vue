@@ -7,8 +7,8 @@
       </h1>
     </div>
 
-    <!-- ✅ Reusable Wallet Balance Component -->
-    <WalletBalance />
+      <!-- ✅ Provide the required "title" prop -->
+      <WalletBalance title="Available Balance" />
 
     <!-- First Row: 3 Columns (Product Forms) -->
     <div class="row row-cols-1 row-cols-md-3 g-4">
@@ -55,7 +55,7 @@
 
 <script>
 import { useAuthStore } from "@/store/authStore";
-import WalletBalance from "@/components/dashboard/WalletBalance.vue";
+import WalletBalance from "@/components/common/WalletBalance.vue";
 import { computed, onMounted } from "vue";
 import FeatureCard from "@/components/dashboard/FeatureCard.vue";
 import DashboardFooter from "@/components/dashboard/DashboardFooter.vue";
