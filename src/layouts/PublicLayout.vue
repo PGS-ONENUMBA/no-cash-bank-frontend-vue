@@ -4,7 +4,7 @@
       <Navbar />
       
       <!-- Main Content -->
-      <main>
+      <main mt-5>
         <router-view></router-view>
       </main>
   

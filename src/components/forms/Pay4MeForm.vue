@@ -20,21 +20,17 @@
               </div>
             </div>
             <p class="text-muted">
-              Follow these simple steps to make a payment on behalf of your client securely. Ensure all details are accurate before proceeding.
+              Need someone to cover a payment on your behalf? With <strong>Pay4Me</strong>, request payment assistance, and let someone else handle the bill for you. 
             </p>
-            <ul class="list-group">
-              <li class="list-group-item d-flex align-items-start">
-                <i class="bi bi-1-circle-fill text-success me-3" style="font-size: 1.5rem;"></i>
-                <div><strong>Step 1:</strong> Log in to your account.</div>
-              </li>
-              <li class="list-group-item d-flex align-items-start">
-                <i class="bi bi-2-circle-fill text-success me-3" style="font-size: 1.5rem;"></i>
-                <div><strong>Step 2:</strong> Select "Pay-4-Me" from the dashboard.</div>
-              </li>
-              <li class="list-group-item d-flex align-items-start">
-                <i class="bi bi-3-circle-fill text-success me-3" style="font-size: 1.5rem;"></i>
-                <div><strong>Step 3:</strong> Enter the recipient details and confirm the request.</div>
-              </li>
+            
+
+            <!-- How It Works -->
+            <h5 class="fw-bold"><i class="bi bi-lightbulb"></i> How It Works</h5>
+            <ul class="list-unstyled">
+              <li><i class="bi bi-1-circle text-success"></i> Enter the <strong>amount</strong> and <strong>payment details</strong>.</li>
+              <li><i class="bi bi-2-circle text-success"></i> Enter the email of a <strong>sponsor</strong> (friend, or family).</li>
+              <li><i class="bi bi-3-circle text-success"></i> The sponsor gets a <strong>notification</strong> and can approve the payment.</li>
+              <li><i class="bi bi-4-circle text-success"></i> Once approved, the payment is processed automatically.</li>
             </ul>
           </div>
         </div>
@@ -50,7 +46,7 @@
               <div class="row mb-3">
                 <div class="col-md-6">
                   <label for="email" class="form-label">
-                    <i class="bi bi-envelope me-2"></i> Email
+                    <i class="bi bi-envelope me-2"></i> Sponsor's Email
                   </label>
                   <input
                     type="email"
@@ -62,7 +58,7 @@
                 </div>
                 <div class="col-md-6">
                   <label for="phoneNumber" class="form-label">
-                    <i class="bi bi-telephone me-2"></i> Phone Number
+                    <i class="bi bi-telephone me-2"></i> Your Phone Number
                   </label>
                   <input
                     type="text"
