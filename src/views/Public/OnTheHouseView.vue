@@ -4,13 +4,6 @@
   </main>
 </template>
 
-<script>
+<script setup>
 import OnTheHouseForm from "@/components/forms/OnTheHouseForm.vue";
-
-export default {
-  name: "PublicOnTheHouse",
-  components: {
-    OnTheHouseForm,
-  },
-};
 </script>

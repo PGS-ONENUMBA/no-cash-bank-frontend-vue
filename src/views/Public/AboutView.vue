@@ -111,10 +111,7 @@
     </div>
   </template>
   
-  <script>
-  export default {
-    name: "About", // Component name
-  };
+  <script setup>
   </script>
   
   <style scoped>

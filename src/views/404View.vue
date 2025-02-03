@@ -13,11 +13,7 @@
     </div>
   </template>
   
-  <script>
-  export default {
-    name: "NotFound",
-  };
-  </script>
+  <script setup></script>
   
   <style scoped>
   /* Styles for the 404 page */

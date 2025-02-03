@@ -97,38 +97,30 @@
     </main>
   </template>
   
-  <script>
-  export default {
-    name: "GetCashForm",
-    data() {
-      return {
-        formData: {
-          email: "",
-          phoneNumber: "",
-          tickets: 1,
-        },
-      };
-    },
-    methods: {
-      /**
-       * Handle form submission for the Get Cash process.
-       */
-      handleSubmit() {
-        // Validate form data
-        if (!this.formData.email || !this.formData.phoneNumber || this.formData.tickets < 1) {
-          alert("Please fill out all required fields correctly.");
-          return;
-        }
-  
-        // Submit the form data
-        alert(
-          `Request submitted: \nEmail: ${this.formData.email} \nPhone: ${this.formData.phoneNumber} \nTickets: ${this.formData.tickets}`
-        );
-        // You can add an API call here to send the form data
-      },
-    },
-  };
-  </script>
+
+<script setup>
+import { ref } from "vue";
+
+const formData = ref({
+  email: "",
+  phoneNumber: "",
+  tickets: 1,
+});
+
+const handleSubmit = () => {
+  if (!formData.value.email || !formData.value.phoneNumber || formData.value.tickets < 1) {
+    alert("Please fill out all required fields correctly.");
+    return;
+  }
+
+  alert(
+    `Request submitted: \nEmail: ${formData.value.email} \nPhone: ${formData.value.phoneNumber} \nTickets: ${formData.value.tickets}`
+  );
+  // API call to submit form data can be added here
+};
+</script>
+
+
   
   <style scoped>
   .btn-orange {

@@ -100,10 +100,8 @@
     </div>
   </template>
   
-  <script>
-  export default {
-    name: "Terms",
-  };
+  <script setup>
+
   </script>
   
   <style scoped>

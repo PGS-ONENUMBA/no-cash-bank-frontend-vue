@@ -96,12 +96,10 @@
     </div>
   </template>
   
-  <script>
-  export default {
-    name: "Transfer",
-    data() {
-      return {
-        banks: [
+  <script setup>
+  import { ref } from 'vue'
+
+  const banks = ref([
           { code: "044", name: "Access Bank (044)" },
           { code: "063", name: "Access Bank (Diamond) (063)" },
           { code: "035", name: "ALAT by WEMA (035)" },
@@ -121,19 +119,15 @@
           { code: "033", name: "Unity Bank (033)" },
           { code: "215", name: "Wema Bank (215)" },
           { code: "035A", name: "Zenith Bank (035A)" },
-        ],
-        selectedBank: "",
-        recipientAccount: "",
-        amount: "",
-        description: "",
-      };
-    },
-    methods: {
-      /**
-       * Handles the form submission for fund transfer.
-       */
-      submitTransfer() {
-        if (!this.selectedBank) {
+  ])
+
+  const selectedBank = ref('');
+  const recipientAccount = ref('');
+  const amount = ref('');
+  const description = ref('')
+
+  const submitTransfer = () => {
+    if (!this.selectedBank) {
           alert("Please select a bank.");
           return;
         }
@@ -147,10 +141,64 @@
         }
         alert(
           `Transfer of ₦${this.amount} to account ${this.recipientAccount} at bank ${this.selectedBank} was submitted successfully.`
-        );
-      },
-    },
-  };
+    );
+  }
+
+
+  // export default {
+  //   name: "Transfer",
+  //   data() {
+  //     return {
+  //       banks: [
+  //         { code: "044", name: "Access Bank (044)" },
+  //         { code: "063", name: "Access Bank (Diamond) (063)" },
+  //         { code: "035", name: "ALAT by WEMA (035)" },
+  //         { code: "023", name: "Citibank Nigeria (023)" },
+  //         { code: "050", name: "EcoBank Nigeria (050)" },
+  //         { code: "214", name: "First City Monument Bank (FCMB) (214)" },
+  //         { code: "011", name: "First Bank of Nigeria (FBN) (011)" },
+  //         { code: "058", name: "Guaranty Trust Bank (GTBank) (058)" },
+  //         { code: "070", name: "Heritage Bank (070)" },
+  //         { code: "301", name: "Jaiz Bank (301)" },
+  //         { code: "082", name: "Keystone Bank (082)" },
+  //         { code: "057", name: "Stanbic IBTC Bank (057)" },
+  //         { code: "068", name: "Standard Chartered Bank (068)" },
+  //         { code: "232", name: "Sterling Bank (232)" },
+  //         { code: "221", name: "Union Bank of Nigeria (221)" },
+  //         { code: "032", name: "United Bank for Africa (UBA) (032)" },
+  //         { code: "033", name: "Unity Bank (033)" },
+  //         { code: "215", name: "Wema Bank (215)" },
+  //         { code: "035A", name: "Zenith Bank (035A)" },
+  //       ],
+  //       selectedBank: "",
+  //       recipientAccount: "",
+  //       amount: "",
+  //       description: "",
+  //     };
+  //   },
+  //   methods: {
+  //     /**
+  //      * Handles the form submission for fund transfer.
+  //      */
+  //     submitTransfer() {
+  //       if (!this.selectedBank) {
+  //         alert("Please select a bank.");
+  //         return;
+  //       }
+  //       if (!this.recipientAccount) {
+  //         alert("Please enter the recipient's account number.");
+  //         return;
+  //       }
+  //       if (this.amount <= 0) {
+  //         alert("Please enter a valid transfer amount.");
+  //         return;
+  //       }
+  //       alert(
+  //         `Transfer of ₦${this.amount} to account ${this.recipientAccount} at bank ${this.selectedBank} was submitted successfully.`
+  //       );
+  //     },
+  //   },
+  // };
   </script>
   
   <style scoped>

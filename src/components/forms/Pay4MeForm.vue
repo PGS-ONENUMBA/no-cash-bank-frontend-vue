@@ -115,42 +115,33 @@
     </main>
   </template>
   
-  <script>
-  export default {
-    name: "Pay4MeForm",
-    data() {
-      return {
-        formData: {
-          email: "",
-          phoneNumber: "",
-          tickets: 1,
-          recipientPhoneNumber: "",
-        },
-      };
-    },
-    methods: {
-      /**
-       * Handles the submission of the Pay4Me form.
-       */
-      handleSubmit() {
-        if (!this.formData.email || !this.formData.phoneNumber || !this.formData.recipientPhoneNumber || this.formData.tickets < 1) {
-          alert("Please fill out all fields correctly.");
-          return;
-        }
+  <script setup>
+  import { ref } from "vue";
   
-        alert(
-          `Request submitted: 
-          Email: ${this.formData.email}, 
-          Phone: ${this.formData.phoneNumber}, 
-          Tickets: ${this.formData.tickets}, 
-          Recipient Phone: ${this.formData.recipientPhoneNumber}`
-        );
+  const formData = ref({
+    email: "",
+    phoneNumber: "",
+    tickets: 1,
+    recipientPhoneNumber: "",
+  });
   
-        // API call to submit form data can be added here
-      },
-    },
+  /**
+   * Handles the submission of the Pay4Me form.
+   */
+  const handleSubmit = () => {
+    if (!formData.value.email || !formData.value.phoneNumber || !formData.value.recipientPhoneNumber || formData.value.tickets < 1) {
+      alert("Please fill out all fields correctly.");
+      return;
+    }
+  
+    alert(
+      `Request submitted: \nEmail: ${formData.value.email}, \nPhone: ${formData.value.phoneNumber}, \nTickets: ${formData.value.tickets}, \nRecipient Phone: ${formData.value.recipientPhoneNumber}`
+    );
+  
+    // API call to submit form data can be added here
   };
   </script>
+  
   
   <style scoped>
   .btn-orange {

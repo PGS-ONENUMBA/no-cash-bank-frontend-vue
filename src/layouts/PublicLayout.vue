@@ -1,7 +1,7 @@
 <template>
     <div>
       <!-- Public Header -->
-      <Navbar />
+      <NavBar />
       
       <!-- Main Content -->
       <main>
@@ -9,21 +9,15 @@
       </main>
   
       <!-- Public Footer -->
-      <Footer />
+      <FooterComponent />
     </div>
   </template>
   
-  <script>
-  import Navbar from "@/components/Navbar.vue";
-  import Footer from "@/components/Footer.vue";
+  <script setup>
+  import NavBar from "@/components/NavBar.vue";
+  import FooterComponent from "@/components/FooterComponent.vue";
   
-  export default {
-    name: "PublicLayout",
-    components: {
-      Navbar,
-      Footer,
-    },
-  };
+
   </script>
   
   <style scoped>

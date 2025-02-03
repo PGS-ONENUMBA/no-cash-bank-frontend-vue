@@ -69,12 +69,11 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: "HowItWorks",
-  data() {
-    return {
-      steps: [
+<script setup>
+ 
+import { ref } from 'vue'
+
+const steps = ref([
         {
           icon: "bi bi-person-plus-fill",
           iconColorClass: "text-green", // Green icon
@@ -93,8 +92,8 @@ export default {
           title: "Start Banking",
           description: "Access our features like cashless payments, financial tools, and secure transactions.",
         },
-      ],
-      features: [
+      ])
+const features = ref([
         {
           icon: "bi bi-shield-check",
           iconColorClass: "text-green", // Green icon
@@ -113,10 +112,55 @@ export default {
           title: "Financial Inclusion",
           description: "Our platform is designed to make banking accessible for everyone, regardless of location or background.",
         },
-      ],
-    };
-  },
-};
+      ])
+
+// export default {
+//   name: "HowItWorks",
+//   data() {
+//     return {
+//       steps: [
+//         {
+//           icon: "bi bi-person-plus-fill",
+//           iconColorClass: "text-green", // Green icon
+//           title: "Sign Up",
+//           description: "Create your free account with just a few clicks. All you need is your email and basic information.",
+//         },
+//         {
+//           icon: "bi bi-file-lock-fill",
+//           iconColorClass: "text-orange", // Orange icon
+//           title: "Verify Your Identity",
+//           description: "Complete our secure KYC process to ensure compliance and the safety of your transactions.",
+//         },
+//         {
+//           icon: "bi bi-wallet2",
+//           iconColorClass: "text-green", // Green icon
+//           title: "Start Banking",
+//           description: "Access our features like cashless payments, financial tools, and secure transactions.",
+//         },
+//       ],
+//       features: [
+//         {
+//           icon: "bi bi-shield-check",
+//           iconColorClass: "text-green", // Green icon
+//           title: "Secure Platform",
+//           description: "Your data and transactions are safeguarded with state-of-the-art encryption and security protocols.",
+//         },
+//         {
+//           icon: "bi bi-speedometer",
+//           iconColorClass: "text-orange", // Orange icon
+//           title: "Fast Transactions",
+//           description: "Enjoy seamless and quick transactions, ensuring your banking experience is smooth and efficient.",
+//         },
+//         {
+//           icon: "bi bi-people",
+//           iconColorClass: "text-green", // Green icon
+//           title: "Financial Inclusion",
+//           description: "Our platform is designed to make banking accessible for everyone, regardless of location or background.",
+//         },
+//       ],
+//     };
+//   },
+// };
 </script>
 
 <style scoped>

@@ -12,17 +12,17 @@
     </div>
   </template>
   
-  <script>
-  export default {
-    name: "FeatureCard",
-    props: {
-      title: { type: String, required: true },
-      icon: { type: String, required: true },
-      description: { type: String, required: true },
-      link: { type: String, required: true },
-    },
-  };
+  <script setup>
+  import { defineProps } from "vue";
+  
+  const props = defineProps({
+    title: { type: String, required: true },
+    icon: { type: String, required: true },
+    description: { type: String, required: true },
+    link: { type: String, required: true },
+  });
   </script>
+
   
   <style scoped>
   /* Add any specific card styles */

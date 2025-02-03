@@ -4,15 +4,9 @@
   </div>
 </template>
 
-<script>
+<script setup>
 import Pay4MeForm from '@/components/forms/Pay4MeForm.vue';
 
-export default {
-  name: 'PublicPay4Me',
-  components: {
-    Pay4MeForm,
-  },
-};
 </script>
 
 <style scoped>

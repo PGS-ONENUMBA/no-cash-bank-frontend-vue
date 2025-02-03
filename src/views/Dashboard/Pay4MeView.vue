@@ -1,6 +1,5 @@
 <template>
   
-  
   <div>
     <!-- Page Header -->
     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
@@ -8,18 +7,16 @@
         <i class="bi bi-check-circle"></i> Pay-4-Me (Dashboard)
       </h1>
     </div>
-    <OnTheHouseForm :isLoggedIn="true" />
+    <Pay4MeForm :isLoggedIn="true" />
   </div>
-  </template>
-  
-  <script>
-  import OnTheHouseForm from "@/components/forms/OnTheHouseForm.vue";
-  
-  export default {
-    name: "PublicOnTheHouse",
-    components: {
-      OnTheHouseForm,
-    },
-  };
-  </script>
-  
+</template>
+
+<script setup>
+import Pay4MeForm from '@/components/forms/Pay4MeForm.vue';
+
+
+</script>
+
+<style scoped>
+/* Add your custom styles for dashboard view */
+</style>

@@ -2,11 +2,11 @@
   <router-view></router-view> <!-- Ensures correct layout is applied -->
 </template>
 
-<script>
+<script setup>
 
-export default {
-  name: "App"
-};
+// export default {
+//   name: "App"
+// };
 </script>
 
 <style>

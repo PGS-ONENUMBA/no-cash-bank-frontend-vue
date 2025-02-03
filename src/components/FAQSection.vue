@@ -44,40 +44,37 @@
     </section>
   </template>
   
-  <script>
-  export default {
-    data() {
-      return {
-        faqs: [
-          {
-            question: "What is a No-Cash-Bank?",
-            answers: [
-              "Cashless transactions for ease and convenience",
-              "Secure digital banking solutions",
-              "Financial inclusion for everyone",
-            ],
-          },
-          {
-            question: "How secure is OneNnumba?",
-            answers: [
-              "End-to-end encryption",
-              "Multi-factor authentication",
-              "Regular audits for compliance",
-            ],
-          },
-          {
-            question: "How do I get started?",
-            answers: [
-              "Sign up on our platform",
-              "Complete your profile and KYC process",
-              "Start using our No-Cash banking services",
-            ],
-          },
-        ],
-      };
+  <script setup>
+  import { ref } from "vue";
+  
+  const faqs = ref([
+    {
+      question: "What is a No-Cash-Bank?",
+      answers: [
+        "Cashless transactions for ease and convenience",
+        "Secure digital banking solutions",
+        "Financial inclusion for everyone",
+      ],
     },
-  };
+    {
+      question: "How secure is OneNnumba?",
+      answers: [
+        "End-to-end encryption",
+        "Multi-factor authentication",
+        "Regular audits for compliance",
+      ],
+    },
+    {
+      question: "How do I get started?",
+      answers: [
+        "Sign up on our platform",
+        "Complete your profile and KYC process",
+        "Start using our No-Cash banking services",
+      ],
+    },
+  ]);
   </script>
+  
   
   <style scoped>
   /* Add styles specific to this component */

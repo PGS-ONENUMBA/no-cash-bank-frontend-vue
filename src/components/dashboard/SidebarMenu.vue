@@ -52,27 +52,26 @@
   </nav>
 </template>
 
-<script>
+<script setup>
+import { useRouter, useRoute } from 'vue-router';
 import { logout } from "@/services/authService";
 
-export default {
-  name: "SidebarMenu",
-  methods: {
-    /**
-     * Checks if a given route matches the current path for active state.
-     */
-    isActive(route) {
-      return this.$route.path === route;
-    },
+const router = useRouter();
+const route = useRoute();
 
-    /**
-     * Handles user logout by clearing authentication and redirecting to login.
-     */
-    async handleLogout() {
-      await logout();
-      this.$router.push("/login");
-    }
-  }
+/**
+ * Checks if a given route matches the current path for active state.
+ */
+const isActive = (routePath) => {
+  return route.path === routePath;
+};
+
+/**
+ * Handles user logout by clearing authentication and redirecting to login.
+ */
+const handleLogout = async () => {
+  await logout();
+  router.push("/login");
 };
 </script>
 

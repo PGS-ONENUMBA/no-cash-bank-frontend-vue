@@ -28,30 +28,42 @@
   </div>
 </template>
 
-<script>
+<script setup>
+
 import SidebarMenu from "@/components/dashboard/SidebarMenu.vue";
 
-export default {
-  name: "DashboardLayout",
-  components: {
-    SidebarMenu,
-  },
-  data() {
-    return {
-      siteName: import.meta.env.VITE_SITE_NAME,
-    };
-  },
-  methods: {
-    logout() {
-      localStorage.removeItem("authToken");
-      localStorage.removeItem("refresh_token");
-      localStorage.removeItem("refresh_token_expires_in");
-      localStorage.removeItem("tokenExpiry");
-      localStorage.removeItem("userData");
-      this.$router.push("/login");
-    },
-  },
-};
+const siteName = import.meta.env.VITE_SITE_NAME
+
+const logout = () => {
+  localStorage.removeItem("authToken");
+  localStorage.removeItem("refresh_token");
+  localStorage.removeItem("refresh_token_expires_in");
+  localStorage.removeItem("tokenExpiry");
+  localStorage.removeItem("userData");
+  this.$router.push("/login");
+}
+
+// export default {
+//   name: "DashboardLayout",
+//   components: {
+//     SidebarMenu,
+//   },
+//   data() {
+//     return {
+//       siteName: import.meta.env.VITE_SITE_NAME,
+//     };
+//   },
+//   methods: {
+//     logout() {
+//       localStorage.removeItem("authToken");
+//       localStorage.removeItem("refresh_token");
+//       localStorage.removeItem("refresh_token_expires_in");
+//       localStorage.removeItem("tokenExpiry");
+//       localStorage.removeItem("userData");
+//       this.$router.push("/login");
+//     },
+//   },
+// };
 </script>
 
 <style scoped>

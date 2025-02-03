@@ -49,15 +49,8 @@
   </div>
 </template>
 
-<script>
+<script setup>
 import FeatureCard from "@/components/dashboard/FeatureCard.vue";
-
-export default {
-  name: "Dashboard",
-  components: {
-    FeatureCard,
-  },
-};
 </script>
 
 <style scoped>

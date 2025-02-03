@@ -106,38 +106,32 @@
     </div>
   </template>
   
-  <script>
-  export default {
-    name: "OnTheHouseForm",
-    data() {
-      return {
-        formData: {
-          tickets: 1,
-          amount: 0,
-          recipientPhone: "",
-        },
-      };
-    },
-    methods: {
-      /**
-       * Handles the form submission for the "On The House" functionality.
-       */
-      handleSubmit() {
-        if (this.formData.tickets < 1 || this.formData.amount <= 0 || !this.formData.recipientPhone) {
-          alert("Please fill out all fields correctly.");
-          return;
-        }
+  <script setup>
+  import { ref } from "vue";
   
-        alert(
-          `Payment Request Submitted:\n
-          Tickets: ${this.formData.tickets}\n
-          Amount: ₦${this.formData.amount}\n
-          Recipient Phone: ${this.formData.recipientPhone}`
-        );
+  const formData = ref({
+    tickets: 1,
+    amount: 0,
+    recipientPhone: "",
+  });
   
-        // API call to submit form data can be added here
-      },
-    },
+  /**
+   * Handles the form submission for the "On The House" functionality.
+   */
+  const handleSubmit = () => {
+    if (formData.value.tickets < 1 || formData.value.amount <= 0 || !formData.value.recipientPhone) {
+      alert("Please fill out all fields correctly.");
+      return;
+    }
+  
+    alert(
+      `Payment Request Submitted:\n\n` +
+        `Tickets: ${formData.value.tickets}\n` +
+        `Amount: ₦${formData.value.amount}\n` +
+        `Recipient Phone: ${formData.value.recipientPhone}`
+    );
+  
+    // API call to submit form data can be added here
   };
   </script>
   

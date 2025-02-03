@@ -59,7 +59,7 @@
       </div>
   </template>
   
-  <script>
+  <script setup>
   /**
    * ResetPassword Component
    *
@@ -72,73 +72,63 @@
    * - Displays a password reset form if a valid token is detected.
    * - Redirects to a 404 page if the token is invalid.
    */
+
+   import { ref, onMounted } from 'vue'
+   import { useRouter } from 'vue-router'
   
-  import axios from 'axios'; // Import Axios for API requests
+  // import axios from 'axios'; // Import Axios for API requests
   import api from '@/services/apiService'; // Reusable API service
-  
-  export default {
-    name: 'ResetPassword',
-    data() {
-      return {
-        email: '', // Holds the user's email for the reset link
-        password: '', // Holds the new password for resetting
-        confirmPassword: '', // Holds the confirmed new password
-        token: this.$route.query.token || null, // Token extracted from the URL query
-        tokenValid: false, // Boolean to track token validity
-      };
-    },
-    methods: {
-      /**
-       * Sends a password reset link to the provided email address.
-       */
-      async sendResetLink() {
-        try {
-          const response = await api.get('/send-reset-link', { email: this.email });
+
+  const router = useRouter();
+
+  const email = ref('')
+  const password = ref('')
+  const confirmPassword = ref('')
+  const token = ref('')
+  const tokenValid = ref(false)
+
+  const sendResetLink = async () => {
+    try {
+          const response = await api.get('/send-reset-link', { email: email.value });
           if (response.data.success) {
             alert('Reset link sent! Please check your email.');
           } else {
             alert('Failed to send reset link.');
           }
-        } catch (error) {
+    } catch (error) {
           console.error('Error sending reset link:', error);
           alert('An error occurred. Please try again.');
-        }
-      },
-      /**
-       * Validates the token from the URL.
-       * If the token is invalid, redirects to the 404 page.
-       */
-      async validateToken() {
-        if (this.token) {
+    }
+  }
+
+  const validateToken = async () => {
+    if (token.value) {
           try {
-            const response = await api.get('/verify-token', { token: this.token });
-            this.tokenValid = response.data.valid;
-            if (!this.tokenValid) {
-              this.$router.push('/404'); // Redirect to 404 if the token is invalid
+            const response = await api.get('/verify-token', { token: token.value });
+            tokenValid.value = response.data.valid;
+            if (!tokenValid.value) {
+              router.push('/404'); // Redirect to 404 if the token is invalid
             }
           } catch (error) {
             console.error('Token validation failed:', error);
-            this.$router.push('/404');
+            router.push('/404');
           }
         }
-      },
-      /**
-       * Resets the user's password using the provided token.
-       * Ensures the passwords match before making the request.
-       */
-      async resetPassword() {
-        if (this.password !== this.confirmPassword) {
+  }
+
+  const resetPassword = async () => {
+    if (password.value !== confirmPassword.value) {
           alert('Passwords do not match.');
           return;
         }
         try {
           const response = await api.get('/reset-password', {
-            token: this.token,
-            password: this.password,
+            token: token.value,
+            password: password.value,
           });
           if (response.data.success) {
             alert('Password reset successful! You can now log in.');
-            this.$router.push('/login'); // Redirect to login page
+            router.push('/login'); // Redirect to login page
           } else {
             alert('Failed to reset password.');
           }
@@ -146,16 +136,92 @@
           console.error('Error resetting password:', error);
           alert('An error occurred. Please try again.');
         }
-      },
-    },
-    /**
-     * Lifecycle hook that runs when the component is mounted.
-     * Validates the token if present in the URL query.
-     */
-    mounted() {
-      this.validateToken();
-    },
-  };
+  }
+
+  onMounted(() => {
+    validateToken()
+  })
+  
+  // export default {
+  //   name: 'ResetPassword',
+  //   data() {
+  //     return {
+  //       email: '', // Holds the user's email for the reset link
+  //       password: '', // Holds the new password for resetting
+  //       confirmPassword: '', // Holds the confirmed new password
+  //       token: this.$route.query.token || null, // Token extracted from the URL query
+  //       tokenValid: false, // Boolean to track token validity
+  //     };
+  //   },
+  //   methods: {
+  //     /**
+  //      * Sends a password reset link to the provided email address.
+  //      */
+  //     async sendResetLink() {
+  //       try {
+  //         const response = await api.get('/send-reset-link', { email: this.email });
+  //         if (response.data.success) {
+  //           alert('Reset link sent! Please check your email.');
+  //         } else {
+  //           alert('Failed to send reset link.');
+  //         }
+  //       } catch (error) {
+  //         console.error('Error sending reset link:', error);
+  //         alert('An error occurred. Please try again.');
+  //       }
+  //     },
+  //     /**
+  //      * Validates the token from the URL.
+  //      * If the token is invalid, redirects to the 404 page.
+  //      */
+  //     async validateToken() {
+  //       if (this.token) {
+  //         try {
+  //           const response = await api.get('/verify-token', { token: this.token });
+  //           this.tokenValid = response.data.valid;
+  //           if (!this.tokenValid) {
+  //             this.$router.push('/404'); // Redirect to 404 if the token is invalid
+  //           }
+  //         } catch (error) {
+  //           console.error('Token validation failed:', error);
+  //           this.$router.push('/404');
+  //         }
+  //       }
+  //     },
+  //     /**
+  //      * Resets the user's password using the provided token.
+  //      * Ensures the passwords match before making the request.
+  //      */
+  //     async resetPassword() {
+  //       if (this.password !== this.confirmPassword) {
+  //         alert('Passwords do not match.');
+  //         return;
+  //       }
+  //       try {
+  //         const response = await api.get('/reset-password', {
+  //           token: this.token,
+  //           password: this.password,
+  //         });
+  //         if (response.data.success) {
+  //           alert('Password reset successful! You can now log in.');
+  //           this.$router.push('/login'); // Redirect to login page
+  //         } else {
+  //           alert('Failed to reset password.');
+  //         }
+  //       } catch (error) {
+  //         console.error('Error resetting password:', error);
+  //         alert('An error occurred. Please try again.');
+  //       }
+  //     },
+  //   },
+  //   /**
+  //    * Lifecycle hook that runs when the component is mounted.
+  //    * Validates the token if present in the URL query.
+  //    */
+  //   mounted() {
+  //     this.validateToken();
+  //   },
+  // };
   </script>
   
   <style scoped>

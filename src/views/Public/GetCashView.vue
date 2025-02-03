@@ -6,13 +6,6 @@
   </div>
 </template>
 
-<script>
+<script setup>
 import GetCashForm from "@/components/forms/GetCashForm.vue";
-
-export default {
-  name: "PublicGetCash",
-  components: {
-    GetCashForm, // Import the reusable component
-  },
-};
 </script>

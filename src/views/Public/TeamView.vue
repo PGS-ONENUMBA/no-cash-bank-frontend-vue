@@ -53,7 +53,7 @@
   </div>
 </template>
 
-<script>
+<script setup>
 /**
  * Team Component
  * This component displays the "Meet Our Team" page with a list of team members.
@@ -62,12 +62,9 @@
  * - Dynamically renders team member details from the `teamMembers` data array.
  * - Each team member displays their name, role, image, and social media links.
  */
-export default {
-  name: "Team", // Component name
-  data() {
-    return {
-      // Team member data (name, role, image, and social links)
-      teamMembers: [
+
+ import { ref } from 'vue'
+const teamMembers =  ref([
         {
           name: "John Doe",
           role: "CEO & Founder",
@@ -110,10 +107,8 @@ export default {
           linkedin: "https://linkedin.com/in/davidkim",
           twitter: "https://twitter.com/davidkim",
         },
-      ],
-    };
-  },
-};
+  ])
+
 </script>
 
 <style scoped>

@@ -110,18 +110,17 @@
     </div>
   </template>
   
-  <script>
-  export default {
-    name: "Reports",
-    data() {
-      return {
-        filters: {
+  <script setup>
+  import { ref, computed } from 'vue'
+
+  const filters = ref({
           reportType: "",
           dateRange: "",
           status: "",
           recipient: "",
-        },
-        reports: [
+  })
+
+  const reports = ref([
           {
             date: "2025-01-15",
             type: "Transfer",
@@ -143,30 +142,80 @@
             status: "Pending",
             recipient: "Jane Smith",
           },
-        ],
-      };
-    },
-    computed: {
-      /**
-       * Filters the reports based on user input.
-       */
-      filteredReports() {
-        return this.reports.filter((report) => {
+  ])
+
+  const filteredReports = computed(() => {
+        return reports.value.filter((report) => {
           return (
-            (this.filters.reportType === "" ||
-              report.type.toLowerCase() === this.filters.reportType.toLowerCase()) &&
-            (this.filters.status === "" ||
-              report.status.toLowerCase() === this.filters.status.toLowerCase()) &&
-            (this.filters.recipient === "" ||
+            (filters.value.reportType === "" ||
+              report.type.toLowerCase() === filters.value.reportType.toLowerCase()) &&
+            (filters.value.status === "" ||
+              report.status.toLowerCase() === filters.value.status.toLowerCase()) &&
+            (filters.value.recipient === "" ||
               report.recipient
                 .toLowerCase()
-                .includes(this.filters.recipient.toLowerCase())) &&
-            (this.filters.dateRange === "" || report.date === this.filters.dateRange)
+                .includes(filters.value.recipient.toLowerCase())) &&
+            (filters.value.dateRange === "" || report.date === filters.value.dateRange)
           );
         });
-      },
-    },
-  };
+  })
+
+  // export default {
+  //   name: "Reports",
+  //   data() {
+  //     return {
+  //       filters: {
+  //         reportType: "",
+  //         dateRange: "",
+  //         status: "",
+  //         recipient: "",
+  //       },
+  //       reports: [
+  //         {
+  //           date: "2025-01-15",
+  //           type: "Transfer",
+  //           amount: "5000",
+  //           status: "Successful",
+  //           recipient: "John Doe",
+  //         },
+  //         {
+  //           date: "2025-01-14",
+  //           type: "Payment",
+  //           amount: "10000",
+  //           status: "Failed",
+  //           recipient: "ABC Corp",
+  //         },
+  //         {
+  //           date: "2025-01-13",
+  //           type: "Transfer",
+  //           amount: "7500",
+  //           status: "Pending",
+  //           recipient: "Jane Smith",
+  //         },
+  //       ],
+  //     };
+  //   },
+  //   computed: {
+  //     /**
+  //      * Filters the reports based on user input.
+  //      */
+  //     filteredReports() {
+  //       return this.reports.filter((report) => {
+  //         return (
+  //           (this.filters.reportType === "" ||
+  //             report.type.toLowerCase() === this.filters.reportType.toLowerCase()) &&
+  //           (this.filters.status === "" ||
+  //             report.status.toLowerCase() === this.filters.status.toLowerCase()) &&
+  //           (this.filters.recipient === "" ||
+  //             report.recipient
+  //               .toLowerCase()
+  //               .includes(this.filters.recipient.toLowerCase())) &&
+  //           (this.filters.dateRange === "" || report.date === this.filters.dateRange)
+  //         );
+  //       });
+  //     },
+  //   },
+  // };
   </script>
   
   <style scoped>

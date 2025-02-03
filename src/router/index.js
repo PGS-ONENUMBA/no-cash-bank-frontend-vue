@@ -21,27 +21,27 @@ import PublicLayout from '@/layouts/PublicLayout.vue';
 import DashboardLayout from '@/layouts/DashboardLayout.vue';
 
 // Public Views (accessible to all users)
-import Home from '@/views/Public/Home.vue';
-import About from '@/views/Public/About.vue';
-import Team from '@/views/Public/Team.vue';
-import HowItWorks from '@/views/Public/How-It-Works.vue';
-import Login from '@/views/Public/Login.vue';
-import PublicGetCash from '@/views/Public/GetCash.vue';
-import PublicPay4Me from '@/views/Public/Pay4Me.vue';
-import PublicOnTheHouse from '@/views/Public/OnTheHouse.vue';
-import Privacy from '@/views/Privacy.vue';
-import Terms from '@/views/Terms.vue';
-import ResetPassword from '@/views/Public/ResetPassword.vue';
-import NotFound from '@/views/404.vue';
+import HomeView from '@/views/Public/HomeView.vue';
+import AboutView from '@/views/Public/AboutView.vue';
+import TeamView from '@/views/Public/TeamView.vue';
+import HowItWorksView from '@/views/Public/How-It-WorksView.vue';
+import LoginView from '@/views/Public/LoginView.vue';
+import PublicGetCashView from '@/views/Public/GetCashView.vue';
+import PublicPay4MeView from '@/views/Public/PublicPay4MeView.vue';
+import PublicOnTheHouseView from '@/views/Public/OnTheHouseView.vue';
+import PrivacyView from '@/views/PrivacyView.vue';
+import TermsView from '@/views/TermsView.vue';
+import ResetPasswordView from '@/views/Public/ResetPasswordView.vue';
+import NotFound from '@/views/404View.vue';
 
 // Dashboard Views (restricted to authenticated users)
-import Dashboard from '@/views/Dashboard/Dashboard.vue';
-import DashboardGetCash from '@/views/Dashboard/GetCash.vue';
-import DashboardPay4Me from '@/views/Dashboard/Pay4Me.vue';
-import DashboardOnTheHouse from '@/views/Dashboard/OnTheHouse.vue';
-import Transfer from '@/views/Dashboard/Transfer.vue';
-import Reports from '@/views/Dashboard/Reports.vue';
-import Profile from '@/views/Dashboard/Profile.vue';
+import DashboardView from '@/views/Dashboard/DashboardView.vue';
+import DashboardGetCashView from '@/views/Dashboard/GetCashView.vue';
+import DashboardPay4MeView from '@/views/Dashboard/Pay4MeView.vue';
+import OnTheHouseView from '@/views/Dashboard/OnTheHouseView.vue';
+import TransferView from '@/views/Dashboard/TransferView.vue';
+import ReportsView from '@/views/Dashboard/ReportsView.vue';
+import ProfileView from '@/views/Dashboard/ProfileView.vue';
 
 /**
  * Route Definitions
@@ -58,17 +58,17 @@ const routes = [
     path: '/',
     component: PublicLayout,
     children: [
-      { path: '', name: 'Home', component: Home, meta: { title: 'Home' } },
-      { path: 'about', name: 'About', component: About, meta: { title: 'About Us' } },
-      { path: 'team', name: 'Team', component: Team, meta: { title: 'Our Team' } },
-      { path: 'how-it-works', name: 'HowItWorks', component: HowItWorks, meta: { title: 'How It Works' } },
-      { path: 'get-cash', name: 'PublicGetCash', component: PublicGetCash, meta: { title: 'Get Cash' } },
-      { path: 'pay4me', name: 'PublicPay4Me', component: PublicPay4Me, meta: { title: 'Pay-4-Me' } },
-      { path: 'on-the-house', name: 'PublicOnTheHouse', component: PublicOnTheHouse, meta: { title: 'On The House' } },
-      { path: 'login', name: 'Login', component: Login, meta: { title: 'Login' } },
-      { path: 'privacy', name: 'Privacy', component: Privacy, meta: { title: 'Privacy' } },
-      { path: 'terms', name: 'Terms', component: Terms, meta: { title: 'Terms & Conditions' } },
-      { path: 'reset-password', name: 'ResetPassword', component: ResetPassword, meta: { title: 'Reset Password' } },
+      { path: '', name: 'Home', component: HomeView, meta: { title: 'Home' } },
+      { path: 'about', name: 'About', component: AboutView, meta: { title: 'About Us' } },
+      { path: 'team', name: 'Team', component: TeamView, meta: { title: 'Our Team' } },
+      { path: 'how-it-works', name: 'HowItWorks', component: HowItWorksView, meta: { title: 'How It Works' } },
+      { path: 'get-cash', name: 'PublicGetCash', component: PublicGetCashView, meta: { title: 'Get Cash' } },
+      { path: 'pay4me', name: 'Pay4Me', component: PublicPay4MeView, meta: { title: 'Pay-4-Me' } },
+      { path: 'on-the-house', name: 'PublicOnTheHouse', component: PublicOnTheHouseView, meta: { title: 'On The House' } },
+      { path: 'login', name: 'Login', component: LoginView, meta: { title: 'Login' } },
+      { path: 'privacy', name: 'Privacy', component: PrivacyView, meta: { title: 'Privacy' } },
+      { path: 'terms', name: 'Terms', component: TermsView, meta: { title: 'Terms & Conditions' } },
+      { path: 'reset-password', name: 'ResetPassword', component: ResetPasswordView, meta: { title: 'Reset Password' } },
     ],
   },
 
@@ -78,13 +78,13 @@ const routes = [
     component: DashboardLayout,
     meta: { requiresAuth: true },
     children: [
-      { path: '', name: 'Dashboard', component: Dashboard, meta: { title: 'Dashboard' } },
-      { path: 'get-cash', name: 'DashboardGetCash', component: DashboardGetCash, meta: { title: 'Get Cash' } },
-      { path: 'pay4me', name: 'DashboardPay4Me', component: DashboardPay4Me, meta: { title: 'Pay-4-Me' } },
-      { path: 'on-the-house', name: 'DashboardOnTheHouse', component: DashboardOnTheHouse, meta: { title: 'On The House' } },
-      { path: 'transfer', name: 'DashboardTransfer', component: Transfer, meta: { title: 'Transfer' } },
-      { path: 'reports', name: 'DashboardReports', component: Reports, meta: { title: 'Reports' } },
-      { path: 'profile', name: 'DashboardProfile', component: Profile, meta: { title: 'Profile Page' } },
+      { path: '', name: 'Dashboard', component: DashboardView, meta: { title: 'Dashboard' } },
+      { path: 'get-cash', name: 'DashboardGetCash', component: DashboardGetCashView, meta: { title: 'Get Cash' } },
+      { path: 'pay4me', name: 'DashboardPay4Me', component: DashboardPay4MeView, meta: { title: 'Pay-4-Me' } },
+      { path: 'on-the-house', name: 'OnTheHouseView', component: OnTheHouseView, meta: { title: 'On The House' } },
+      { path: 'transfer', name: 'DashboardTransfer', component: TransferView, meta: { title: 'Transfer' } },
+      { path: 'reports', name: 'DashboardReports', component: ReportsView, meta: { title: 'Reports' } },
+      { path: 'profile', name: 'DashboardProfile', component: ProfileView, meta: { title: 'Profile Page' } },
     ],
   },
   // 🔹 Catch-all Route (404)

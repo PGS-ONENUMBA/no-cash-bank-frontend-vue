@@ -78,10 +78,7 @@
     </div>
   </template>
   
-  <script>
-  export default {
-    name: "Policy",
-  };
+  <script setup>
   </script>
   
   <style scoped>

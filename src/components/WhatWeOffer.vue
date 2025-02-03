@@ -17,11 +17,10 @@
     </section>
   </template>
   
-  <script>
-  export default {
-    data() {
-      return {
-        offers: [
+  <script setup>
+  import { ref } from 'vue'
+
+  const offers = ref([
           {
             icon: "bi-green bi bi-toggles2",
             title: "Seamless Transactions",
@@ -37,10 +36,31 @@
             title: "24/7 Support",
             description: "Get assistance whenever you need it from our dedicated team.",
           },
-        ],
-      };
-    },
-  };
+  ])
+
+  // export default {
+  //   data() {
+  //     return {
+  //       offers: [
+  //         {
+  //           icon: "bi-green bi bi-toggles2",
+  //           title: "Seamless Transactions",
+  //           description: "Enjoy fast and hassle-free transactions tailored to your needs.",
+  //         },
+  //         {
+  //           icon: "bi-green bi bi-cpu-fill",
+  //           title: "Secure, User-Friendly Services",
+  //           description: "Track your transactions with our intuitive tools.",
+  //         },
+  //         {
+  //           icon: "bi-green bi bi-tools",
+  //           title: "24/7 Support",
+  //           description: "Get assistance whenever you need it from our dedicated team.",
+  //         },
+  //       ],
+  //     };
+  //   },
+  // };
   </script>
   
   <style scoped>
