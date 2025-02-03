@@ -7,26 +7,11 @@
       </h1>
     </div>
 
-    <!-- Wallet Balance -->
-    <div class="mb-4">
-      <div class="card text-center shadow-sm">
-        <div class="card-body">
-          <h5 class="card-title">
-            <i class="bi bi-wallet2"></i> Wallet Balance
-          </h5>
-          <p class="card-text fs-3 text-success">₦10,000</p>
-        </div>
-      </div>
-    </div>
+    <!-- ✅ Reusable Wallet Balance Component -->
+    <WalletBalance />
 
-    <!-- Other Cards Section -->
-    <div class="row row-cols-1 row-cols-md-2 g-4">
-      <FeatureCard
-        title="Transfer Funds"
-        icon="bi bi-cash-stack"
-        description="Easily send money to others."
-        link="/dashboard/transfer"
-      />
+    <!-- First Row: 3 Columns (Product Forms) -->
+    <div class="row row-cols-1 row-cols-md-3 g-4">
       <FeatureCard
         title="Get Cash"
         icon="bi bi-currency-exchange"
@@ -34,29 +19,64 @@
         link="/dashboard/get-cash"
       />
       <FeatureCard
+        title="Transfer Funds"
+        icon="bi bi-arrow-up-right-circle"
+        description="Easily send money to others."
+        link="/dashboard/transfer"
+      />
+      <FeatureCard
         title="Pay-4-Me"
         icon="bi bi-check-circle"
         description="Let us pay on your behalf."
         link="/dashboard/pay4me"
       />
+    </div>
+
+    <!-- Second Row: 2 Columns (Other Features) -->
+    <div class="row row-cols-1 row-cols-md-2 g-4 mt-3">
       <FeatureCard
-        title="Reports"
+        title="On The House"
+        icon="bi bi-gift"
+        description="Enjoy free giveaways and rewards."
+        link="/dashboard/on-the-house"
+      />
+      <FeatureCard
+        title="Transaction Reports"
         icon="bi bi-clock-history"
-        description="View transaction history."
+        description="View your transaction history."
         link="/dashboard/reports"
       />
     </div>
+
+    <!-- Mobile Footer Menu -->
+    <DashboardFooter />
   </div>
 </template>
 
 <script setup>
+import { useAuthStore } from "@/store/authStore";
+import WalletBalance from "@/components/dashboard/WalletBalance.vue";
+import { computed, onMounted } from "vue";
 import FeatureCard from "@/components/dashboard/FeatureCard.vue";
+import DashboardFooter from "@/components/dashboard/DashboardFooter.vue";
+
+const authStore = useAuthStore()
+
+const walletBalance = computed(() => authStore.user?.wallet_balance || "0.00");
+
+onMounted(async () => {
+  if (!walletBalance.value) {
+      await authStore.fetchUserData();
+  }
+})
+
 </script>
 
 <style scoped>
 .card {
   height: 100%;
 }
+
 .text-success {
   color: #09b850 !important;
 }

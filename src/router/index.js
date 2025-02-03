@@ -1,24 +1,9 @@
-/**
- * Vue Router Configuration
- *
- * This file sets up routing for the Vue application. It defines:
- * - Path-to-component mapping for each route
- * - A global navigation guard to dynamically set the document title
- * - Route-based scroll behavior for smoother navigation
- * - Protected dashboard routes requiring authentication
- *
- * Key Features:
- * - Public routes for non-authenticated users (e.g., Home, About, Login)
- * - Dashboard routes for authenticated users (using DashboardLayout)
- * - Catch-all route for 404 pages
- * - Secure authentication redirection
- */
-
-import { createRouter, createWebHistory } from 'vue-router';
+import { createRouter, createWebHistory } from "vue-router";
+import { useAuthStore } from "@/store/authStore"; // Import Pinia auth store
 
 // Import layouts
-import PublicLayout from '@/layouts/PublicLayout.vue';
-import DashboardLayout from '@/layouts/DashboardLayout.vue';
+import PublicLayout from "@/layouts/PublicLayout.vue";
+import DashboardLayout from "@/layouts/DashboardLayout.vue";
 
 // Public Views (accessible to all users)
 import HomeView from '@/views/Public/HomeView.vue';
@@ -45,17 +30,11 @@ import ProfileView from '@/views/Dashboard/ProfileView.vue';
 
 /**
  * Route Definitions
- *
- * Each route object contains:
- * - `path`: The URL path that triggers this route (e.g., `/about`)
- * - `name`: A unique name for the route, used programmatically in navigation
- * - `component`: The Vue component to load for this route
- * - `meta`: Optional metadata for the route, such as a custom title
  */
 const routes = [
   // 🔹 Public Routes (Using PublicLayout)
   {
-    path: '/',
+    path: "/",
     component: PublicLayout,
     children: [
       { path: '', name: 'Home', component: HomeView, meta: { title: 'Home' } },
@@ -74,9 +53,9 @@ const routes = [
 
   // 🔹 Dashboard Routes (Using DashboardLayout) – Protected
   {
-    path: '/dashboard',
+    path: "/dashboard",
     component: DashboardLayout,
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true }, // Authentication required
     children: [
       { path: '', name: 'Dashboard', component: DashboardView, meta: { title: 'Dashboard' } },
       { path: 'get-cash', name: 'DashboardGetCash', component: DashboardGetCashView, meta: { title: 'Get Cash' } },
@@ -87,21 +66,18 @@ const routes = [
       { path: 'profile', name: 'DashboardProfile', component: ProfileView, meta: { title: 'Profile Page' } },
     ],
   },
+
   // 🔹 Catch-all Route (404)
   {
-    path: '/:pathMatch(.*)*',
-    name: 'NotFound',
+    path: "/:pathMatch(.*)*",
+    name: "NotFound",
     component: NotFound,
-    meta: { title: '404 - Page Not Found' },
+    meta: { title: "404 - Page Not Found" },
   },
 ];
 
 /**
  * Router Instance
- *
- * This object manages routing functionality:
- * - Uses `history` for SEO-friendly URLs
- * - Defines route behaviors, including authentication checks
  */
 const router = createRouter({
   history: createWebHistory(),
@@ -109,20 +85,12 @@ const router = createRouter({
 
   /**
    * Scroll Behavior
-   *
-   * Controls scrolling when navigating:
-   * - Restores previous scroll position if available
-   * - Scrolls to hash targets if specified
-   * - Defaults to top of the page
    */
   scrollBehavior(to, from, savedPosition) {
     if (savedPosition) {
       return savedPosition;
     } else if (to.hash) {
-      return {
-        el: to.hash,
-        behavior: 'smooth',
-      };
+      return { el: to.hash, behavior: "smooth" };
     } else {
       return { top: 0 };
     }
@@ -132,24 +100,25 @@ const router = createRouter({
 /**
  * Navigation Guards
  *
- * - Protects dashboard routes from unauthorized access
- * - Redirects authenticated users away from login
- * - Dynamically updates document title
+ * - Uses Pinia Store for authentication state
+ * - Redirects unauthenticated users from protected routes
+ * - Prevents logged-in users from accessing the login page
  */
 router.beforeEach((to, from, next) => {
-  const isAuthenticated = !!localStorage.getItem('authToken');
+  const authStore = useAuthStore();
+  const isAuthenticated = authStore.isAuthenticated; // Use Pinia getter
 
   // Redirect to dashboard if already logged in
-  if (to.name === 'Login' && isAuthenticated) {
-    next({ name: 'Dashboard' });
+  if (to.name === "Login" && isAuthenticated) {
+    next({ name: "Dashboard" });
     return;
   }
 
   // Redirect to login if authentication is required
   if (to.meta.requiresAuth && !isAuthenticated) {
-    next({ name: 'Login' });
+    next({ name: "Login" });
   } else {
-    document.title = to.meta.title || 'No-Cash-Bank';
+    document.title = to.meta.title || "No-Cash-Bank";
     next();
   }
 });

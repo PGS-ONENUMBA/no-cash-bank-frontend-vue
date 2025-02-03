@@ -90,11 +90,12 @@
  * - Redirects authenticated users to the dashboard
  */
 
+ import { useAuthStore } from "@/store/authStore";
  import { ref } from 'vue'
  import { useRouter } from 'vue-router'
 
-import { login } from "@/services/authService";
 
+const authStore = useAuthStore();
 const router = useRouter()
 
 const username = ref('');
@@ -103,99 +104,24 @@ const rememberMe = ref('');
 const loading = ref('');
 const errorMessage = ref('');
 
-const handleLogin = async() => {
-    loading.value = true;
-    errorMessage.value = null;
+const handleLogin = async () => {
+      loading.value = true;
+      errorMessage.value = null;
 
-    try {
-      const response = await login(username.value, password.value);
+      try {
+        await authStore.login(username.value, password.value);
 
-      // Destructure API response
-      const { token, refresh_token, refresh_token_expires_in, user_id, user_display_name, user_nicename, user_email, phone_number, wallet_balance } = response;
-
-      // Store authentication token securely
-      localStorage.setItem("authToken", token);
-      localStorage.setItem("tokenExpiry", Date.now() + 1200 * 1000); // Expires in 20 minutes
-      localStorage.setItem("refresh_token", refresh_token);
-      localStorage.setItem("refresh_token_expires_in", refresh_token_expires_in);
-      localStorage.setItem("userData", JSON.stringify({
-        user_id,
-        user_display_name,
-        user_nicename,
-        user_email,
-        phone_number,
-        wallet_balance
-      }));
-
-      // Redirect the user to the dashboard
-      router.push({ name: "Dashboard" });
-    } catch(error) {
-      // Handle API errors
-      if (error.response && error.response.data) {
-            errorMessage.value = error.response.data.message;
-          } else {
-            errorMessage.value = "An unexpected error occurred. Please try again.";
-          }
-        } finally {
-          loading.value = false;
+        console.log("✅ Login complete. Redirecting to dashboard...");
+        router.push({ name: "Dashboard" });
+      } catch (error) {
+        console.error("❌ Login error:", error.message);
+        errorMessage.value = error.message || "Login failed. Try again.";
+      } finally {
+        loading.value = false;
       }
-}
+    };
 
-// export default {
-//   name: "Login",
-//   data() {
-//     return {
-//       username: "", // Stores the user's entered username
-//       password: "", // Stores the user's entered password
-//       rememberMe: false, // Checkbox for "Remember me" option
-//       loading: false, // Controls the loading state during login
-//       errorMessage: null, // Stores error messages
-//     };
-//   },
-//   methods: {
-//     /**
-//      * Handles the login process by sending user credentials to the API.
-//      * If successful, stores the access token, refresh token, and user data.
-//      */
-//     async handleLogin() {
-//       this.loading = true;
-//       this.errorMessage = null;
 
-//       try {
-//         const response = await login(this.username, this.password);
-
-//         // Destructure API response
-//         const { token, refresh_token, refresh_token_expires_in, user_id, user_display_name, user_nicename, user_email, phone_number, wallet_balance } = response;
-
-//         // Store authentication token securely
-//         localStorage.setItem("authToken", token);
-//         localStorage.setItem("tokenExpiry", Date.now() + 1200 * 1000); // Expires in 20 minutes
-//         localStorage.setItem("refresh_token", refresh_token);
-//         localStorage.setItem("refresh_token_expires_in", refresh_token_expires_in);
-//         localStorage.setItem("userData", JSON.stringify({
-//           user_id,
-//           user_display_name,
-//           user_nicename,
-//           user_email,
-//           phone_number,
-//           wallet_balance
-//         }));
-
-//         // Redirect the user to the dashboard
-//         this.$router.push({ name: "Dashboard" });
-//       } catch (error) {
-//         // Handle API errors
-//         if (error.response && error.response.data) {
-//           this.errorMessage = error.response.data.message;
-//         } else {
-//           this.errorMessage = "An unexpected error occurred. Please try again.";
-//         }
-//       } finally {
-//         this.loading = false;
-//       }
-//     },
-//   },
-// };
 </script>
 
 <style scoped>

@@ -1,5 +1,10 @@
 <template>
-  <main class="container py-5 mt-5">
+  <main class="container py-5 mt-2"><div class="text-center mb-4 mt-3">
+      <h2 class="fw-bold">
+        <i class="bi bi-check-circle"></i> On The House
+      </h2>
+  
+    </div>
     <OnTheHouseForm />
   </main>
 </template>

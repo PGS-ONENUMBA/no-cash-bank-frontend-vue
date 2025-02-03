@@ -78,8 +78,6 @@ const handleLogout = async () => {
 <style scoped>
 /* Active state for sidebar links */
 .sidebar .nav-link.active {
-  font-weight: bold;
-  background-color: #e9ecef;
   color: #09b850;
 }
 
