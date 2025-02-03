@@ -31,7 +31,7 @@ import { useAuthStore } from "@/store/authStore";
 import { computed, onMounted } from "vue";
 import GetCashForm from "@/components/forms/GetCashForm.vue";
 import DashboardFooter from "@/components/dashboard/DashboardFooter.vue";
-import WalletBalance from "@/components/dashboard/WalletBalance.vue";
+import WalletBalance from "@/components/common/WalletBalance.vue";
 
 export default {
   name: "DashboardGetCash",

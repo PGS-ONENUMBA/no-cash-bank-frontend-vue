@@ -94,7 +94,7 @@ import { ref, computed, onMounted } from "vue";
 import { useAuthStore } from "@/store/authStore";
 import apiService from "@/services/apiService";
 import DashboardFooter from "@/components/dashboard/DashboardFooter.vue";
-import WalletBalance from "@/components/dashboard/WalletBalance.vue";
+import WalletBalance from "@/components/common/WalletBalance.vue";
 
 export default {
   name: "Transfer",

@@ -55,7 +55,7 @@
 
 <script>
 import { useAuthStore } from "@/store/authStore";
-import WalletBalance from "@/components/dashboard/WalletBalance.vue";
+import WalletBalance from "@/components/common/WalletBalance.vue";
 import { computed, onMounted } from "vue";
 import FeatureCard from "@/components/dashboard/FeatureCard.vue";
 import DashboardFooter from "@/components/dashboard/DashboardFooter.vue";

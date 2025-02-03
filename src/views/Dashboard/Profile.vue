@@ -50,7 +50,7 @@ import { useAuthStore } from "@/store/authStore";
 import { computed, ref, onMounted } from "vue";
 import apiService from "@/services/apiService";
 import DashboardFooter from "@/components/dashboard/DashboardFooter.vue";
-import WalletBalance from "@/components/dashboard/WalletBalance.vue";
+import WalletBalance from "@/components/common/WalletBalance.vue";
 
 export default {
   name: "Profile",

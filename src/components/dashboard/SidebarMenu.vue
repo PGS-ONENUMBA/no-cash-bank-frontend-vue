@@ -66,7 +66,8 @@ export default {
     /**
      * Checks if a given route matches the current path for active state.
      */
-    const isActive = (route) => computed(() => router.currentRoute.value.path === route);
+    const currentRoute = computed(() => router.currentRoute.value.path);
+    const isActive = (route) => currentRoute.value === route;
 
     /**
      * Handles user logout via Pinia store.
@@ -83,6 +84,7 @@ export default {
   },
 };
 </script>
+
 
 <style scoped>
 /* Active state for sidebar links */
