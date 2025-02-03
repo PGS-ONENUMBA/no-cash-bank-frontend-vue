@@ -69,17 +69,19 @@ export default {
 
     const userDisplayName = computed(() => authStore.user?.user_nicename || "User");
     const showWarning = computed(() => authStore.showWarning);
+     // ✅ Define `siteName` properly
+     const siteName = import.meta.env.VITE_SITE_NAME || "OneNUMBA"; 
 
     const trackActivity = debounce(() => {
       if (authStore.isAuthenticated) {
         authStore.resetTimers();
-        authStore.startInactivityTimer();
+        authStore.startInactivityTimer(router); // ✅ Pass router instance
       }
     }, 500);
 
     const handleLogout = () => {
       console.log("Logout button clicked."); // Debugging log
-      authStore.logout(); // Call the logout function from Pinia
+      authStore.logout(router); // Call the logout function from Pinia
       router.push("/login"); // Ensure redirection happens
     };
 
@@ -96,7 +98,7 @@ export default {
       window.addEventListener("keydown", trackActivity);
       window.addEventListener("click", trackActivity);
 
-      authStore.startInactivityTimer();
+      authStore.startInactivityTimer(router); // ✅ Pass router instance on mount
     });
 
     onUnmounted(() => {
@@ -106,6 +108,7 @@ export default {
     });
 
     return {
+      siteName, // ✅ Ensure this is returned
       userDisplayName,
       showWarning,
       handleLogout,

@@ -8,8 +8,8 @@
         </h1>
       </div>
 
-      <!-- ✅ Reusable Wallet Balance Component -->
-    <WalletBalance />
+      <!-- ✅ Provide the required "title" prop -->
+      <WalletBalance title="Available Balance" />
 
       <!-- Transfer Form -->
       <div class="card shadow-sm">

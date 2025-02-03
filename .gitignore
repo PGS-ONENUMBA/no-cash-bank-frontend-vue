@@ -7,13 +7,19 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
+
+# Mac system files
 .DS_Store
+
+# Build artifacts
 dist
 dist-ssr
 coverage
 *.local
 
+# Cypress test artifacts
 /cypress/videos/
 /cypress/screenshots/
 
@@ -27,7 +33,17 @@ coverage
 *.sln
 *.sw?
 
+# TypeScript
 *.tsbuildinfo
 
+# Logs and Test Outputs
 logs/
 tests_output/
+
+# 🚨 Exclude environment variables 🚨
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+.env.* # Excludes all env variations

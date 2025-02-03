@@ -7,8 +7,8 @@
       </h1>
     </div>
 
-    <!-- ✅ Reusable Wallet Balance Component -->
-    <WalletBalance />
+      <!-- ✅ Provide the required "title" prop -->
+      <WalletBalance title="Available Balance" />
 
     <!-- First Row: 3 Columns (Product Forms) -->
     <div class="row row-cols-1 row-cols-md-3 g-4">

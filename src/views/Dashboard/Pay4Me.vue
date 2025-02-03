@@ -7,8 +7,8 @@
       </h1>
     </div>
 
-    <!-- ✅ Reusable Wallet Balance Component -->
-    <WalletBalance />
+      <!-- ✅ Provide the required "title" prop -->
+      <WalletBalance title="Available Balance" />
 
     <!-- Pay-4-Me Form Component -->
     <Pay4MeForm :isLoggedIn="true" :walletBalance="walletBalance" />

@@ -30,8 +30,8 @@
                 </div>
 
                 <div class="mb-3">
-                   <!-- ✅ Reusable Wallet Balance Component -->
-                  <WalletBalance />
+                    <!-- ✅ Provide the required "title" prop -->
+                    <WalletBalance title="Available Balance" />
                 </div>
               </div>
             </div>
