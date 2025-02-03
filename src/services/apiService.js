@@ -1,4 +1,5 @@
 import axios from "axios";
+import { useAuthStore } from "@/store/authStore";
 import { refreshToken, logout } from "./authService";
 
 // Set up API client
@@ -9,32 +10,32 @@ const apiClient = axios.create({
 
 /**
  * Axios Request Interceptor:
- * - Attaches Bearer Token to each request
- * - Refreshes the token if expired
- * - Logs out user if inactive for too long
+ * - Attaches Bearer Token from Pinia store
+ * - Refreshes expired tokens
  */
 apiClient.interceptors.request.use(async (config) => {
-  let token = localStorage.getItem("authToken");
-  const tokenExpiry = localStorage.getItem("tokenExpiry");
-  const lastActive = localStorage.getItem("lastActive");
+  const authStore = useAuthStore();
+  let token = authStore.token;
+
+  if (!token) {
+    console.warn("⚠ No token found, user might not be logged in.");
+    return config;
+  }
 
   // Refresh token if expired
-  if (token && tokenExpiry && Date.now() > tokenExpiry) {
-    console.log("Token expired. Refreshing...");
+  if (authStore.isTokenExpired) {
+    console.log("🔄 Token expired. Refreshing...");
     token = await refreshToken();
 
     if (!token) {
-      console.warn("Session expired. Logging out.");
+      console.warn("❌ Token refresh failed. Logging out.");
       logout();
       return Promise.reject("Session expired. Please log in again.");
     }
   }
 
-  // Attach token to request headers
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-
+  // Attach token
+  config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
@@ -47,14 +48,14 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
-      console.warn("Unauthorized request. Attempting to refresh token...");
+      console.warn("⚠ Unauthorized request. Attempting token refresh...");
       const newToken = await refreshToken();
 
       if (newToken) {
         error.config.headers.Authorization = `Bearer ${newToken}`;
-        return apiClient(error.config); // Retry failed request
+        return apiClient(error.config);
       } else {
-        console.warn("Refresh failed. Logging out.");
+        console.error("❌ Refresh token failed. Logging out.");
         logout();
       }
     }

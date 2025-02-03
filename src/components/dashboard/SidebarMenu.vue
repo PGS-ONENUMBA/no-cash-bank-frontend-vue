@@ -53,34 +53,40 @@
 </template>
 
 <script>
-import { logout } from "@/services/authService";
+import { useAuthStore } from "@/store/authStore";
+import { computed } from "vue";
+import { useRouter } from "vue-router";
 
 export default {
   name: "SidebarMenu",
-  methods: {
+  setup() {
+    const authStore = useAuthStore();
+    const router = useRouter();
+
     /**
      * Checks if a given route matches the current path for active state.
      */
-    isActive(route) {
-      return this.$route.path === route;
-    },
+    const isActive = (route) => computed(() => router.currentRoute.value.path === route);
 
     /**
-     * Handles user logout by clearing authentication and redirecting to login.
+     * Handles user logout via Pinia store.
      */
-    async handleLogout() {
-      await logout();
-      this.$router.push("/login");
-    }
-  }
+    const handleLogout = async () => {
+      await authStore.logout();
+      router.push("/login");
+    };
+
+    return {
+      isActive,
+      handleLogout,
+    };
+  },
 };
 </script>
 
 <style scoped>
 /* Active state for sidebar links */
 .sidebar .nav-link.active {
-  font-weight: bold;
-  background-color: #e9ecef;
   color: #09b850;
 }
 
