@@ -88,7 +88,7 @@
 
 <script>
 import { computed } from "vue";
-import { useAuthStore } from "@/store/authStore";
+import { useAuthStore } from "@/stores/authStore";
 import { useRouter } from "vue-router";
 
 export default {
@@ -134,18 +134,18 @@ export default {
 
 /* Green color for icons */
 .bi-green {
-  color: #09b850;
+  color: #723ba2;
 }
 
 /* Button styles */
 .btn-green {
-  background-color: #09b850;
+  background-color: #6609b8;
   color: white;
   border: none;
 }
 
 .btn-green:hover {
-  background-color: #087c41;
+  background-color: #723ba2;
 }
 
 /* Profile dropdown */

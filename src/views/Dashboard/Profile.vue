@@ -46,7 +46,7 @@
 </template>
 
 <script>
-import { useAuthStore } from "@/store/authStore";
+import { useAuthStore } from "@/stores/authStore";
 import { computed, ref, onMounted } from "vue";
 import apiService from "@/services/apiService";
 import DashboardFooter from "@/components/dashboard/DashboardFooter.vue";

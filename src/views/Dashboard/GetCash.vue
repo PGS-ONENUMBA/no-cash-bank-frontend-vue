@@ -27,7 +27,7 @@
  * - Provides `walletBalance` as a prop to the `GetCashForm`.
  */
 
-import { useAuthStore } from "@/store/authStore";
+import { useAuthStore } from "@/stores/authStore";
 import { computed, onMounted } from "vue";
 import GetCashForm from "@/components/forms/GetCashForm.vue";
 import DashboardFooter from "@/components/dashboard/DashboardFooter.vue";

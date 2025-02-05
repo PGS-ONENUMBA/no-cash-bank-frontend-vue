@@ -6,7 +6,7 @@
         <div class="card w-100 shadow-sm">
           <div class="card-body">
             <!-- Withdrawable Amount Card -->
-            <WalletBalance title="Withdrawable Amount" />
+            <WalletBalance :title="raffleData.winnable_amount ? `₦${raffleData.winnable_amount}` : 'Loading...'" />
 
             <p class="text-muted">
               Follow these simple steps to withdraw cash from your account quickly and securely.
@@ -78,6 +78,11 @@
                   min="1"
                 />
               </div>
+
+              <!-- Hidden Fields -->
+              <input type="hidden" v-model="formData.raffle_cycle_id" />
+              <input type="hidden" v-model="formData.winnable_amount" />
+
               <!-- Submit Button -->
               <button type="submit" class="btn btn-orange custom-width mb-3">
                 <i class="bi bi-cash-coin me-2"></i> Submit Request
@@ -91,45 +96,66 @@
 </template>
 
 <script>
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
 import WalletBalance from "@/components/common/WalletBalance.vue";
+import { submitAction } from "@/services/raffleService";
 
 export default {
   name: "GetCashForm",
   components: {
-    WalletBalance, // Reusable component for wallet balance
+    WalletBalance,
   },
   setup() {
-    /**
-     * Reactive state for form data.
-     */
+    const raffleData = ref({});
     const formData = ref({
       email: "",
       phoneNumber: "",
       tickets: 1,
+      raffle_cycle_id: "",
+      winnable_amount: "",
     });
 
-    /**
-     * Handles the submission of the "Get Cash" form.
-     * - Ensures form validation before submission.
-     * - Could be extended to send an API request.
-     */
-    const handleSubmit = () => {
+    // Fetch raffle cycle information
+    const fetchRaffleCycle = async () => {
+      try {
+        const response = await submitAction("get_raffle_cycle");
+        console.log("Raffle cycle response:", response);
+        if (response.success && response.raffle_type_id["1"]) {
+          raffleData.value = response.raffle_type_id["1"];
+          formData.value.raffle_cycle_id = raffleData.value.raffle_cycle_id;
+          formData.value.winnable_amount = raffleData.value.winnable_amount;
+        }
+      } catch (error) {
+        console.error("Failed to fetch raffle cycle:", error);
+      }
+    };
+
+    // Handle form submission
+    const handleSubmit = async () => {
       if (!formData.value.email || !formData.value.phoneNumber || formData.value.tickets < 1) {
         alert("Please fill out all required fields correctly.");
         return;
       }
 
-      alert(
-        `Request submitted: \nEmail: ${formData.value.email} \nPhone: ${formData.value.phoneNumber} \nTickets: ${formData.value.tickets}`
-      );
-
-      // TODO: Implement API call here
+      try {
+        const response = await submitAction("create_order", formData.value);
+        if (response.success) {
+          alert("Request submitted successfully!");
+        } else {
+          alert("Failed to submit request. Please try again.");
+        }
+      } catch (error) {
+        console.error("Submission error:", error);
+        alert("An error occurred. Please try again.");
+      }
     };
+
+    onMounted(fetchRaffleCycle);
 
     return {
       formData,
       handleSubmit,
+      raffleData,
     };
   },
 };

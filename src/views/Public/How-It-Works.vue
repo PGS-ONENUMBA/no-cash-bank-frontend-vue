@@ -127,16 +127,16 @@ body {
 
 /* Colors */
 .text-green {
-  color: #09b850;
+  color: #723ba2;
 }
 
 .text-orange {
-  color: #ff6f00;
+  color: #9fa23b;
 }
 
 /* Button Styling */
 .btn-green {
-  background-color: #09b850;
+  background-color: #6609b8;
   color: white;
   border: none;
   padding: 0.8rem 2rem;
@@ -144,12 +144,12 @@ body {
   border-radius: 0.5rem;
 }
 
-.btn-green:hover {
-  background-color: #07a047;
+.btn-green:hover {  
+  background-color: #723ba2;
 }
 
 .btn-orange {
-  background-color: #ff6f00;
+  background-color: #9fa23b;
   color: white;
   border: none;
   padding: 0.8rem 2rem;

@@ -1,10 +1,10 @@
 import axios from "axios";
-import { useAuthStore } from "@/store/authStore";
+import { useAuthStore } from "@/stores/authStore";
 import { refreshToken, logout } from "./authService";
 
 // Set up API client
 const apiClient = axios.create({
-  baseURL: "http://localhost:8001/no-cash-bank-env/core/wp-json",
+  baseURL: import.meta.env.VITE_API_BASE_URL,
   headers: { "Content-Type": "application/json" },
 });
 

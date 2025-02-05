@@ -10,26 +10,15 @@
           individuals to make payments with cash!
         </p>
         <div>
-          <router-link to="/get-cash" class="btn btn-green btn-small mb-3">
-            <i class="bi bi-cash-stack bi-white"></i> Get Cash
-          </router-link>
-          <router-link to="/pay4me" class="btn btn-green btn-small mb-3">
-            <i class="bi bi-send-fill bi-white"></i> Pay4Me
-          </router-link>
-          <router-link to="/on-the-house" class="btn btn-green btn-small mb-3">
-            <i class="bi bi-gift bi-white"></i> On The House
-          </router-link>
-          
-            <!-- Video Icon -->
-            <div class="mt-5 position-relative">
-              <a href="#" data-bs-toggle="modal" data-bs-target="#videoModal" class="btn position-absolute top-100 start-50 translate-middle ripple-btn">
-                <i class="bi bi-play-circle bi-green-medium"></i>
-              </a>
-              <span class="ripple"></span>
-              <span class="ripple"></span>
-              <span class="ripple"></span>
-            </div>
-            
+          <!-- Dynamically Render Raffle Cycles -->
+          <button
+            v-for="raffle in displayedRaffles"
+            :key="`${raffle.raffle_cycle_id}-${raffle.raffle_type_id}`"
+            @click="fetchRaffleDetails(raffle.raffle_cycle_id, raffle.raffle_type_id)"
+            class="btn btn-green btn-small mb-3"
+          >
+            <i class="bi bi-cash-stack bi-white"></i> {{ raffle.raffle_type }}
+          </button>
         </div>
       </div>
     </div>
@@ -37,7 +26,99 @@
 </template>
 
 <script>
-export default {};
+import { ref, onMounted } from "vue";
+import apiClient from "@/services/apiService"; // Uses Axios instance
+
+export default {
+  name: "HeroSection",
+  setup() {
+    const displayedRaffles = ref([]);
+
+    /**
+     * Fetch all active raffle cycles from the API.
+     */
+    const fetchRaffles = async () => {
+      try {
+        const response = await apiClient.post("/nocash-bank/v1/action", {
+          action_type: "get_raffle_cycle"
+        });
+
+        if (response.data.success) {
+          const fetchedRaffles = response.data.raffle_cycles; // Now handling multiple active cycles
+          let expandedRaffles = [];
+
+          fetchedRaffles.forEach(raffle => {
+            if (Array.isArray(raffle.associated_types)) {
+              // Expand the associated types into multiple products
+              raffle.associated_types.forEach(type => {
+                expandedRaffles.push({
+                  raffle_cycle_id: raffle.raffle_cycle_id,
+                  raffle_type_id: type.raffle_type_id,
+                  raffle_type: type.raffle_type, // Readable name from API
+                  winnable_amount: raffle.winnable_amount
+                });
+              });
+            }
+          });
+
+          displayedRaffles.value = expandedRaffles;
+          console.log("🚀 Updated Raffle List:", displayedRaffles.value);
+        }
+      } catch (error) {
+        console.error("❌ Error fetching raffle cycles:", error.message);
+      }
+    };
+
+    /**
+     * Fetch full raffle cycle details when a button is clicked.
+     */
+     const fetchRaffleDetails = async (raffleId, raffleTypeId) => {
+  try {
+    const response = await apiClient.post("/nocash-bank/v1/action", {
+      action_type: "get_raffle_cycle_by_id",
+      raffle_cycle_id: raffleId
+    });
+
+    if (response.data.success) {
+      const raffleCycle = response.data.raffle_cycle;
+
+      // Find only the selected raffle type
+      const selectedType = raffleCycle.associated_types.find(type => type.raffle_type_id === raffleTypeId);
+
+      if (selectedType) {
+        const filteredResponse = {
+          raffle_cycle_id: raffleCycle.raffle_cycle_id,
+          winnable_amount: raffleCycle.winnable_amount,
+          status: raffleCycle.status,
+          created_date: raffleCycle.created_date,
+          updated_date: raffleCycle.updated_date,
+          raffle_type_id: selectedType.raffle_type_id,
+          raffle_type: selectedType.raffle_type
+        };
+
+        alert(`Raffle Details: ${JSON.stringify(filteredResponse, null, 2)}`);
+      } else {
+        alert("Raffle type not found in this cycle.");
+      }
+    } else {
+      console.error("❌ Error: Invalid response from API", response.data);
+    }
+  } catch (error) {
+    console.error("❌ Error fetching raffle details:", error.message);
+  }
+};
+
+
+
+    // Fetch raffles on component mount
+    onMounted(fetchRaffles);
+
+    return {
+      displayedRaffles,
+      fetchRaffleDetails
+    };
+  }
+};
 </script>
 
 <style scoped>

@@ -38,6 +38,10 @@ body {
   font-family: 'Public Sans', sans-serif;
 }
 
+/* .jumbotron-bg{
+  border: 1px solid #9fa23b;
+
+} */
 
 .text-small {
   font-size: 85%;
@@ -49,12 +53,11 @@ body {
 
 
 .bi {
-  color: #09b850;
+  color: #6609b8;
 }
 .bi-green {
   vertical-align: -0.105em;
-  fill: currentColor;
-  color: #09b850;
+  color: #6609b8;
 }
 
 .bi-green-large {
@@ -108,14 +111,14 @@ body {
 }
 
 .nav-link:hover {
-  color: #09b850;
+  color: #6609b8;
 }
 
 /* ---------------------------------- */
 /* Buttons */
 /* ---------------------------------- */
 .btn-green {
-  background-color: #09b850 !important; /* Green background */
+  background-color: #6609b8 !important; /* Green background */
   color: white; 
   margin-right: 1em;
 }
@@ -277,7 +280,7 @@ body {
   }
 
   .footer-menu a:hover {
-    color: #09b850;
+    color: #6609b8;
   }
 }
 
@@ -336,7 +339,7 @@ body {
 }
 .utility-card-icon {
   font-size: 2rem !important;
-  color: #09b850;
+  color: #6609b8;
 }
 
 

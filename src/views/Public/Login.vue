@@ -67,7 +67,7 @@
 </template>
 
 <script>
-import { useAuthStore } from "@/store/authStore";
+import { useAuthStore } from "@/stores/authStore";
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 

@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from "vue-router";
-import { useAuthStore } from "@/store/authStore"; // Import Pinia auth store
+import { useAuthStore } from "@/stores/authStore"; // Import Pinia auth store
 
 // Import layouts
 import PublicLayout from "@/layouts/PublicLayout.vue";
