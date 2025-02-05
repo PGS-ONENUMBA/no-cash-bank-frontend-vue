@@ -1,29 +1,50 @@
 <template>
   <main class="container py-2 mt-2">
-    <div class="row g-4 d-flex align-items-stretch">
+    <!-- Show Preloader when loading data -->
+    <div v-if="loading" class="text-center py-5">
+      <div class="spinner-border text-success" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <p>Loading...</p>
+    </div>
+
+    <!-- Show Error if product is not found -->
+    <div v-else-if="productNotFound" class="text-center py-5">
+      <h2 class="text-danger">Product Not Found</h2>
+      <p>The requested product does not exist. Redirecting...</p>
+    </div>
+
+    <!-- Display Content when Data is Available -->
+    <div v-else class="row g-4 d-flex align-items-stretch">
       <!-- Left Column: Instructions -->
       <div class="col-lg-6 d-flex">
         <div class="card w-100 shadow-sm">
           <div class="card-body">
-            <!-- Withdrawable Amount Card -->
-            <WalletBalance :title="raffleData.winnable_amount ? `₦${raffleData.winnable_amount}` : 'Loading...'" />
+            <!-- Display Winnable Amount -->
+            <h4 class="text-center fw-bold text-success mb-3">
+              Winnable Amount: 
+              <span class="text-dark">{{ formatCurrency(raffleData.winnable_amount) }}</span>
+            </h4>
 
             <p class="text-muted">
               Follow these simple steps to withdraw cash from your account quickly and securely.
-              Ensure all your details are up-to-date before proceeding.
             </p>
             <ul class="list-group">
               <li class="list-group-item d-flex align-items-start">
                 <i class="bi bi-1-circle-fill text-success me-3"></i>
-                <div><strong>Step 1:</strong> Log in to your account.</div>
+                <div><strong>Step 1:</strong> Fill the form.</div>
               </li>
               <li class="list-group-item d-flex align-items-start">
                 <i class="bi bi-2-circle-fill text-success me-3"></i>
-                <div><strong>Step 2:</strong> Select "Get Cash" from the dashboard.</div>
+                <div><strong>Step 2:</strong> Submit the request.</div>
               </li>
               <li class="list-group-item d-flex align-items-start">
                 <i class="bi bi-3-circle-fill text-success me-3"></i>
-                <div><strong>Step 3:</strong> Enter your details and confirm the request.</div>
+                <div><strong>Step 3:</strong> Confirm and Make payment.</div>
+              </li>
+              <li class="list-group-item d-flex align-items-start">
+                <i class="bi bi-4-circle-fill text-success me-3"></i>
+                <div><strong>Step 4:</strong> Receive status of request.</div>
               </li>
             </ul>
           </div>
@@ -84,8 +105,13 @@
               <input type="hidden" v-model="formData.winnable_amount" />
 
               <!-- Submit Button -->
-              <button type="submit" class="btn btn-orange custom-width mb-3">
-                <i class="bi bi-cash-coin me-2"></i> Submit Request
+              <button type="submit" class="btn btn-orange custom-width mb-3" :disabled="loadingSubmit">
+                <span v-if="loadingSubmit">
+                  <i class="bi bi-hourglass-split"></i> Processing...
+                </span>
+                <span v-else>
+                  <i class="bi bi-cash-coin me-2"></i> Submit Request
+                </span>
               </button>
             </form>
           </div>
@@ -97,78 +123,102 @@
 
 <script>
 import { ref, onMounted } from "vue";
-import WalletBalance from "@/components/common/WalletBalance.vue";
+import { useRoute, useRouter } from "vue-router";
 import { submitAction } from "@/services/raffleService";
 
 export default {
   name: "GetCashForm",
-  components: {
-    WalletBalance,
-  },
   setup() {
+    const route = useRoute();
+    const router = useRouter();
+
     const raffleData = ref({});
+    const loading = ref(true);
+    const productNotFound = ref(false);
+    const loadingSubmit = ref(false);
+
     const formData = ref({
       email: "",
       phoneNumber: "",
       tickets: 1,
-      raffle_cycle_id: "",
+      raffle_cycle_id: route.query.raffle_cycle_id || "",
       winnable_amount: "",
     });
 
-    // Fetch raffle cycle information
-    const fetchRaffleCycle = async () => {
-      try {
-        const response = await submitAction("get_raffle_cycle");
-        console.log("Raffle cycle response:", response);
-        if (response.success && response.raffle_type_id["1"]) {
-          raffleData.value = response.raffle_type_id["1"];
-          formData.value.raffle_cycle_id = raffleData.value.raffle_cycle_id;
-          formData.value.winnable_amount = raffleData.value.winnable_amount;
-        }
-      } catch (error) {
-        console.error("Failed to fetch raffle cycle:", error);
-      }
+    /**
+     * Formats a number into Nigerian currency format (₦).
+     * @param {number|string} value - The amount to format.
+     * @returns {string} - Formatted currency value.
+     */
+    const formatCurrency = (value) => {
+      if (!value) return "₦0.00";
+      return new Intl.NumberFormat("en-NG", {
+        style: "currency",
+        currency: "NGN",
+        minimumFractionDigits: 2,
+      }).format(value);
     };
 
-    // Handle form submission
-    const handleSubmit = async () => {
-      if (!formData.value.email || !formData.value.phoneNumber || formData.value.tickets < 1) {
-        alert("Please fill out all required fields correctly.");
+    /**
+     * Validates and fetches the raffle cycle information.
+     * If the product is not found, redirects to 404.
+     */
+    const validateRaffleCycle = async () => {
+      if (!formData.value.raffle_cycle_id) {
+        productNotFound.value = true;
+        setTimeout(() => router.push("/404"), 2000);
         return;
       }
 
       try {
-        const response = await submitAction("create_order", formData.value);
+        const response = await submitAction("get_raffle_cycle_by_id", {
+          raffle_cycle_id: formData.value.raffle_cycle_id,
+        });
+
         if (response.success) {
-          alert("Request submitted successfully!");
+          raffleData.value = response.raffle_cycle;
+          formData.value.winnable_amount = raffleData.value.winnable_amount;
         } else {
-          alert("Failed to submit request. Please try again.");
+          productNotFound.value = true;
+          setTimeout(() => router.push("/404"), 2000);
         }
       } catch (error) {
-        console.error("Submission error:", error);
-        alert("An error occurred. Please try again.");
+        console.error("Failed to fetch raffle cycle:", error);
+        productNotFound.value = true;
+        setTimeout(() => router.push("/404"), 2000);
+      } finally {
+        loading.value = false;
       }
     };
 
-    onMounted(fetchRaffleCycle);
+    /**
+     * Handles form submission for ticket purchase.
+     */
+    const handleSubmit = async () => {
+      loadingSubmit.value = true;
+
+      try {
+        const response = await submitAction("create_order", formData.value);
+        alert(response.success ? "Request submitted successfully!" : "Failed to submit request.");
+      } catch (error) {
+        console.error("Submission error:", error);
+        alert("An error occurred. Please try again.");
+      } finally {
+        loadingSubmit.value = false;
+      }
+    };
+
+    onMounted(validateRaffleCycle);
 
     return {
       formData,
       handleSubmit,
       raffleData,
+      loading,
+      productNotFound,
+      loadingSubmit,
+      formatCurrency,
     };
   },
 };
 </script>
-
-<style scoped>
-.btn-orange {
-  background-color: #ff6f00;
-  color: white;
-  border: none;
-}
-
-.btn-orange:hover {
-  background-color: #e65d00;
-}
-</style>

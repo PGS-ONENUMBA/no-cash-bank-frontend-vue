@@ -10,15 +10,19 @@
           individuals to make payments with cash!
         </p>
 
-        <!-- Display Preloader when fetching -->
-        <Preloader v-if="loading" />
+        <!-- Preloader -->
+        <div v-if="loading" class="text-center">
+          <div class="spinner-border text-success" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+        </div>
 
-        <!-- Dynamically Render Raffle Cycles -->
         <div v-else>
+          <!-- Dynamically Render Raffle Cycles -->
           <button
             v-for="raffle in displayedRaffles"
             :key="`${raffle.raffle_cycle_id}-${raffle.raffle_type_id}`"
-            @click="fetchRaffleDetails(raffle.raffle_cycle_id, raffle.raffle_type_id)"
+            @click="handleProductClick(raffle)"
             class="btn btn-green btn-small mb-3"
           >
             <i class="bi bi-cash-stack bi-white"></i> {{ raffle.raffle_type }}
@@ -31,38 +35,36 @@
 
 <script>
 import { ref, onMounted } from "vue";
-import Preloader from "@/components/common/Preloader.vue"; // Import the Preloader
-import apiClient from "@/services/apiService"; 
+import { useRouter } from "vue-router";
+import apiClient from "@/services/apiService"; // Uses Axios instance
 
 export default {
   name: "HeroSection",
-  components: { Preloader },
   setup() {
+    const router = useRouter();
     const displayedRaffles = ref([]);
-    const loading = ref(false); // Loading state
+    const loading = ref(true); // Preloader state
 
     /**
      * Fetch all active raffle cycles from the API.
      */
     const fetchRaffles = async () => {
-      loading.value = true; // Show preloader
       try {
         const response = await apiClient.post("/nocash-bank/v1/action", {
           action_type: "get_raffle_cycle"
         });
 
         if (response.data.success) {
-          const fetchedRaffles = response.data.raffle_cycles; // Handle multiple active cycles
+          const fetchedRaffles = response.data.raffle_cycles;
           let expandedRaffles = [];
 
           fetchedRaffles.forEach(raffle => {
             if (Array.isArray(raffle.associated_types)) {
-              // Expand the associated types into multiple products
               raffle.associated_types.forEach(type => {
                 expandedRaffles.push({
                   raffle_cycle_id: raffle.raffle_cycle_id,
                   raffle_type_id: type.raffle_type_id,
-                  raffle_type: type.raffle_type, 
+                  raffle_type: type.raffle_type,
                   winnable_amount: raffle.winnable_amount
                 });
               });
@@ -74,64 +76,56 @@ export default {
       } catch (error) {
         console.error("❌ Error fetching raffle cycles:", error.message);
       } finally {
-        loading.value = false; // Hide preloader
+        loading.value = false; // Hide preloader once data is fetched
       }
     };
 
     /**
-     * Fetch full raffle cycle details when a button is clicked.
+     * Handle product click: Redirect to the correct path based on raffle_type_id
      */
-    const fetchRaffleDetails = async (raffleId, raffleTypeId) => {
-      loading.value = true; // Show preloader while fetching details
-      try {
-        const response = await apiClient.post("/nocash-bank/v1/action", {
-          action_type: "get_raffle_cycle_by_id",
-          raffle_cycle_id: raffleId
-        });
+    const handleProductClick = (raffle) => {
+      let routePath = "";
 
-        if (response.data.success) {
-          const raffleCycle = response.data.raffle_cycle;
-
-          // Find only the selected raffle type
-          const selectedType = raffleCycle.associated_types.find(type => type.raffle_type_id === raffleTypeId);
-
-          if (selectedType) {
-            const filteredResponse = {
-              raffle_cycle_id: raffleCycle.raffle_cycle_id,
-              winnable_amount: raffleCycle.winnable_amount,
-              status: raffleCycle.status,
-              created_date: raffleCycle.created_date,
-              updated_date: raffleCycle.updated_date,
-              raffle_type_id: selectedType.raffle_type_id,
-              raffle_type: selectedType.raffle_type
-            };
-
-            alert(`Raffle Type: ${filteredResponse.raffle_type}\nDetails: ${JSON.stringify(filteredResponse, null, 2)}`);
-          } else {
-            alert("Raffle type not found in this cycle.");
-          }
-        } else {
-          console.error("❌ Error: Invalid response from API", response.data);
-        }
-      } catch (error) {
-        console.error("❌ Error fetching raffle details:", error.message);
-      } finally {
-        loading.value = false; // Hide preloader
+      switch (parseInt(raffle.raffle_type_id)) {
+        case 1:
+          routePath = "/get-cash";
+          break;
+        case 2:
+          routePath = "/pay4me";
+          break;
+        case 3:
+          routePath = "/on-the-house";
+          break;
+        default:
+          alert(`Coming Soon: ${raffle.raffle_type}`);
+          return;
       }
+
+      router.push({
+        path: routePath,
+        query: {
+          raffle_cycle_id: raffle.raffle_cycle_id,
+          raffle_type_id: raffle.raffle_type_id,
+          winnable_amount: raffle.winnable_amount,
+        }
+      });
     };
 
-    // Fetch raffles on component mount
     onMounted(fetchRaffles);
 
     return {
       displayedRaffles,
-      fetchRaffleDetails,
-      loading
+      handleProductClick,
+      loading, // Preloader state
     };
   }
 };
 </script>
 
 <style scoped>
-/* Hero section styles here */
+/* Centering the preloader */
+.spinner-border {
+  width: 3rem;
+  height: 3rem;
+}
 </style>

@@ -2,9 +2,9 @@
   <div>
     <!-- Dashboard Header -->
     <header class="navbar navbar-light sticky-top bg-white shadow px-3">
-      <a class="navbar-brand col-md-3 col-lg-2" href="#" @click="goToDashboard">
-        {{ siteName }}
-      </a>
+      <router-link class="navbar-brand" to="/">
+        <img :src="logoPath" :alt="siteName" height="30" />
+      </router-link>
 
       <!-- Right Side of Navbar -->
       <div class="navbar-nav d-flex align-items-center">

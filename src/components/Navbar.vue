@@ -43,6 +43,31 @@
               <i class="bi bi-question-circle bi-green"></i> How it Works
             </router-link>
           </li>
+
+          <!-- 🟢 Dynamically Render Products Dropdown -->
+          <li class="nav-item dropdown mx-2">
+            <button
+              class="nav-link dropdown-toggle"
+              id="productsDropdown"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+            >
+              <i class="bi bi-box-seam bi-green"></i> Products
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="productsDropdown">
+              <li v-if="loadingProducts" class="dropdown-item text-center">
+                <div class="spinner-border text-success" role="status">
+                  <span class="visually-hidden">Loading...</span>
+                </div>
+              </li>
+              <li v-else-if="availableProducts.length > 0" v-for="product in availableProducts" :key="`${product.raffle_cycle_id}-${product.raffle_type_id}`">
+                <router-link class="dropdown-item" :to="product.route">
+                  <i :class="product.icon"></i> {{ product.raffle_type }}
+                </router-link>
+              </li>
+              <li v-else class="dropdown-item text-danger">No products available</li>
+            </ul>
+          </li>
         </ul>
 
         <!-- Login Button -->
@@ -87,15 +112,18 @@
 </template>
 
 <script>
-import { computed } from "vue";
+import { computed, ref, onMounted } from "vue";
 import { useAuthStore } from "@/stores/authStore";
 import { useRouter } from "vue-router";
+import apiClient from "@/services/apiService";
 
 export default {
   name: "Navbar",
   setup() {
     const authStore = useAuthStore();
     const router = useRouter();
+    const availableProducts = ref([]);
+    const loadingProducts = ref(true);
 
     // Get site name and logo path from environment variables
     const siteName = import.meta.env.VITE_SITE_NAME || "OneNnumba";
@@ -108,6 +136,71 @@ export default {
     const userDisplayName = computed(() => authStore.user?.user_nicename || "User");
 
     /**
+     * Fetches available products dynamically from the API.
+     */
+    const fetchProducts = async () => {
+      try {
+        console.log("Fetching products...");
+        const response = await apiClient.post("/nocash-bank/v1/action", {
+          action_type: "get_raffle_cycle",
+        });
+
+        console.log("✅ API Response:", response.data);
+
+        if (response.data.success && Array.isArray(response.data.raffle_cycles)) {
+          let parsedProducts = [];
+
+          response.data.raffle_cycles.forEach((raffle) => {
+            if (Array.isArray(raffle.associated_types)) {
+              raffle.associated_types.forEach((type) => {
+                parsedProducts.push({
+                  raffle_cycle_id: raffle.raffle_cycle_id,
+                  raffle_type_id: type.raffle_type_id,
+                  raffle_type: type.raffle_type,
+                  icon: getIcon(type.raffle_type_id),
+                  route: `${getRoute(type.raffle_type_id)}?raffle_cycle_id=${raffle.raffle_cycle_id}&raffle_type_id=${type.raffle_type_id}`,
+                });
+              });
+            }
+          });
+
+          availableProducts.value = parsedProducts;
+          console.log("🚀 Parsed Products:", availableProducts.value);
+        } else {
+          console.warn("⚠️ No products found in API response.");
+        }
+      } catch (error) {
+        console.error("❌ Error fetching products:", error.message);
+      } finally {
+        loadingProducts.value = false;
+      }
+    };
+
+    /**
+     * Maps raffle type IDs to correct icons.
+     */
+    const getIcon = (typeId) => {
+      const icons = {
+        1: "bi bi-currency-exchange",
+        2: "bi bi-check-circle",
+        3: "bi bi-gift",
+      };
+      return icons[typeId] || "bi bi-box";
+    };
+
+    /**
+     * Maps raffle type IDs to correct routes.
+     */
+    const getRoute = (typeId) => {
+      const routes = {
+        1: "/get-cash",
+        2: "/pay4me",
+        3: "/on-the-house",
+      };
+      return routes[typeId] || "/dashboard";
+    };
+
+    /**
      * Handles user logout and redirects to login page.
      */
     const handleLogout = async () => {
@@ -115,41 +208,18 @@ export default {
       router.push("/login");
     };
 
+    // Fetch products on component mount
+    onMounted(fetchProducts);
+
     return {
       siteName,
       logoPath,
       isAuthenticated,
       userDisplayName,
       handleLogout,
+      availableProducts,
+      loadingProducts,
     };
   },
 };
 </script>
-
-<style scoped>
-/* Navbar background and shadow */
-.navbar {
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* Green color for icons */
-.bi-green {
-  color: #723ba2;
-}
-
-/* Button styles */
-.btn-green {
-  background-color: #6609b8;
-  color: white;
-  border: none;
-}
-
-.btn-green:hover {
-  background-color: #723ba2;
-}
-
-/* Profile dropdown */
-.dropdown-menu {
-  min-width: 180px;
-}
-</style>

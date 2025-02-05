@@ -21,9 +21,6 @@ import NotFound from "@/views/404.vue";
 
 // Dashboard Views (Protected Routes)
 import Dashboard from "@/views/Dashboard/Dashboard.vue";
-import DashboardGetCash from "@/views/Dashboard/GetCash.vue";
-import DashboardPay4Me from "@/views/Dashboard/Pay4Me.vue";
-import DashboardOnTheHouse from "@/views/Dashboard/OnTheHouse.vue";
 import Transfer from "@/views/Dashboard/Transfer.vue";
 import Reports from "@/views/Dashboard/Reports.vue";
 import Profile from "@/views/Dashboard/Profile.vue";
@@ -57,10 +54,7 @@ const routes = [
     component: DashboardLayout,
     meta: { requiresAuth: true }, // Authentication required
     children: [
-      { path: "", name: "Dashboard", component: Dashboard, meta: { title: "Dashboard" } },
-      { path: "get-cash", name: "DashboardGetCash", component: DashboardGetCash, meta: { title: "Get Cash" } },
-      { path: "pay4me", name: "DashboardPay4Me", component: DashboardPay4Me, meta: { title: "Pay-4-Me" } },
-      { path: "on-the-house", name: "DashboardOnTheHouse", component: DashboardOnTheHouse, meta: { title: "On The House" } },
+      { path: "", name: "Dashboard", component: Dashboard, meta: { title: "Dashboard" } },     
       { path: "transfer", name: "DashboardTransfer", component: Transfer, meta: { title: "Transfer" } },
       { path: "reports", name: "DashboardReports", component: Reports, meta: { title: "Reports" } },
       { path: "profile", name: "DashboardProfile", component: Profile, meta: { title: "Profile Page" } },
