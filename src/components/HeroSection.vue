@@ -9,8 +9,12 @@
           Our mission is to deliver secure, user-friendly online No-Cash banking that empowers<br />
           individuals to make payments with cash!
         </p>
-        <div>
-          <!-- Dynamically Render Raffle Cycles -->
+
+        <!-- Display Preloader when fetching -->
+        <Preloader v-if="loading" />
+
+        <!-- Dynamically Render Raffle Cycles -->
+        <div v-else>
           <button
             v-for="raffle in displayedRaffles"
             :key="`${raffle.raffle_cycle_id}-${raffle.raffle_type_id}`"
@@ -27,24 +31,28 @@
 
 <script>
 import { ref, onMounted } from "vue";
-import apiClient from "@/services/apiService"; // Uses Axios instance
+import Preloader from "@/components/common/Preloader.vue"; // Import the Preloader
+import apiClient from "@/services/apiService"; 
 
 export default {
   name: "HeroSection",
+  components: { Preloader },
   setup() {
     const displayedRaffles = ref([]);
+    const loading = ref(false); // Loading state
 
     /**
      * Fetch all active raffle cycles from the API.
      */
     const fetchRaffles = async () => {
+      loading.value = true; // Show preloader
       try {
         const response = await apiClient.post("/nocash-bank/v1/action", {
           action_type: "get_raffle_cycle"
         });
 
         if (response.data.success) {
-          const fetchedRaffles = response.data.raffle_cycles; // Now handling multiple active cycles
+          const fetchedRaffles = response.data.raffle_cycles; // Handle multiple active cycles
           let expandedRaffles = [];
 
           fetchedRaffles.forEach(raffle => {
@@ -54,7 +62,7 @@ export default {
                 expandedRaffles.push({
                   raffle_cycle_id: raffle.raffle_cycle_id,
                   raffle_type_id: type.raffle_type_id,
-                  raffle_type: type.raffle_type, // Readable name from API
+                  raffle_type: type.raffle_type, 
                   winnable_amount: raffle.winnable_amount
                 });
               });
@@ -62,60 +70,63 @@ export default {
           });
 
           displayedRaffles.value = expandedRaffles;
-          console.log("🚀 Updated Raffle List:", displayedRaffles.value);
         }
       } catch (error) {
         console.error("❌ Error fetching raffle cycles:", error.message);
+      } finally {
+        loading.value = false; // Hide preloader
       }
     };
 
     /**
      * Fetch full raffle cycle details when a button is clicked.
      */
-     const fetchRaffleDetails = async (raffleId, raffleTypeId) => {
-  try {
-    const response = await apiClient.post("/nocash-bank/v1/action", {
-      action_type: "get_raffle_cycle_by_id",
-      raffle_cycle_id: raffleId
-    });
+    const fetchRaffleDetails = async (raffleId, raffleTypeId) => {
+      loading.value = true; // Show preloader while fetching details
+      try {
+        const response = await apiClient.post("/nocash-bank/v1/action", {
+          action_type: "get_raffle_cycle_by_id",
+          raffle_cycle_id: raffleId
+        });
 
-    if (response.data.success) {
-      const raffleCycle = response.data.raffle_cycle;
+        if (response.data.success) {
+          const raffleCycle = response.data.raffle_cycle;
 
-      // Find only the selected raffle type
-      const selectedType = raffleCycle.associated_types.find(type => type.raffle_type_id === raffleTypeId);
+          // Find only the selected raffle type
+          const selectedType = raffleCycle.associated_types.find(type => type.raffle_type_id === raffleTypeId);
 
-      if (selectedType) {
-        const filteredResponse = {
-          raffle_cycle_id: raffleCycle.raffle_cycle_id,
-          winnable_amount: raffleCycle.winnable_amount,
-          status: raffleCycle.status,
-          created_date: raffleCycle.created_date,
-          updated_date: raffleCycle.updated_date,
-          raffle_type_id: selectedType.raffle_type_id,
-          raffle_type: selectedType.raffle_type
-        };
+          if (selectedType) {
+            const filteredResponse = {
+              raffle_cycle_id: raffleCycle.raffle_cycle_id,
+              winnable_amount: raffleCycle.winnable_amount,
+              status: raffleCycle.status,
+              created_date: raffleCycle.created_date,
+              updated_date: raffleCycle.updated_date,
+              raffle_type_id: selectedType.raffle_type_id,
+              raffle_type: selectedType.raffle_type
+            };
 
-        alert(`Raffle Details: ${JSON.stringify(filteredResponse, null, 2)}`);
-      } else {
-        alert("Raffle type not found in this cycle.");
+            alert(`Raffle Type: ${filteredResponse.raffle_type}\nDetails: ${JSON.stringify(filteredResponse, null, 2)}`);
+          } else {
+            alert("Raffle type not found in this cycle.");
+          }
+        } else {
+          console.error("❌ Error: Invalid response from API", response.data);
+        }
+      } catch (error) {
+        console.error("❌ Error fetching raffle details:", error.message);
+      } finally {
+        loading.value = false; // Hide preloader
       }
-    } else {
-      console.error("❌ Error: Invalid response from API", response.data);
-    }
-  } catch (error) {
-    console.error("❌ Error fetching raffle details:", error.message);
-  }
-};
-
-
+    };
 
     // Fetch raffles on component mount
     onMounted(fetchRaffles);
 
     return {
       displayedRaffles,
-      fetchRaffleDetails
+      fetchRaffleDetails,
+      loading
     };
   }
 };
