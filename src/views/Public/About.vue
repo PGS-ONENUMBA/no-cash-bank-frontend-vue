@@ -149,7 +149,7 @@
   }
   
   .text-green {
-    color: #09b850; /* Green color for icons and accents */
+    color: #723ba2; /* Green color for icons and accents */
   }
   
   .text-orange {

@@ -1,5 +1,5 @@
 import apiClient from "@/services/apiService";
-import { useAuthStore } from "@/store/authStore";
+import { useAuthStore } from "@/stores/authStore";
 
 /**
  * ✅ Logs in the user by sending credentials to the API.

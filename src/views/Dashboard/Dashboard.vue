@@ -54,7 +54,7 @@
 </template>
 
 <script>
-import { useAuthStore } from "@/store/authStore";
+import { useAuthStore } from "@/stores/authStore";
 import WalletBalance from "@/components/common/WalletBalance.vue";
 import { computed, onMounted } from "vue";
 import FeatureCard from "@/components/dashboard/FeatureCard.vue";

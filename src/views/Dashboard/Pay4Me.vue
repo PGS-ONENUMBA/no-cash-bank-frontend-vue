@@ -27,7 +27,7 @@
  * - Provides `walletBalance` as a prop to the `Pay4MeForm`.
  */
 
-import { useAuthStore } from "@/store/authStore";
+import { useAuthStore } from "@/stores/authStore";
 import { computed, onMounted } from "vue";
 import Pay4MeForm from "@/components/forms/Pay4MeForm.vue";
 import DashboardFooter from "@/components/dashboard/DashboardFooter.vue";

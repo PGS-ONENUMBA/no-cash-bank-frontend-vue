@@ -27,7 +27,7 @@
  * - Provides `walletBalance` as a prop to the `OnTheHouseForm`.
  */
 
-import { useAuthStore } from "@/store/authStore";
+import { useAuthStore } from "@/stores/authStore";
 import { computed, onMounted } from "vue";
 import OnTheHouseForm from "@/components/forms/OnTheHouseForm.vue";
 import DashboardFooter from "@/components/dashboard/DashboardFooter.vue";

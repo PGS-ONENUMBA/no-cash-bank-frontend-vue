@@ -53,7 +53,7 @@
 
 <script>
 import SidebarMenu from "@/components/dashboard/SidebarMenu.vue";
-import { useAuthStore } from "@/store/authStore";
+import { useAuthStore } from "@/stores/authStore";
 import { computed, onMounted, onUnmounted } from "vue";
 import { debounce } from "lodash";
 import { useRouter } from "vue-router";

@@ -31,7 +31,7 @@
 </template>
 
 <script>
-import { useAuthStore } from "@/store/authStore";
+import { useAuthStore } from "@/stores/authStore";
 import { useRouter } from "vue-router";
 import { computed } from "vue";
 

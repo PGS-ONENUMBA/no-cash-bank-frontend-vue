@@ -57,7 +57,7 @@ export default {
 
 /* Green Icons */
 .bi-green {
-  color: #28a745;
+  color: #6609b8;
 }
 
 /* Offer Icons */

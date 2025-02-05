@@ -34,6 +34,6 @@ export default {};
 }
 .bi-green-large {
   font-size: 8rem;
-  color: #28a745;
+  color: #6609b8;
 }
 </style>
