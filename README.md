@@ -1,5 +1,5 @@
 ```markdown
-# frontend-vue
+# frontend-vue staging
 
 This template helps you get started developing with Vue 3 in Vite. The app is designed to follow modern best practices, including Content Security Policy (CSP) compliance and optimized for local development and production.
 
