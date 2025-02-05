@@ -9,8 +9,11 @@
         Get to know the amazing people behind our success.
       </p>
 
+      <!-- Display Preloader when fetching data -->
+      <Preloader v-if="loading" />
+
       <!-- Team Members -->
-      <div class="row g-4">
+      <div class="row g-4" v-else>
         <!-- Dynamic Team Members -->
         <div
           class="col-md-4"
@@ -54,63 +57,76 @@
 </template>
 
 <script>
-/**
- * Team Component
- * This component displays the "Meet Our Team" page with a list of team members.
- *
- * Features:
- * - Dynamically renders team member details from the `teamMembers` data array.
- * - Each team member displays their name, role, image, and social media links.
- */
+import { ref, onMounted } from "vue";
+import Preloader from "@/components/common/Preloader.vue"; // Import the Preloader
+
 export default {
-  name: "Team", // Component name
-  data() {
+  name: "Team",
+  components: { Preloader },
+  setup() {
+    const teamMembers = ref([]);
+    const loading = ref(true); // Initialize loading state
+
+    /**
+     * Simulate an API call to fetch team members (Lazy loading)
+     */
+    const fetchTeamMembers = () => {
+      loading.value = true;
+      setTimeout(() => {
+        teamMembers.value = [
+          {
+            name: "John Doe",
+            role: "CEO & Founder",
+            image: new URL('@/assets/team1.jpg', import.meta.url).href,
+            linkedin: "https://linkedin.com/in/johndoe",
+            twitter: "https://twitter.com/johndoe",
+          },
+          {
+            name: "Jane Smith",
+            role: "Chief Operating Officer",
+            image: new URL('@/assets/team2.jpg', import.meta.url).href,
+            linkedin: "https://linkedin.com/in/janesmith",
+            twitter: "https://twitter.com/janesmith",
+          },
+          {
+            name: "Emily Johnson",
+            role: "Head of Marketing",
+            image: new URL('@/assets/team3.jpg', import.meta.url).href,
+            linkedin: "https://linkedin.com/in/emilyjohnson",
+            twitter: "https://twitter.com/emilyjohnson",
+          },
+          {
+            name: "Michael Brown",
+            role: "Lead Developer",
+            image: new URL('@/assets/team4.jpg', import.meta.url).href,
+            linkedin: "https://linkedin.com/in/michaelbrown",
+            twitter: "https://twitter.com/michaelbrown",
+          },
+          {
+            name: "Sophia Lee",
+            role: "UI/UX Designer",
+            image: new URL('@/assets/team5.jpg', import.meta.url).href,
+            linkedin: "https://linkedin.com/in/sophialee",
+            twitter: "https://twitter.com/sophialee",
+          },
+          {
+            name: "David Kim",
+            role: "Financial Analyst",
+            image: new URL('@/assets/team6.jpg', import.meta.url).href,
+            linkedin: "https://linkedin.com/in/davidkim",
+            twitter: "https://twitter.com/davidkim",
+          },
+        ];
+        loading.value = false; // Hide preloader after data loads
+      }, 2000); // Simulating a delay
+    };
+
+    // Fetch team members on component mount
+    onMounted(fetchTeamMembers);
+
     return {
-      // Team member data (name, role, image, and social links)
-      teamMembers: [
-        {
-          name: "John Doe",
-          role: "CEO & Founder",
-          image: new URL('@/assets/team1.jpg', import.meta.url).href, // Image path
-          linkedin: "https://linkedin.com/in/johndoe", // LinkedIn profile link
-          twitter: "https://twitter.com/johndoe", // Twitter profile link
-        },
-        {
-          name: "Jane Smith",
-          role: "Chief Operating Officer",
-          image: new URL('@/assets/team2.jpg', import.meta.url).href,
-          linkedin: "https://linkedin.com/in/janesmith",
-          twitter: "https://twitter.com/janesmith",
-        },
-        {
-          name: "Emily Johnson",
-          role: "Head of Marketing",
-          image: new URL('@/assets/team3.jpg', import.meta.url).href,
-          linkedin: "https://linkedin.com/in/emilyjohnson",
-          twitter: "https://twitter.com/emilyjohnson",
-        },
-        {
-          name: "Michael Brown",
-          role: "Lead Developer",
-          image: new URL('@/assets/team4.jpg', import.meta.url).href,
-          linkedin: "https://linkedin.com/in/michaelbrown",
-          twitter: "https://twitter.com/michaelbrown",
-        },
-        {
-          name: "Sophia Lee",
-          role: "UI/UX Designer",
-          image: new URL('@/assets/team5.jpg', import.meta.url).href,
-          linkedin: "https://linkedin.com/in/sophialee",
-          twitter: "https://twitter.com/sophialee",
-        },
-        {
-          name: "David Kim",
-          role: "Financial Analyst",
-          image: new URL('@/assets/team6.jpg', import.meta.url).href,
-          linkedin: "https://linkedin.com/in/davidkim",
-          twitter: "https://twitter.com/davidkim",
-        },
-      ],
+      teamMembers,
+      loading
     };
   },
 };
