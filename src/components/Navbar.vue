@@ -21,7 +21,6 @@
 
       <!-- Navbar Items -->
       <div class="collapse navbar-collapse" id="navbarNav">
-        <!-- Centered Navigation -->
         <ul class="navbar-nav justify-content-center w-100">
           <li class="nav-item mx-2">
             <router-link class="nav-link" to="/">
@@ -42,6 +41,37 @@
             <router-link class="nav-link" to="/how-it-works">
               <i class="bi bi-question-circle bi-green"></i> How it Works
             </router-link>
+          </li>
+
+          <!-- 🔥 Dynamically Render Products Dropdown -->
+          <li class="nav-item dropdown mx-2">
+            <button
+              class="nav-link dropdown-toggle"
+              id="productsDropdown"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+            >
+              <i class="bi bi-box-seam bi-green"></i> Products
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="productsDropdown">
+              <li v-if="loadingProducts" class="dropdown-item text-center">
+                <div class="spinner-border text-success" role="status">
+                  <span class="visually-hidden">Loading...</span>
+                </div>
+              </li>
+              <li v-else-if="availableProducts.length > 0" v-for="product in availableProducts" :key="`${product.raffle_cycle_id}-${product.raffle_type_id}`">
+                <router-link class="dropdown-item" :to="{
+                  path: product.route,
+                  query: {
+                    raffle_cycle_id: product.raffle_cycle_id,
+                    raffle_type_id: product.raffle_type_id
+                  }
+                }">
+                  <i :class="product.icon"></i> {{ product.raffle_type }}
+                </router-link>
+              </li>
+              <li v-else class="dropdown-item text-danger">No products available</li>
+            </ul>
           </li>
         </ul>
 
@@ -87,15 +117,18 @@
 </template>
 
 <script>
-import { computed } from "vue";
+import { computed, ref, onMounted } from "vue";
 import { useAuthStore } from "@/stores/authStore";
 import { useRouter } from "vue-router";
+import { fetchProducts, isLoading } from "@/services/productService"; // ✅ Use centralized service
 
 export default {
   name: "Navbar",
   setup() {
     const authStore = useAuthStore();
     const router = useRouter();
+    const availableProducts = ref([]); // Stores fetched product list
+    const loadingProducts = isLoading(); // Fetches loading state from service
 
     // Get site name and logo path from environment variables
     const siteName = import.meta.env.VITE_SITE_NAME || "OneNnumba";
@@ -108,12 +141,22 @@ export default {
     const userDisplayName = computed(() => authStore.user?.user_nicename || "User");
 
     /**
-     * Handles user logout and redirects to login page.
+     * ✅ Fetch products from the centralized service
+     */
+    const loadProducts = async () => {
+      availableProducts.value = await fetchProducts();
+    };
+
+    /**
+     * ✅ Handles user logout and redirects to login page.
      */
     const handleLogout = async () => {
       await authStore.logout();
       router.push("/login");
     };
+
+    // Fetch products on component mount
+    onMounted(loadProducts);
 
     return {
       siteName,
@@ -121,6 +164,8 @@ export default {
       isAuthenticated,
       userDisplayName,
       handleLogout,
+      availableProducts,
+      loadingProducts,
     };
   },
 };

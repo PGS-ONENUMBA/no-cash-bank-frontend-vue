@@ -1,12 +1,16 @@
 <template>
-  <main class="container py-5 mt-2"><div class="text-center mb-4 mt-3">
-      <h2 class="fw-bold">
-        <i class="bi bi-check-circle"></i> On The House
-      </h2>
   
+  <div class="container py-5">
+    <!-- Pay-4-Me Introduction -->
+    <div class="text-center mb-4 mt-5">
+      <h2 class="fw-bold">
+        <i class="bi bi-check-circle"></i> {{ productName }}
+      </h2>
     </div>
+
+    <!-- Pay-4-Me Form -->
     <OnTheHouseForm />
-  </main>
+  </div>
 </template>
 
 <script>
@@ -16,6 +20,11 @@ export default {
   name: "PublicOnTheHouse",
   components: {
     OnTheHouseForm,
+  },
+  setup() {
+    return {
+      productName: import.meta.env.VITE_PRODUCT_THREE || "One The House", // Uses env variable, fallback to "Pay4Me"
+    };
   },
 };
 </script>

@@ -43,6 +43,7 @@ tests_output/
 # 🚨 Exclude environment variables 🚨
 .env
 .env.local
+.env.staging
 .env.development
 .env.production
 .env.test
