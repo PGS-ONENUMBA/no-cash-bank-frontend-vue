@@ -1,26 +1,37 @@
 <template>
-  <div class="footer-menu d-md-none">
+  <div class="footer-menu d-md-none mt-5">
     <ul>
+      <!-- Dashboard -->
       <li>
         <router-link to="/dashboard" :class="{ active: isActive('/dashboard') }">
-          <i class="bi bi-house-door"></i> <span>Dashboard</span>
+          <i class="bi bi-house-door"></i> <span>Home</span>
         </router-link>
       </li>
-      <li>
-        <router-link to="/dashboard/get-cash" :class="{ active: isActive('/dashboard/get-cash') }">
-          <i class="bi bi-currency-exchange"></i> <span>Get Cash</span>
+
+      <!-- Dynamically Render Products -->
+      <li v-for="product in availableProducts" :key="`${product.raffle_cycle_id}-${product.raffle_type_id}`">
+        <router-link
+          :to="{
+            path: product.route,
+            query: {
+              raffle_cycle_id: product.raffle_cycle_id,
+              raffle_type_id: product.raffle_type_id
+            }
+          }"
+          :class="{ active: isActive(product.route) }"
+        >
+          <i :class="product.icon"></i> <span>{{ product.raffle_type }}</span>
         </router-link>
       </li>
-      <li>
-        <router-link to="/dashboard/pay4me" :class="{ active: isActive('/dashboard/pay4me') }">
-          <i class="bi bi-check-circle"></i> <span>Pay-4-Me</span>
-        </router-link>
-      </li>
+
+      <!-- Transfer Funds -->
       <li>
         <router-link to="/dashboard/transfer" :class="{ active: isActive('/dashboard/transfer') }">
           <i class="bi bi-arrow-up-right-circle"></i> <span>Transfer</span>
         </router-link>
       </li>
+
+      <!-- Logout -->
       <li>
         <a href="#" @click.prevent="handleLogout">
           <i class="bi bi-box-arrow-right"></i> <span>Logout</span>
@@ -31,31 +42,45 @@
 </template>
 
 <script>
+import { ref, computed, onMounted } from "vue";
 import { useAuthStore } from "@/stores/authStore";
 import { useRouter } from "vue-router";
-import { computed } from "vue";
+import { fetchProducts } from "@/services/productService";
 
 export default {
   name: "DashboardFooter",
   setup() {
     const authStore = useAuthStore();
     const router = useRouter();
+    const availableProducts = ref([]);
 
     /**
-     * Determines if the current route matches the given path.
-     * Uses a computed property to avoid recalculating on each render.
+     * ✅ Fetch dynamic products for footer menu
+     */
+    const loadProducts = async () => {
+      try {
+        availableProducts.value = await fetchProducts();
+      } catch (error) {
+        console.error("❌ Error fetching products:", error);
+      }
+    };
+
+    /**
+     * ✅ Determines if the current route matches the given path.
      */
     const isActive = (route) => computed(() => router.currentRoute.value.path === route);
 
     /**
-     * Logs the user out and redirects to the login page.
+     * ✅ Logs the user out and redirects to the login page.
      */
     const handleLogout = async () => {
       await authStore.logout();
       router.push("/login");
     };
 
-    return { handleLogout, isActive };
+    onMounted(loadProducts);
+
+    return { handleLogout, isActive, availableProducts };
   },
 };
 </script>
