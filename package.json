@@ -38,6 +38,7 @@
     "ts-node": "^10.9.2",
     "vite": "^6.0.11",
     "vite-plugin-nightwatch": "^0.4.6",
+    "vite-plugin-pwa": "^0.21.1",
     "vite-plugin-vue-devtools": "^7.7.0"
   }
 }
