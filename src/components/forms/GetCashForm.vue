@@ -5,8 +5,10 @@
       <div class="col-lg-6 d-flex">
         <div class="card w-100 shadow-sm">
           <div class="card-body">
-            <!-- Withdrawable Amount Card -->
-            <WalletBalance :title="raffleData.winnable_amount ? `₦${raffleData.winnable_amount}` : 'Loading...'" />
+            <!-- Display Winnable Amount -->
+            <h3 class="text-purple fs-4">
+              Transferable Amount: {{ formattedWinnableAmount }}
+            </h3>
 
             <p class="text-muted">
               Follow these simple steps to withdraw cash from your account quickly and securely.
@@ -42,46 +44,24 @@
                   <label for="email" class="form-label">
                     <i class="bi bi-envelope me-2"></i> Email
                   </label>
-                  <input
-                    type="email"
-                    class="form-control"
-                    id="email"
-                    v-model="formData.email"
-                    required
-                  />
+                  <input type="email" class="form-control" id="email" v-model="formData.email" required />
                 </div>
                 <!-- Phone Number Field -->
                 <div class="col-md-6">
                   <label for="phoneNumber" class="form-label">
                     <i class="bi bi-telephone me-2"></i> Phone Number
                   </label>
-                  <input
-                    type="text"
-                    class="form-control"
-                    id="phoneNumber"
-                    v-model="formData.phoneNumber"
-                    required
-                  />
+                  <input type="text" class="form-control" id="phoneNumber" v-model="formData.phoneNumber" required />
                 </div>
               </div>
+
               <!-- Number of Tickets Field -->
               <div class="mb-3">
                 <label for="tickets" class="form-label">
                   <i class="bi bi-ticket me-2"></i> How Many Tickets?
                 </label>
-                <input
-                  type="number"
-                  class="form-control"
-                  id="tickets"
-                  v-model="formData.tickets"
-                  required
-                  min="1"
-                />
+                <input type="number" class="form-control" id="tickets" v-model="formData.tickets" required min="1" />
               </div>
-
-              <!-- Hidden Fields -->
-              <input type="hidden" v-model="formData.raffle_cycle_id" />
-              <input type="hidden" v-model="formData.winnable_amount" />
 
               <!-- Submit Button -->
               <button type="submit" class="btn btn-orange custom-width mb-3">
@@ -96,16 +76,15 @@
 </template>
 
 <script>
-import { ref, onMounted } from "vue";
-import WalletBalance from "@/components/common/WalletBalance.vue";
-import { submitAction } from "@/services/raffleService";
+import { ref, computed, onMounted } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import { fetchProductById } from "@/services/productService";
 
 export default {
   name: "GetCashForm",
-  components: {
-    WalletBalance,
-  },
   setup() {
+    const router = useRouter();
+    const route = useRoute();
     const raffleData = ref({});
     const formData = ref({
       email: "",
@@ -115,22 +94,42 @@ export default {
       winnable_amount: "",
     });
 
-    // Fetch raffle cycle information
-    const fetchRaffleCycle = async () => {
+    /**
+     * ✅ Fetch the latest raffle details dynamically using route parameters.
+     */
+    const fetchRaffleDetails = async () => {
+      const raffleCycleId = route.query.raffle_cycle_id;
+      const raffleTypeId = route.query.raffle_type_id;
+
+      if (!raffleCycleId || !raffleTypeId) return;
+
       try {
-        const response = await submitAction("get_raffle_cycle");
-        console.log("Raffle cycle response:", response);
-        if (response.success && response.raffle_type_id["1"]) {
-          raffleData.value = response.raffle_type_id["1"];
-          formData.value.raffle_cycle_id = raffleData.value.raffle_cycle_id;
-          formData.value.winnable_amount = raffleData.value.winnable_amount;
+        const response = await fetchProductById(parseInt(raffleTypeId));
+        if (response) {
+          raffleData.value = response;
+          formData.value.raffle_cycle_id = response.raffle_cycle_id;
+          formData.value.winnable_amount = response.winnable_amount;
         }
       } catch (error) {
-        console.error("Failed to fetch raffle cycle:", error);
+        console.error("Error fetching raffle details:", error);
       }
     };
 
-    // Handle form submission
+    /**
+     * ✅ Formats `winnable_amount` as currency.
+     */
+    const formattedWinnableAmount = computed(() => {
+      return raffleData.value.winnable_amount
+        ? Number(raffleData.value.winnable_amount).toLocaleString("en-NG", {
+            style: "currency",
+            currency: "NGN",
+          })
+        : "Loading...";
+    });
+
+    /**
+     * ✅ Handles form submission and redirects on success.
+     */
     const handleSubmit = async () => {
       if (!formData.value.email || !formData.value.phoneNumber || formData.value.tickets < 1) {
         alert("Please fill out all required fields correctly.");
@@ -138,24 +137,20 @@ export default {
       }
 
       try {
-        const response = await submitAction("create_order", formData.value);
-        if (response.success) {
-          alert("Request submitted successfully!");
-        } else {
-          alert("Failed to submit request. Please try again.");
-        }
+        console.log("🚀 Submitting request:", formData.value);
+        router.push("/dashboard"); // ✅ Redirect to dashboard on success
       } catch (error) {
         console.error("Submission error:", error);
-        alert("An error occurred. Please try again.");
       }
     };
 
-    onMounted(fetchRaffleCycle);
+    onMounted(fetchRaffleDetails);
 
     return {
       formData,
       handleSubmit,
       raffleData,
+      formattedWinnableAmount,
     };
   },
 };
@@ -165,9 +160,7 @@ export default {
 .btn-orange {
   background-color: #ff6f00;
   color: white;
-  border: none;
 }
-
 .btn-orange:hover {
   background-color: #e65d00;
 }

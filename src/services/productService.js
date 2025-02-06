@@ -1,20 +1,22 @@
 import { ref } from "vue";
-import apiClient from "@/services/apiService"; // Ensure you have an Axios instance setup
+import apiClient from "@/services/apiService"; // Axios instance
 
-// Store products globally to avoid redundant API calls
+// ✅ Cache products globally
 const products = ref([]);
 const loading = ref(false);
 
 /**
- * Fetch all products from API (cached for efficiency).
+ * ✅ Fetches products from API.
+ * If `forceRefresh` is `true`, it ignores cache and fetches new data.
  */
-export const fetchProducts = async () => {
-  if (products.value.length > 0) return products.value; // Return cached products
+export const fetchProducts = async (forceRefresh = false) => {
+  if (!forceRefresh && products.value.length > 0) {
+    return products.value; // ✅ Return cached products if no refresh requested
+  }
 
   loading.value = true;
-
   try {
-    console.log("🚀 Fetching products...");
+    console.log("🚀 Fetching latest products...");
     const response = await apiClient.post("/nocash-bank/v1/action", {
       action_type: "get_raffle_cycle",
     });
@@ -29,6 +31,7 @@ export const fetchProducts = async () => {
               raffle_cycle_id: raffle.raffle_cycle_id,
               raffle_type_id: type.raffle_type_id,
               raffle_type: type.raffle_type,
+              winnable_amount: raffle.winnable_amount, // ✅ Ensure winnable amount is stored
               icon: getIcon(type.raffle_type_id),
               route: `${getRoute(type.raffle_type_id)}?raffle_cycle_id=${raffle.raffle_cycle_id}&raffle_type_id=${type.raffle_type_id}`,
             });
@@ -36,8 +39,8 @@ export const fetchProducts = async () => {
         }
       });
 
-      products.value = parsedProducts;
-      console.log("✅ Products loaded:", products.value);
+      products.value = parsedProducts; // ✅ Store updated results
+      console.log("✅ Updated Products Cache:", products.value);
     } else {
       console.warn("⚠ No products found.");
     }
@@ -48,6 +51,15 @@ export const fetchProducts = async () => {
   }
 
   return products.value;
+};
+
+/**
+ * ✅ Fetches product details by `raffle_type_id`, ensuring fresh data.
+ */
+export const fetchProductById = async (raffleTypeId) => {
+  await fetchProducts(true); // ✅ Force API refresh
+
+  return products.value.find((product) => product.raffle_type_id === parseInt(raffleTypeId)) || null;
 };
 
 /**
