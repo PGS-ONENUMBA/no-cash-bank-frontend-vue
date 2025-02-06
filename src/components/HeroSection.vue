@@ -31,18 +31,19 @@
 
 <script>
 import { ref, onMounted } from "vue";
-import Preloader from "@/components/common/Preloader.vue"; // Import the Preloader
+import Preloader from "@/components/common/Preloader.vue"; 
 import apiClient from "@/services/apiService"; 
 
 export default {
   name: "HeroSection",
   components: { Preloader },
   setup() {
-    const displayedRaffles = ref([]);
-    const loading = ref(false); // Loading state
+    const displayedRaffles = ref([]); // Stores the raffle products to be displayed
+    const loading = ref(false); // Controls preloader visibility
 
     /**
-     * Fetch all active raffle cycles from the API.
+     * Fetches all active raffle cycles from the API.
+     * Each raffle cycle contains multiple associated types, which are expanded into separate products.
      */
     const fetchRaffles = async () => {
       loading.value = true; // Show preloader
@@ -72,14 +73,16 @@ export default {
           displayedRaffles.value = expandedRaffles;
         }
       } catch (error) {
-        console.error("❌ Error fetching raffle cycles:", error.message);
+        console.error("Error fetching raffle cycles:", error.message);
       } finally {
         loading.value = false; // Hide preloader
       }
     };
 
     /**
-     * Fetch full raffle cycle details when a button is clicked.
+     * Fetches details for a specific raffle cycle and its associated type.
+     * @param {string} raffleId - The ID of the raffle cycle.
+     * @param {string} raffleTypeId - The ID of the associated raffle type.
      */
     const fetchRaffleDetails = async (raffleId, raffleTypeId) => {
       loading.value = true; // Show preloader while fetching details
@@ -92,7 +95,7 @@ export default {
         if (response.data.success) {
           const raffleCycle = response.data.raffle_cycle;
 
-          // Find only the selected raffle type
+          // Find the specific raffle type within the cycle
           const selectedType = raffleCycle.associated_types.find(type => type.raffle_type_id === raffleTypeId);
 
           if (selectedType) {
@@ -111,10 +114,10 @@ export default {
             alert("Raffle type not found in this cycle.");
           }
         } else {
-          console.error("❌ Error: Invalid response from API", response.data);
+          console.error("Error: Invalid response from API", response.data);
         }
       } catch (error) {
-        console.error("❌ Error fetching raffle details:", error.message);
+        console.error("Error fetching raffle details:", error.message);
       } finally {
         loading.value = false; // Hide preloader
       }
@@ -133,5 +136,5 @@ export default {
 </script>
 
 <style scoped>
-/* Hero section styles here */
+/* Add styles for better layout */
 </style>
