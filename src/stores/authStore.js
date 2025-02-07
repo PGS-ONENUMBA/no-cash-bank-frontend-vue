@@ -146,4 +146,14 @@ export const useAuthStore = defineStore("auth", {
       this.startInactivityTimer();
     },
   },
+  // ✅ Enable Pinia Persistence
+  persist: {
+    enabled: true,
+    strategies: [
+      {
+        key: "auth",
+        storage: localStorage, // Use sessionStorage if needed
+      },
+    ],
+  },
 });

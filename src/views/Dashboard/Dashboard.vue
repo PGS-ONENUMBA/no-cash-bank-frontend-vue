@@ -32,7 +32,6 @@
             raffle_type_id: product.raffle_type_id
           }
         }"
-
       />
     </div>
 
@@ -43,7 +42,6 @@
 
     <!-- Static Features -->
     <div class="row row-cols-1 row-cols-md-2 g-4 mt-3">
-      
       <FeatureCard
         title="Transfer Funds"
         icon="bi bi-arrow-up-right-circle"
@@ -65,7 +63,7 @@
 
 <script>
 import { ref, computed, onMounted } from "vue";
-import { fetchProducts } from "@/services/productService"; // ✅ Use centralized product service
+import { fetchProducts } from "@/services/productService"; // ✅ No caching, always fetch latest data
 import WalletBalance from "@/components/common/WalletBalance.vue";
 import FeatureCard from "@/components/dashboard/FeatureCard.vue";
 import DashboardFooter from "@/components/dashboard/DashboardFooter.vue";
@@ -81,16 +79,17 @@ export default {
     const availableProducts = ref([]);
     const loadingProducts = ref(true);
 
-     // ✅ Load the environment variable for winnable amount label
-     const winnableAmountLabel = import.meta.env.VITE_WINNABLE_AMOUNT_LABEL || "Winnable Amount";
+    // ✅ Load the environment variable for winnable amount label
+    const winnableAmountLabel = import.meta.env.VITE_WINNABLE_AMOUNT_LABEL || "Winnable Amount";
 
     /**
-     * ✅ Fetch available products dynamically using the product service.
+     * ✅ Fetch available products dynamically from API (NO CACHE)
      */
     const loadProducts = async () => {
       try {
         loadingProducts.value = true;
-        availableProducts.value = await fetchProducts();
+        const latestProducts = await fetchProducts(); // Always fetch new data
+        availableProducts.value = latestProducts;
       } catch (error) {
         console.error("❌ Error fetching products:", error);
       } finally {
@@ -119,7 +118,7 @@ export default {
       }).format(amount);
     };
 
-    // Fetch products on component mount
+    // Fetch fresh product data every time dashboard is accessed
     onMounted(loadProducts);
 
     return {
@@ -127,7 +126,7 @@ export default {
       loadingProducts,
       dynamicGridClass,
       formatCurrency,
-      winnableAmountLabel, // ✅ Use label from env variable
+      winnableAmountLabel,
     };
   },
 };
