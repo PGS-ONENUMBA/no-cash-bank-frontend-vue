@@ -52,6 +52,12 @@
                 <input type="number" class="form-control" id="tickets" v-model="formData.tickets" required min="1" />
               </div>
 
+              <!-- ✅ Hidden Fields for Backend Validation -->
+              <input type="hidden" v-model="formData.raffle_cycle_id" />
+              <input type="hidden" v-model="formData.raffle_type_id" />
+              <input type="hidden" v-model="formData.winnable_amount" />
+              <input type="hidden" v-model="formData.price_of_ticket" />
+
               <button type="submit" class="btn btn-orange custom-width mb-3">
                 <i class="bi bi-cash-coin me-2"></i> Submit Payment Request
               </button>
@@ -66,12 +72,10 @@
 <script>
 import { ref, computed, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import WalletBalance from "@/components/common/WalletBalance.vue";
-import { fetchProductById } from "@/services/productService"; // ✅ Fetch latest product details
+import { validateRaffleCycle } from "@/services/productService"; // ✅ API Validation Call
 
 export default {
   name: "Pay4MeForm",
-  components: { WalletBalance },
   setup() {
     const router = useRouter();
     const route = useRoute();
@@ -82,34 +86,44 @@ export default {
       tickets: 1,
       recipientPhoneNumber: "",
       raffle_cycle_id: "",
+      raffle_type_id: "",
       winnable_amount: "",
+      price_of_ticket: "",
     });
 
     /**
-     * ✅ Fetch the latest raffle details dynamically using route parameters.
+     * ✅ Fetch and validate raffle cycle details.
      */
     const fetchRaffleDetails = async () => {
       const raffleCycleId = route.query.raffle_cycle_id;
       const raffleTypeId = route.query.raffle_type_id;
 
-      if (!raffleCycleId || !raffleTypeId) return;
+      if (!raffleCycleId || !raffleTypeId) {
+        console.warn("⚠ Missing raffle cycle parameters in URL.");
+        return;
+      }
 
       try {
-        const response = await fetchProductById(parseInt(raffleTypeId)); // ✅ Ensure fresh API call
-        if (response) {
-          raffleData.value = response;
-          formData.value.raffle_cycle_id = response.raffle_cycle_id;
-          formData.value.winnable_amount = response.winnable_amount;
+        const validatedRaffle = await validateRaffleCycle(raffleCycleId, raffleTypeId);
+        if (validatedRaffle) {
+          raffleData.value = validatedRaffle;
+          formData.value.raffle_cycle_id = validatedRaffle.raffle_cycle_id;
+          formData.value.raffle_type_id = validatedRaffle.raffle_type_id;
+          formData.value.winnable_amount = validatedRaffle.winnable_amount;
+          formData.value.price_of_ticket = validatedRaffle.price_of_ticket;
+        } else {
+          console.error("❌ Raffle validation failed. Redirecting...");
+          router.push("/dashboard");
         }
       } catch (error) {
-        console.error("Error fetching raffle details:", error);
+        console.error("❌ Error validating raffle cycle:", error);
       }
     };
 
     /**
-     * ✅ Formats `winnable_amount` as currency.
+     * ✅ Format `winnable_amount` for display.
      */
-     const formattedWinnableAmount = computed(() => {
+    const formattedWinnableAmount = computed(() => {
       return raffleData.value.winnable_amount
         ? Number(raffleData.value.winnable_amount).toLocaleString("en-NG", {
             style: "currency",
@@ -129,13 +143,13 @@ export default {
 
       try {
         console.log("🚀 Submitting request:", formData.value);
-        router.push("/dashboard"); // ✅ Redirect to dashboard on success
+        router.push("/dashboard");
       } catch (error) {
-        console.error("Submission error:", error);
+        console.error("❌ Submission error:", error);
       }
     };
 
-    onMounted(fetchRaffleDetails); // ✅ Always fetch fresh data
+    onMounted(fetchRaffleDetails); // ✅ Fetch validated data
 
     return {
       formData,
@@ -146,3 +160,14 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+.btn-orange {
+  background-color: #ff6f00;
+  color: white;
+  border: none;
+}
+.btn-orange:hover {
+  background-color: #e65d00;
+}
+</style>

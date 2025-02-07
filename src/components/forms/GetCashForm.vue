@@ -5,15 +5,16 @@
       <div class="col-lg-6 d-flex">
         <div class="card w-100 shadow-sm">
           <div class="card-body">
-            <!-- Display Winnable Amount -->
-            <h3 class="text-purple fs-4">
-              Transferable Amount: {{ formattedWinnableAmount }}
-            </h3>
+            <!-- ✅ Winnable Amount Display -->
+            <h4 class="text-success">
+              {{ formatCurrency(raffleData.winnable_amount) }}
+            </h4>
 
             <p class="text-muted">
               Follow these simple steps to withdraw cash from your account quickly and securely.
               Ensure all your details are up-to-date before proceeding.
             </p>
+
             <ul class="list-group">
               <li class="list-group-item d-flex align-items-start">
                 <i class="bi bi-1-circle-fill text-success me-3"></i>
@@ -63,6 +64,12 @@
                 <input type="number" class="form-control" id="tickets" v-model="formData.tickets" required min="1" />
               </div>
 
+              <!-- ✅ Hidden Fields for API Validation -->
+              <input type="hidden" v-model="formData.raffle_cycle_id" />
+              <input type="hidden" v-model="formData.raffle_type_id" />
+              <input type="hidden" v-model="formData.winnable_amount" />
+              <input type="hidden" v-model="formData.price_of_ticket" />
+
               <!-- Submit Button -->
               <button type="submit" class="btn btn-orange custom-width mb-3">
                 <i class="bi bi-cash-coin me-2"></i> Submit Request
@@ -76,12 +83,16 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from "vue";
+import { ref, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import { fetchProductById } from "@/services/productService";
+import { validateRaffleCycle } from "@/services/productService"; // ✅ Ensure valid cycle
+import WalletBalance from "@/components/common/WalletBalance.vue";
 
 export default {
   name: "GetCashForm",
+  components: {
+    WalletBalance,
+  },
   setup() {
     const router = useRouter();
     const route = useRoute();
@@ -91,44 +102,42 @@ export default {
       phoneNumber: "",
       tickets: 1,
       raffle_cycle_id: "",
+      raffle_type_id: "",
       winnable_amount: "",
+      price_of_ticket: "",
     });
 
     /**
-     * ✅ Fetch the latest raffle details dynamically using route parameters.
+     * ✅ Fetch and validate raffle cycle details dynamically.
      */
     const fetchRaffleDetails = async () => {
       const raffleCycleId = route.query.raffle_cycle_id;
       const raffleTypeId = route.query.raffle_type_id;
 
-      if (!raffleCycleId || !raffleTypeId) return;
+      if (!raffleCycleId || !raffleTypeId) {
+        console.warn("⚠ Missing raffle cycle parameters in URL.");
+        return;
+      }
 
       try {
-        const response = await fetchProductById(parseInt(raffleTypeId));
-        if (response) {
-          raffleData.value = response;
-          formData.value.raffle_cycle_id = response.raffle_cycle_id;
-          formData.value.winnable_amount = response.winnable_amount;
+        const validatedRaffle = await validateRaffleCycle(raffleCycleId, raffleTypeId);
+        if (validatedRaffle) {
+          raffleData.value = validatedRaffle;
+          formData.value.raffle_cycle_id = validatedRaffle.raffle_cycle_id;
+          formData.value.raffle_type_id = validatedRaffle.raffle_type_id;
+          formData.value.winnable_amount = validatedRaffle.winnable_amount;
+          formData.value.price_of_ticket = validatedRaffle.price_of_ticket;
+        } else {
+          console.error("❌ Raffle validation failed. Redirecting...");
+          router.push("/");
         }
       } catch (error) {
-        console.error("Error fetching raffle details:", error);
+        console.error("❌ Error validating raffle cycle:", error);
       }
     };
 
     /**
-     * ✅ Formats `winnable_amount` as currency.
-     */
-    const formattedWinnableAmount = computed(() => {
-      return raffleData.value.winnable_amount
-        ? Number(raffleData.value.winnable_amount).toLocaleString("en-NG", {
-            style: "currency",
-            currency: "NGN",
-          })
-        : "Loading...";
-    });
-
-    /**
-     * ✅ Handles form submission and redirects on success.
+     * ✅ Handles form submission and validation.
      */
     const handleSubmit = async () => {
       if (!formData.value.email || !formData.value.phoneNumber || formData.value.tickets < 1) {
@@ -138,10 +147,20 @@ export default {
 
       try {
         console.log("🚀 Submitting request:", formData.value);
-        router.push("/dashboard"); // ✅ Redirect to dashboard on success
+        router.push("/dashboard");
       } catch (error) {
-        console.error("Submission error:", error);
+        console.error("❌ Submission error:", error);
       }
+    };
+
+    /**
+     * ✅ Formats currency values for display.
+     */
+    const formatCurrency = (amount) => {
+      return new Intl.NumberFormat("en-NG", {
+        style: "currency",
+        currency: "NGN",
+      }).format(amount);
     };
 
     onMounted(fetchRaffleDetails);
@@ -150,7 +169,7 @@ export default {
       formData,
       handleSubmit,
       raffleData,
-      formattedWinnableAmount,
+      formatCurrency,
     };
   },
 };
@@ -160,6 +179,7 @@ export default {
 .btn-orange {
   background-color: #ff6f00;
   color: white;
+  border: none;
 }
 .btn-orange:hover {
   background-color: #e65d00;
