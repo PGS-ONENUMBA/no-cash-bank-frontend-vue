@@ -13,7 +13,6 @@
 
 <script>
 import GetCashForm from "@/components/forms/GetCashForm.vue";
-
 export default {
   name: "PublicGetCash",
   components: {

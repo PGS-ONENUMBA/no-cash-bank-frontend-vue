@@ -35,30 +35,40 @@ export const loginAPI = async (username, password) => {
  * 
  * @returns {Promise<string|null>} - New access token or null if refresh fails
  */
+let retryCount = 0; // Prevent infinite retries
+const MAX_RETRIES = 3; // Limit retries to avoid memory leak
 export const refreshToken = async () => {
   const authStore = useAuthStore();
-  const refreshToken = authStore.refreshToken;
-
-  if (!refreshToken) {
-    console.warn("⚠ No refresh token available.");
-    return null;
+  
+  if (!authStore.refreshToken || retryCount >= MAX_RETRIES) {
+    console.error("❌ Max token refresh attempts reached. Logging out...");
+    authStore.logout();
+    return;
   }
 
   try {
-    const response = await apiClient.post(import.meta.env.VITE_REFRESH_TOKEN_ENDPOINT || "/api/v1/token/refresh", {
-      refresh_token: refreshToken,
+    console.log(`🔄 Token expired. Refreshing... Attempt ${retryCount + 1}`);
+
+    const response = await apiClient.post("/auth/refresh-token", {
+      refresh_token: authStore.refreshToken,
     });
 
-    if (response.status === 200 && response.data.token) {
-      authStore.setToken(response.data.token);
-      return response.data.token;
+    if (response.data.success) {
+      authStore.token = response.data.token;
+      authStore.tokenExpiry = Date.now() + 1000 * 60 * 20; // ✅ Extend expiry by 20 min
+      retryCount = 0; // ✅ Reset retry count
+      console.log("✅ Token refreshed successfully!");
     } else {
-      console.warn("⚠ Token refresh API response invalid.");
-      return null;
+      throw new Error("⚠ Failed to refresh token.");
     }
   } catch (error) {
-    console.error("❌ Token refresh failed:", error.response?.data?.message || error.message);
-    return null;
+    console.error("❌ Token refresh failed:", error);
+    retryCount++; // ✅ Increase retry count on failure
+
+    // **Wait 3 seconds before retrying to prevent spam**
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+
+    refreshToken(); // **Retry refresh**
   }
 };
 

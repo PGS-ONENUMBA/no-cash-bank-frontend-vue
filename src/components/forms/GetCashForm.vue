@@ -6,6 +6,11 @@
         <div class="card w-100 shadow-sm">
           <div class="card-body">
             <!-- Display Winnable Amount -->
+            <div v-if="errorMessage" class="alert alert-warning" role="alert">
+              {{ errorMessage }}
+            </div>
+
+              
             <h3 class="text-purple fs-4">
               Transferable Amount: {{ formattedWinnableAmount }}
             </h3>
@@ -79,6 +84,7 @@
 import { ref, computed, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { fetchProductById } from "@/services/productService";
+import { validateRaffleCycle } from "@/services/productService";
 
 export default {
   name: "GetCashForm",
@@ -93,6 +99,7 @@ export default {
       raffle_cycle_id: "",
       winnable_amount: "",
     });
+    const errorMessage = ref(null);
 
     /**
      * ✅ Fetch the latest raffle details dynamically using route parameters.
@@ -101,18 +108,34 @@ export default {
       const raffleCycleId = route.query.raffle_cycle_id;
       const raffleTypeId = route.query.raffle_type_id;
 
-      if (!raffleCycleId || !raffleTypeId) return;
+      if (!raffleCycleId || !raffleTypeId) {
+        errorMessage.value = "Invalid raffle cycle details.";
+        return;
+      }
 
-      try {
-        const response = await fetchProductById(parseInt(raffleTypeId));
-        if (response) {
-          raffleData.value = response;
+      // try {
+      //   const response = await validateRaffleCycle(parseInt(raffleTypeId), parseInt(raffleCycleId));
+      //   if (response) {
+      //     raffleData.value = response;
+      //     formData.value.raffle_cycle_id = response.raffle_cycle_id;
+      //     formData.value.winnable_amount = response.winnable_amount;
+      //   }
+      // } catch (error) {
+      //   errorMessage.value = "Invalid raffle cycle. Redirecting...";
+      //   setTimeout(() => router.push("/"), 2000);
+      // }
+
+      const response = await validateRaffleCycle(raffleCycleId, raffleTypeId);
+
+      if (response) {
+        raffleData.value = response;
           formData.value.raffle_cycle_id = response.raffle_cycle_id;
           formData.value.winnable_amount = response.winnable_amount;
-        }
-      } catch (error) {
-        console.error("Error fetching raffle details:", error);
+      } else {
+        errorMessage.value = "Invalid raffle cycle. Redirecting...";
+        setTimeout(() => router.push("/"), 2000);
       }
+
     };
 
     /**
@@ -151,6 +174,7 @@ export default {
       handleSubmit,
       raffleData,
       formattedWinnableAmount,
+      errorMessage 
     };
   },
 };

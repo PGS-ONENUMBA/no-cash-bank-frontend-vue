@@ -63,6 +63,48 @@ export const fetchProductById = async (raffleTypeId) => {
 };
 
 /**
+ * ✅ Validates a raffle cycle against the API to ensure integrity.
+ * @param {string} raffleCycleId - The ID of the raffle cycle to verify.
+ * @param {string} raffleTypeId - The ID of the associated raffle type.
+ * @returns {object|null} - Returns the validated raffle data or `null` if invalid.
+ */
+export const validateRaffleCycle = async (raffleCycleId, raffleTypeId) => {
+  try {
+    console.log(`🔍 Validating Raffle Cycle: ${raffleCycleId}, Type: ${raffleTypeId}`);
+
+    const response = await apiClient.post("/nocash-bank/v1/action", {
+      action_type: "get_raffle_cycle_by_id",
+      raffle_cycle_id: raffleCycleId,
+    });
+
+    if (response.data.success) {
+      const raffleCycle = response.data.raffle_cycle;
+
+      // ✅ Ensure the raffle type exists within this cycle
+      const selectedType = raffleCycle.associated_types.find(
+        (type) => type.raffle_type_id === parseInt(raffleTypeId)
+      );
+
+      if (selectedType) {
+        return {
+          raffle_cycle_id: raffleCycle.raffle_cycle_id,
+          winnable_amount: raffleCycle.winnable_amount,
+          status: raffleCycle.status,
+          raffle_type_id: selectedType.raffle_type_id,
+          raffle_type: selectedType.raffle_type,
+        };
+      }
+    }
+
+    console.warn("⚠ Raffle cycle validation failed. Possible data tampering.");
+    return null;
+  } catch (error) {
+    console.error("❌ Error validating raffle cycle:", error);
+    return null;
+  }
+};
+
+/**
  * Get loading state for UI components.
  */
 export const isLoading = () => loading;
