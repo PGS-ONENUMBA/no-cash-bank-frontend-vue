@@ -18,7 +18,7 @@
           <button
             v-for="raffle in displayedRaffles"
             :key="`${raffle.raffle_cycle_id}-${raffle.raffle_type_id}`"
-            @click="fetchRaffleDetails(raffle.raffle_cycle_id, raffle.raffle_type_id)"
+            @click="redirectToProductPage(raffle.raffle_cycle_id, raffle.raffle_type_id)"
             class="btn btn-green btn-small mb-3"
           >
             <i class="bi bi-cash-stack bi-white"></i> {{ raffle.raffle_type }}
@@ -31,6 +31,7 @@
 
 <script>
 import { ref, onMounted } from "vue";
+import { useRouter } from "vue-router"; // Import Vue Router
 import Preloader from "@/components/common/Preloader.vue"; 
 import apiClient from "@/services/apiService"; 
 
@@ -40,6 +41,7 @@ export default {
   setup() {
     const displayedRaffles = ref([]); // Stores the raffle products to be displayed
     const loading = ref(false); // Controls preloader visibility
+    const router = useRouter(); // Initialize Vue Router
 
     /**
      * Fetches all active raffle cycles from the API.
@@ -80,47 +82,36 @@ export default {
     };
 
     /**
-     * Fetches details for a specific raffle cycle and its associated type.
-     * @param {string} raffleId - The ID of the raffle cycle.
+     * Redirects users to the appropriate product page with relevant query parameters.
+     * @param {string} raffleCycleId - The ID of the raffle cycle.
      * @param {string} raffleTypeId - The ID of the associated raffle type.
      */
-    const fetchRaffleDetails = async (raffleId, raffleTypeId) => {
-      loading.value = true; // Show preloader while fetching details
-      try {
-        const response = await apiClient.post("/nocash-bank/v1/action", {
-          action_type: "get_raffle_cycle_by_id",
-          raffle_cycle_id: raffleId
-        });
+    const redirectToProductPage = (raffleCycleId, raffleTypeId) => {
+      let routePath = "";
 
-        if (response.data.success) {
-          const raffleCycle = response.data.raffle_cycle;
-
-          // Find the specific raffle type within the cycle
-          const selectedType = raffleCycle.associated_types.find(type => type.raffle_type_id === raffleTypeId);
-
-          if (selectedType) {
-            const filteredResponse = {
-              raffle_cycle_id: raffleCycle.raffle_cycle_id,
-              winnable_amount: raffleCycle.winnable_amount,
-              status: raffleCycle.status,
-              created_date: raffleCycle.created_date,
-              updated_date: raffleCycle.updated_date,
-              raffle_type_id: selectedType.raffle_type_id,
-              raffle_type: selectedType.raffle_type
-            };
-
-            alert(`Raffle Type: ${filteredResponse.raffle_type}\nDetails: ${JSON.stringify(filteredResponse, null, 2)}`);
-          } else {
-            alert("Raffle type not found in this cycle.");
-          }
-        } else {
-          console.error("Error: Invalid response from API", response.data);
-        }
-      } catch (error) {
-        console.error("Error fetching raffle details:", error.message);
-      } finally {
-        loading.value = false; // Hide preloader
+      switch (parseInt(raffleTypeId)) {
+        case 1:
+          routePath = "/get-cash";
+          break;
+        case 2:
+          routePath = "/pay4me";
+          break;
+        case 3:
+          routePath = "/on-the-house";
+          break;
+        default:
+          console.warn("Invalid raffle type. No navigation.");
+          return;
       }
+
+      // Navigate to the corresponding product page with query parameters
+      router.push({
+        path: routePath,
+        query: {
+          raffle_cycle_id: raffleCycleId,
+          raffle_type_id: raffleTypeId,
+        }
+      });
     };
 
     // Fetch raffles on component mount
@@ -128,7 +119,7 @@ export default {
 
     return {
       displayedRaffles,
-      fetchRaffleDetails,
+      redirectToProductPage, // Use this for navigation
       loading
     };
   }
