@@ -1,12 +1,17 @@
 <template>
-  <router-view></router-view> <!-- Ensures correct layout is applied -->
+  <OnboardingScreen v-if="showOnboardingScreen" />
+  <div v-else>
+    <router-view></router-view> <!-- Ensures correct layout is applied -->
+  </div>
+  
 </template>
 
-<script>
+<script setup>
 
-export default {
-  name: "App"
-};
+import { ref } from 'vue';
+import OnboardingScreen from "@/components/OnboardingScreen.vue";
+const showOnboardingScreen = ref(true);
+
 </script>
 
 <style>
