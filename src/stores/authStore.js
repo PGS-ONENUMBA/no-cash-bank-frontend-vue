@@ -4,9 +4,11 @@ import { loginUser, refreshToken } from "@/services/authService";
 export const useAuthStore = defineStore("auth", {
   state: () => ({
     user: null,
-    token: null,
-    refreshToken: null,
-    tokenExpiry: null,
+
+    token: localStorage.getItem("auth_token") || null,
+    refreshToken: localStorage.getItem("refresh_token") || null,
+    tokenExpiry: localStorage.getItem("token_expiry") || null, // ✅ Persist token expiry
+
     inactivityTimeout: null,
     warningTimeout: null,
     showWarning: false,
@@ -32,6 +34,10 @@ export const useAuthStore = defineStore("auth", {
         this.refreshToken = data.data.refresh_token;
         this.tokenExpiry = Date.now() + tokenExpiryMin * 60 * 1000;
         this.user = data.data;
+
+        localStorage.setItem("auth_token", this.token);
+        localStorage.setItem("refresh_token", this.refreshToken);
+        localStorage.setItem("token_expiry", this.tokenExpiry);
     
         console.log(`🔑 Token expires in ${tokenExpiryMin} minutes`);
         this.startInactivityTimer();
@@ -68,6 +74,10 @@ export const useAuthStore = defineStore("auth", {
             this.token = data.token;
             this.refreshToken = data.refresh_token;  // ✅ Always store the latest refresh token
             this.tokenExpiry = Date.now() + (parseInt(import.meta.env.VITE_TOKEN_EXPIRY_MIN) || 20) * 60 * 1000;
+
+            localStorage.setItem("auth_token", this.token);
+            localStorage.setItem("token_expiry", this.tokenExpiry);
+
             console.log("✅ Token refreshed successfully!");
           } else {
             console.warn("⚠ Token refresh failed, logging out...");
@@ -89,6 +99,11 @@ export const useAuthStore = defineStore("auth", {
     
       this.resetTimers();
       this.$reset(); // Reset Pinia state
+
+      localStorage.removeItem("auth");
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("refresh_token");
+      localStorage.removeItem("token_expiry");
     
       if (routerInstance) {
         console.log("🔄 Redirecting to login...");
@@ -164,6 +179,8 @@ export const useAuthStore = defineStore("auth", {
       this.user = null;
       localStorage.removeItem("auth_token");
       localStorage.removeItem("user");
+      localStorage.removeItem("refresh_token");
+      localStorage.removeItem("token_expiry");
     }
   },
 

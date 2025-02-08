@@ -1,29 +1,50 @@
 import { ref } from "vue";
-import apiClient from "@/services/apiService"; // Axios instance
+import apiClient from "@/services/apiService"; // ✅ Centralized Axios instance
 
-// ✅ Holds products globally (avoiding redundant API calls)
+// ✅ Holds global product state to avoid redundant API calls
 const products = ref([]);
 const loading = ref(false);
 
 /**
- * ✅ Fetches all active raffle cycles from API.
- * @param {boolean} forceRefresh - If true, fetches fresh data.
- * @returns {Promise<Array>} - List of products.
+ * ✅ Retrieves and attaches the authentication token to API requests.
+ * Ensures a valid token is always sent before making requests.
  */
-export const fetchProducts = async (forceRefresh = false) => {
-  // ✅ Ensure we only fetch fresh data when necessary
-  if (!forceRefresh && products.value.length > 0) {
-    return products.value; 
+const getAuthHeaders = async () => {
+  // ✅ Import the auth store dynamically to prevent "getActivePinia()" errors
+  const { useAuthStore } = await import("@/stores/authStore");
+  const authStore = useAuthStore();
+
+  // ✅ Ensure token is refreshed if expired
+  if (authStore.isTokenExpired) {
+    console.warn("⚠ Token expired. Refreshing...");
+    await authStore.refreshTokenIfNeeded();
   }
 
-  loading.value = true; // Show loader
+  return {
+    Authorization: `Bearer ${authStore.token}`,
+  };
+};
 
+/**
+ * ✅ Fetches all active raffle cycles from API securely.
+ * @param {boolean} forceRefresh - If true, forces a fresh API request.
+ * @returns {Promise<Array>} - List of active products.
+ */
+export const fetchProducts = async (forceRefresh = false) => {
+  if (!forceRefresh && products.value.length > 0) {
+    return products.value; // ✅ Return cached data if available
+  }
+
+  loading.value = true; // Show loading state
   try {
     console.log("🚀 Fetching latest products...");
 
-    const response = await apiClient.post("/nocash-bank/v1/action", {
-      action_type: "get_raffle_cycle",
-    });
+    const headers = await getAuthHeaders(); // ✅ Ensure token is included
+    const response = await apiClient.post(
+      "/nocash-bank/v1/action",
+      { action_type: "get_raffle_cycle" },
+      { headers } // ✅ Secure API request
+    );
 
     if (response.data.success && Array.isArray(response.data.raffle_cycles)) {
       let parsedProducts = [];
@@ -51,29 +72,34 @@ export const fetchProducts = async (forceRefresh = false) => {
       products.value = []; // Ensure empty array if no data found
     }
   } catch (error) {
-    console.error("❌ Error fetching products:", error);
+    console.error("❌ Error fetching products:", error.response?.data || error.message);
     products.value = []; // Ensure empty array on error
   } finally {
-    loading.value = false; // Hide loader
+    loading.value = false; // Hide loading state
   }
 
   return products.value;
 };
 
 /**
- * ✅ Fetches product details by `raffle_type_id`.
- * Ensures **real-time API validation**.
+ * ✅ Fetches product details by `raffle_type_id` securely.
+ * Ensures real-time API validation.
  * @param {string} raffleTypeId - The ID of the raffle type.
- * @returns {Promise<Object|null>} - Product details or null.
+ * @returns {Promise<Object|null>} - Product details or null if not found.
  */
 export const fetchProductById = async (raffleTypeId) => {
   try {
     console.log(`🔍 Fetching product details for Raffle Type ID: ${raffleTypeId}`);
-    
-    const response = await apiClient.post("/nocash-bank/v1/action", {
-      action_type: "get_raffle_cycle_by_id",
-      raffle_cycle_id: raffleTypeId,
-    });
+
+    const headers = await getAuthHeaders(); // ✅ Secure API request
+    const response = await apiClient.post(
+      "/nocash-bank/v1/action",
+      {
+        action_type: "get_raffle_cycle_by_id",
+        raffle_cycle_id: raffleTypeId,
+      },
+      { headers }
+    );
 
     if (response.data.success) {
       const raffleCycle = response.data.raffle_cycle;
@@ -90,13 +116,14 @@ export const fetchProductById = async (raffleTypeId) => {
       return null;
     }
   } catch (error) {
-    console.error("❌ Error fetching product by ID:", error);
+    console.error("❌ Error fetching product by ID:", error.response?.data || error.message);
     return null;
   }
 };
 
 /**
  * ✅ Validates a raffle cycle against the API.
+ * Prevents users from modifying raffle cycle data.
  * @param {string} raffleCycleId - The ID of the raffle cycle to verify.
  * @param {string} raffleTypeId - The ID of the associated raffle type.
  * @returns {Promise<Object|null>} - Returns validated raffle data or `null` if invalid.
@@ -105,10 +132,15 @@ export const validateRaffleCycle = async (raffleCycleId, raffleTypeId) => {
   try {
     console.log(`🔍 Validating Raffle Cycle: ${raffleCycleId}, Type: ${raffleTypeId}`);
 
-    const response = await apiClient.post("/nocash-bank/v1/action", {
-      action_type: "get_raffle_cycle_by_id",
-      raffle_cycle_id: raffleCycleId,
-    });
+    const headers = await getAuthHeaders(); // ✅ Secure API request
+    const response = await apiClient.post(
+      "/nocash-bank/v1/action",
+      {
+        action_type: "get_raffle_cycle_by_id",
+        raffle_cycle_id: raffleCycleId,
+      },
+      { headers }
+    );
 
     if (response.data.success) {
       const raffleCycle = response.data.raffle_cycle;
@@ -133,7 +165,7 @@ export const validateRaffleCycle = async (raffleCycleId, raffleTypeId) => {
     console.warn("⚠ Raffle cycle validation failed. Possible data tampering.");
     return null;
   } catch (error) {
-    console.error("❌ Error validating raffle cycle:", error);
+    console.error("❌ Error validating raffle cycle:", error.response?.data || error.message);
     return null;
   }
 };

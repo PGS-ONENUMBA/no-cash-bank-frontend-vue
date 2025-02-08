@@ -23,6 +23,33 @@
           >
             <i class="bi bi-cash-stack bi-white"></i> {{ raffle.raffle_type }}
           </button>
+          <!-- Video Icon -->
+          <div class="mt-5 position-relative">
+              <a href="#" data-bs-toggle="modal" data-bs-target="#videoModal" class="btn position-absolute top-100 start-50 translate-middle ripple-btn">
+                <i class="bi bi-play-circle bi-green-medium"></i>
+              </a>
+              <span class="ripple"></span>
+              <span class="ripple"></span>
+              <span class="ripple"></span>
+            </div>
+            <!-- Video Modal -->
+            <div class="modal fade" id="videoModal" tabindex="-1" aria-labelledby="videoModalLabel" aria-hidden="true">
+              <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content">
+                  <div class="modal-header border-0">
+                    <h5 class="modal-title" id="videoModalLabel">
+                      <i class="bi bi-play-circle me-2"></i> Testimonial Video
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body">
+                    <div class="ratio ratio-16x9">
+                      <iframe id="videoIframe" src="https://www.youtube.com/embed/dQw4w9WgXcQ" title="Testimonial Video" allowfullscreen></iframe>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
         </div>
       </div>
     </div>

@@ -1,44 +1,48 @@
 <template>
-    <div class="container-fluid py-5">
-      <div class="row justify-content-center">
-        <div class="col-md-12 mx-auto">
-          <div class="card shadow-sm">
-            <div class="card-body">
-              <h2 class="card-title text-center pb-3">
-                <i class="bi bi-person-circle"></i> Profile
-              </h2>
+  <div class="container-fluid py-5">
+    <div class="row justify-content-center">
+      <div class="col-md-12 mx-auto">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <h2 class="card-title text-left pb-3">
+              <i class="bi bi-person-circle"></i> Profile
+            </h2>
 
-              <div v-if="loading" class="text-center">
-                <i class="spinner-border text-primary"></i> Loading...
+            <div v-if="loading" class="text-center">
+              <i class="spinner-border text-primary"></i> Loading...
+            </div>
+
+            <div v-else>
+              <!-- ✅ Show error only if data is truly missing -->
+              <div v-if="errorMessage" class="alert alert-danger text-center">
+                {{ errorMessage }}
               </div>
 
-              <div v-else>
-                <div class="mb-3">
-                  <strong>Username:</strong>
-                  <p class="text-muted">{{ user?.nicename || "N/A" }}</p>
-                </div>
+              <div class="mb-3">
+                <strong>Username:</strong>
+                <p class="text-muted">{{ user?.nicename || "N/A" }}</p>
+              </div>
 
-                <div class="mb-3">
-                  <strong>Email:</strong>
-                  <p class="text-muted">{{ user?.email || "N/A" }}</p>
-                </div>
+              <div class="mb-3">
+                <strong>Email:</strong>
+                <p class="text-muted">{{ user?.email || "N/A" }}</p>
+              </div>
 
-                <div class="mb-3">
-                  <strong>Phone Number:</strong>
-                  <p class="text-muted">{{ user?.phone_number || "N/A" }}</p>
-                </div>
+              <div class="mb-3">
+                <strong>Phone Number:</strong>
+                <p class="text-muted">{{ user?.phone_number || "N/A" }}</p>
+              </div>
 
-                <div class="mb-3">
-                    <!-- ✅ Provide the required "title" prop -->
-                    <WalletBalance title="Available Balance" />
-                </div>
+              <div class="mb-3">
+                <WalletBalance title="Available Balance" />
               </div>
             </div>
           </div>
         </div>
       </div>
+    </div>
 
-    <!-- Mobile Footer Menu (Only on Mobile) -->
+    <!-- Mobile Footer Menu -->
     <DashboardFooter />
   </div>
 </template>
@@ -53,67 +57,58 @@ import WalletBalance from "@/components/common/WalletBalance.vue";
 export default {
   name: "Profile",
   components: {
-    WalletBalance, // ✅ Use WalletBalance here
+    WalletBalance,
     DashboardFooter,
   },
   setup() {
     const authStore = useAuthStore();
     const loading = ref(true);
+    const errorMessage = ref(null);
 
-    // Computed property for reactive user data
     const user = computed(() => authStore.user);
 
     /**
-     * Fetches user data.
-     * - Uses Pinia state if available.
-     * - Calls API if data is missing.
+     * Fetches user data and ensures the error is only shown when data is truly missing.
      */
     const fetchUserData = async () => {
       loading.value = true;
+      errorMessage.value = null; // Reset error before fetching
 
       try {
-        // Check if user data is already in Pinia
-        if (!authStore.user || !authStore.user.user_nicename) {
+        if (!authStore.user || !authStore.user.nicename) {
           console.log("Fetching user data from API...");
           const response = await apiService.get("/user/profile");
 
           if (response?.data) {
-            authStore.setUser(response.data); // Update Pinia store
+            authStore.setUser(response.data);
           } else {
             throw new Error("Invalid API response format.");
           }
         }
       } catch (error) {
         console.error("Error fetching user data:", error);
-        alert("Failed to load profile data. Please try again.");
+        
+        // ✅ Only show error if user data is missing
+        if (!authStore.user) {
+          errorMessage.value = "Failed to load profile data. Please try again.";
+        }
       } finally {
         loading.value = false;
       }
     };
 
-    /**
-     * Handles logout
-     * - Clears authentication state via Pinia
-     * - Redirects to login page
-     */
-    const logout = () => {
-      authStore.logout();
-    };
-
-    // Fetch user data on component mount
     onMounted(fetchUserData);
 
     return {
       user,
       loading,
-      logout,
+      errorMessage,
     };
   },
 };
 </script>
 
 <style scoped>
-
 /* Hide sidebar on mobile */
 @media (max-width: 768px) {
   .sidebar {
