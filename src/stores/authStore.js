@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { loginAPI, refreshToken } from "@/services/authService";
+import { loginUser, refreshToken } from "@/services/authService";
 
 export const useAuthStore = defineStore("auth", {
   state: () => ({
@@ -21,47 +21,53 @@ export const useAuthStore = defineStore("auth", {
     /**
      * ✅ Logs in the user and initializes session tracking.
      */
-    async login(username, password) {
+    async login(username, password, routerInstance) {
       if (this.token) return;
-
+    
       try {
-        const data = await loginAPI(username, password);
-        const tokenExpiryMin = import.meta.env.VITE_TOKEN_EXPIRY_MIN || 20; // Default to 20 min
-
-        this.token = data.token;
-        this.refreshToken = data.refresh_token;
+        const data = await loginUser(username, password);
+        const tokenExpiryMin = parseInt(import.meta.env.VITE_TOKEN_EXPIRY_MIN) || 20;
+    
+        this.token = data.data.token; // ✅ Ensure correct token path
+        this.refreshToken = data.data.refresh_token;
         this.tokenExpiry = Date.now() + tokenExpiryMin * 60 * 1000;
-        this.user = data;
-
+        this.user = data.data;
+    
         console.log(`🔑 Token expires in ${tokenExpiryMin} minutes`);
-
-        this.startInactivityTimer(); // Start tracking inactivity
+        this.startInactivityTimer();
+    
+        if (routerInstance) {
+          console.log("✅ Redirecting from authStore...");
+          setTimeout(() => {
+            routerInstance.push("/dashboard").catch(err =>
+              console.error("❌ Router navigation error:", err)
+            );
+          }, 500);
+        }
       } catch (error) {
+        console.error("❌ Login failed:", error);
         throw error;
       }
     },
+    
+    
 
     /**
-     * Handles refreshing the authentication token before expiration.
-     * 
-     * How Token Refresh Works:
-     * Every 60 seconds, refreshTokenIfNeeded() checks if the token will expire within 2 minutes.
-     * If expiry is close, it calls refreshToken() to get a new token.
-     * If refresh fails, it logs the user out.
-     * Logout is prevented as long as refresh works.
-     * The app keeps users logged in seamlessly, unless their refresh token also expires!
+     * ✅ Refreshes the Customer's JWT access token using the refresh token.
+     * Prevents logout if refresh is successful.
      */
     async refreshTokenIfNeeded() {
-      const bufferTimeMs = (import.meta.env.VITE_TOKEN_REFRESH_BUFFER_MIN || 2) * 60 * 1000; // Refresh 2 min before expiry
-
+      const bufferTimeMs = (parseInt(import.meta.env.VITE_TOKEN_REFRESH_BUFFER_MIN) || 2) * 60 * 1000; // Refresh 2 min before expiry
+    
       if (this.tokenExpiry && Date.now() > this.tokenExpiry - bufferTimeMs) {
         console.log("🔄 Refreshing token before expiry...");
-
+    
         try {
-          const data = await refreshToken(this.refreshToken);
-          if (data?.token) {
+          const data = await refreshToken();
+          if (data?.token && data?.refresh_token) {
             this.token = data.token;
-            this.tokenExpiry = Date.now() + (import.meta.env.VITE_TOKEN_EXPIRY_MIN || 20) * 60 * 1000;
+            this.refreshToken = data.refresh_token;  // ✅ Always store the latest refresh token
+            this.tokenExpiry = Date.now() + (parseInt(import.meta.env.VITE_TOKEN_EXPIRY_MIN) || 20) * 60 * 1000;
             console.log("✅ Token refreshed successfully!");
           } else {
             console.warn("⚠ Token refresh failed, logging out...");
@@ -72,18 +78,18 @@ export const useAuthStore = defineStore("auth", {
           this.logout();
         }
       }
-    },
+    }
+    ,
 
     /**
-     * ✅ Logs out the user and redirects to the login page.
-     * @param {Object} routerInstance - Vue Router instance (must be passed from component)
+     * ✅ Logs out the user, clears data, and redirects.
      */
-    logout(routerInstance) {
+    logout(routerInstance = null) {
       console.log("🚀 Logging out user...");
-
+    
       this.resetTimers();
       this.$reset(); // Reset Pinia state
-
+    
       if (routerInstance) {
         console.log("🔄 Redirecting to login...");
         routerInstance.push("/login").catch((err) =>
@@ -93,16 +99,16 @@ export const useAuthStore = defineStore("auth", {
         console.warn("⚠ No router instance provided. Cannot redirect.");
       }
     },
+    
 
     /**
-     * ✅ Starts inactivity tracking and token refresh.
-     * @param {Object} routerInstance - Vue Router instance
+     * ✅ Starts inactivity tracking and auto-logout.
      */
     startInactivityTimer(routerInstance) {
       this.resetTimers();
 
-      const warningTimeMs = (import.meta.env.VITE_INACTIVITY_WARNING_MIN || 9) * 60 * 1000;
-      const autoLogoutTimeMs = (import.meta.env.VITE_AUTO_LOGOUT_MIN || 10) * 60 * 1000;
+      const warningTimeMs = (parseInt(import.meta.env.VITE_INACTIVITY_WARNING_MIN) || 9) * 60 * 1000;
+      const autoLogoutTimeMs = (parseInt(import.meta.env.VITE_AUTO_LOGOUT_MIN) || 10) * 60 * 1000;
 
       console.log(
         `🕒 Setting inactivity timers: Warning at ${warningTimeMs / 1000}s, Logout at ${
@@ -129,7 +135,7 @@ export const useAuthStore = defineStore("auth", {
     },
 
     /**
-     * ✅ Resets inactivity timers and warning state.
+     * ✅ Resets inactivity timers and warnings.
      */
     resetTimers() {
       clearTimeout(this.warningTimeout);
@@ -145,7 +151,22 @@ export const useAuthStore = defineStore("auth", {
       this.resetTimers();
       this.startInactivityTimer();
     },
+    setToken(token) {
+      this.token = token;
+      localStorage.setItem("auth_token", token); // Persist token
+    },
+    setUser(userData) {
+      this.user = userData;
+      localStorage.setItem("user", JSON.stringify(userData)); // Persist user
+    },
+    clearAuth() {
+      this.token = null;
+      this.user = null;
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("user");
+    }
   },
+
   // ✅ Enable Pinia Persistence
   persist: {
     enabled: true,
