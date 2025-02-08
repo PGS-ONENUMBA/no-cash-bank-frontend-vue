@@ -17,6 +17,7 @@ import PublicOnTheHouse from "@/views/Public/OnTheHouse.vue";
 import Privacy from "@/views/Privacy.vue";
 import Terms from "@/views/Terms.vue";
 import ResetPassword from "@/views/Public/ResetPassword.vue";
+import ThankYou from "@/views/common/ThankYouPage.vue";
 import NotFound from "@/views/404.vue";
 
 // Dashboard Views (Protected Routes)
@@ -38,6 +39,7 @@ const routes = [
     component: PublicLayout,
     children: [
       { path: "", name: "Home", component: Home, meta: { title: "Home" } },
+      { path: "thank-you", name: "ThankYou", component: ThankYou, meta: { title: "Thank you" } },
       { path: "about", name: "About", component: About, meta: { title: "About Us" } },
       { path: "team", name: "Team", component: Team, meta: { title: "Our Team" } },
       { path: "how-it-works", name: "HowItWorks", component: HowItWorks, meta: { title: "How It Works" } },

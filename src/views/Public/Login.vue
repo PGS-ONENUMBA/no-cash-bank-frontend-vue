@@ -21,23 +21,35 @@
                     required
                   />
                 </div>
+
                 <!-- Password Field -->
                 <div class="mb-3">
                   <label for="password" class="form-label">
                     <i class="bi bi-lock-fill me-2"></i> Password
                   </label>
-                  <input
-                    type="password"
-                    class="form-control"
-                    id="password"
-                    v-model="password"
-                    required
-                  />
+                  <div class="input-group">
+                    <input
+                      :type="showPassword ? 'text' : 'password'"
+                      class="form-control"
+                      id="password"
+                      v-model="password"
+                      required
+                    />
+                    <button
+                      class="btn btn-outline-secondary toggle-btn"
+                      type="button"
+                      @click="togglePasswordVisibility"
+                    >
+                      <i :class="showPassword ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
+                    </button>
+                  </div>
                 </div>
+
                 <!-- Error Message -->
                 <div v-if="errorMessage" class="alert alert-danger text-center">
                   {{ errorMessage }}
                 </div>
+
                 <!-- Submit Button -->
                 <button
                   type="submit"
@@ -48,10 +60,11 @@
                     <i class="spinner-border spinner-border-sm"></i> Logging in...
                   </span>
                   <span v-else>
-                    <i class="bi bi-box-arrow-in-right me-2 bi-white"></i> Login
+                    <i class="bi bi-box-arrow-in-right me-2"></i> Login
                   </span>
                 </button>
               </form>
+
               <!-- Forgot Password Link -->
               <div class="text-center">
                 <router-link to="/reset-password" class="text-decoration-none text-green">
@@ -81,26 +94,41 @@ export default {
     const password = ref("");
     const loading = ref(false);
     const errorMessage = ref(null);
+    const showPassword = ref(false);
 
     /**
-     * Handles user login
+     * ✅ Toggles password visibility
      */
-    const handleLogin = async () => {
-      loading.value = true;
-      errorMessage.value = null;
-
-      try {
-        await authStore.login(username.value, password.value);
-
-        console.log("✅ Login complete. Redirecting to dashboard...");
-        router.push({ name: "Dashboard" });
-      } catch (error) {
-        console.error("❌ Login error:", error.message);
-        errorMessage.value = error.message || "Login failed. Try again.";
-      } finally {
-        loading.value = false;
-      }
+    const togglePasswordVisibility = () => {
+      showPassword.value = !showPassword.value;
     };
+
+    /**
+     * ✅ Handles user login
+     */
+     const handleLogin = async () => {
+        loading.value = true;
+        errorMessage.value = null;
+
+        try {
+          console.log("🚀 Logging in with:", { username: username.value, password: password.value });
+          await authStore.login(username.value, password.value, router);
+
+          console.log("✅ Login successful. Redirecting...");
+          setTimeout(() => {
+            router.push("/dashboard").catch(err =>
+              console.error("❌ Router navigation error:", err)
+            );
+          }, 500); // Small delay to allow state updates
+        } catch (error) {
+          console.error("❌ Login error:", error.message);
+          errorMessage.value = error.message || "Login failed. Try again.";
+        } finally {
+          loading.value = false;
+        }
+      };
+
+
 
     return {
       username,
@@ -108,16 +136,17 @@ export default {
       loading,
       errorMessage,
       handleLogin,
+      showPassword,
+      togglePasswordVisibility,
     };
   },
 };
 </script>
 
-
 <style scoped>
-/* Styling for the Login Component */
-.alert {
-  font-size: 0.9rem;
-  margin-bottom: 1rem;
+/* Ensures button aligns properly inside password field */
+.toggle-btn {
+  border: none;
+  background: none;
 }
 </style>

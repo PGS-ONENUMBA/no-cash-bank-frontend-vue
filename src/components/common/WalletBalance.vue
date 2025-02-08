@@ -19,10 +19,6 @@ import { useAuthStore } from "@/stores/authStore";
 export default {
   name: "WalletBalance",
   props: {
-    /**
-     * Title to display on the wallet balance component.
-     * @type {String}
-     */
     title: {
       type: String,
       required: true,
@@ -32,13 +28,13 @@ export default {
     const authStore = useAuthStore();
 
     /**
-     * Retrieves the user's wallet balance from Pinia store.
-     * If unavailable, defaults to "0.00".
+     * ✅ Retrieves user's wallet balance from Pinia state.
+     * Defaults to `0.00` if no value is found.
      */
-    const walletBalance = computed(() => authStore.user?.wallet_balance || "0.00");
+    const walletBalance = computed(() => authStore.user?.wallet_balance ?? "0.00");
 
     /**
-     * Formats the balance as Nigerian Naira (₦).
+     * ✅ Formats wallet balance as Nigerian Naira (₦).
      */
     const formattedBalance = computed(() =>
       new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN" }).format(

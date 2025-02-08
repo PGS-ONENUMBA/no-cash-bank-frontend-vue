@@ -1,48 +1,60 @@
 import axios from "axios";
 import { useAuthStore } from "@/stores/authStore";
-import { refreshToken, logout } from "./authService";
+import { useAppStore } from "@/stores/appStore";
+import { refreshToken, refreshAppToken, logout } from "./authService";
 
-// Set up API client
+// Create Axios instance
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
   headers: { "Content-Type": "application/json" },
+  withCredentials: true, // Allow cookies (for refresh tokens)
 });
 
 /**
- * Axios Request Interceptor:
- * - Attaches Bearer Token from Pinia store
- * - Refreshes expired tokens
+ * ✅ Determines whether a request should use the **App Token** or **Customer Token**.
+ */
+const useAppTokenForRequest = (url) => {
+  const appTokenEndpoints = [
+    "/nocash-bank/v1/action",
+    "/nocash-bank/v1/products",
+    "/nocash-bank/v1/login",
+  ];
+  return appTokenEndpoints.some((endpoint) => url.includes(endpoint));
+};
+
+/**
+ * ✅ Axios Request Interceptor: Attaches Bearer Token
  */
 apiClient.interceptors.request.use(async (config) => {
   const authStore = useAuthStore();
-  let token = authStore.token;
+  const appStore = useAppStore();
+  let token;
 
-  if (!token) {
-    console.warn("⚠ No token found, user might not be logged in.");
-    return config;
-  }
+  const isAppAPI = useAppTokenForRequest(config.url);
 
-  // Refresh token if expired
-  if (authStore.isTokenExpired) {
-    console.log("🔄 Token expired. Refreshing...");
-    token = await refreshToken();
-
+  if (isAppAPI) {
+    token = appStore.appToken;
     if (!token) {
-      console.warn("❌ Token refresh failed. Logging out.");
-      logout();
-      return Promise.reject("Session expired. Please log in again.");
+      token = await refreshAppToken();
+    }
+  } else {
+    token = authStore.token;
+    if (authStore.isTokenExpired) {
+      console.log("🔄 Refreshing user token...");
+      token = await refreshToken();
+      if (!token) {
+        logout();
+        return Promise.reject("Session expired. Please log in again.");
+      }
     }
   }
 
-  // Attach token
   config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
 /**
- * Axios Response Interceptor:
- * - Handles 401 errors by attempting token refresh
- * - Logs out user if refresh fails
+ * ✅ Axios Response Interceptor: Handles Token Expiry
  */
 apiClient.interceptors.response.use(
   (response) => response,
