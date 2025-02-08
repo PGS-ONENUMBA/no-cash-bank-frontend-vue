@@ -10,6 +10,14 @@
           individuals to make payments with cash!
         </p>
 
+        <!-- PWA Install Button -->
+        <div class="d-flex align-items-center justify-content-center">
+          <button v-if="showInstallButton && isMobileOrTablet === true" @click="installPwa" type="button" class="btn btn-primary d-flex align-items-center gap-2">
+            <i class="bi bi-download text-white"></i>
+            <span>Install App</span>
+          </button>
+        </div>
+
         <!-- Display Preloader when fetching -->
         <Preloader v-if="loading" />
 
@@ -42,6 +50,9 @@ export default {
     const displayedRaffles = ref([]); // Stores the raffle products to be displayed
     const loading = ref(false); // Controls preloader visibility
     const router = useRouter(); // Initialize Vue Router
+
+    const showInstallButton = ref(false); 
+    const isMobileOrTablet = window.matchMedia("(max-width: 1024px)").matches;
 
     /**
      * Fetches all active raffle cycles from the API.
@@ -114,13 +125,66 @@ export default {
       });
     };
 
+       /**
+    * Register the PWA beforeInstallPrompt event
+    **/
+    const registerbeforeInstallPrompt = () => {
+      window.addEventListener('beforeinstallprompt', (event) => {
+          // Prevent the mini-infobar from appearing on mobile.
+          event.preventDefault();
+          console.log('👍', 'beforeinstallprompt', event);
+          // Stash the event so it can be triggered later.
+          window.deferredPrompt = event;
+          // Remove the 'hidden' class from the install button container.
+          showInstallButton.value = true
+      });
+    }
+
+     /**
+    * Install PWA button 
+    **/
+    const installPwa = async () => {
+      console.log("Pwa installed")
+      const promptEvent = window.deferredPrompt;
+      if (!promptEvent) {
+        // The deferred prompt isn't available.
+        return;
+      }
+       // Show the install prompt.
+       promptEvent.prompt();
+      // Log the result
+      const result = await promptEvent.userChoice;
+      console.log('👍', 'userChoice', result);
+      // Reset the deferred prompt variable, since
+      // prompt() can only be called once.
+      window.deferredPrompt = null;
+      showInstallButton.value = false
+    };
+
+     /**
+     * Check if PWA is installed already, and clear the deferedPrompt event stored earlier
+     **/
+     const checkPwaInstalled = () => {
+      window.addEventListener('appinstalled', (event) => {
+      console.log('👍', 'appinstalled', event);
+      // Clear the deferredPrompt so it can be garbage collected
+        window.deferredPrompt = null;
+      });
+    }
+
     // Fetch raffles on component mount
     onMounted(fetchRaffles);
+
+    onMounted(registerbeforeInstallPrompt);
 
     return {
       displayedRaffles,
       redirectToProductPage, // Use this for navigation
-      loading
+      loading,
+      installPwa,
+      showInstallButton, // PWA Custom Install Button
+      checkPwaInstalled, // This will check if PWA is installed. It fires the "appInstalled" event
+      isMobileOrTablet, // 
     };
   }
 };
