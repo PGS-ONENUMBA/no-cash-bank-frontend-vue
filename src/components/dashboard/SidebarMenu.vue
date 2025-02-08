@@ -17,7 +17,7 @@
       <ul v-if="availableProducts.length > 0" class="nav flex-column">
         <li class="nav-item">
           <router-link class="nav-link" :class="{ active: isActive('/dashboard') }" to="/dashboard">
-            <i class="bi bi-house-door"></i> Dashboard
+            <i class="bi bi-house-door sidebar-icon"></i> Dashboard
           </router-link>
         </li>
 
@@ -38,18 +38,18 @@
               },
             }"
           >
-            <i :class="product.icon"></i> {{ product.raffle_type }}
+            <i :class="product.icon" class="sidebar-icon"></i> {{ product.raffle_type }}
           </router-link>
         </li>
 
         <li class="nav-item">
           <router-link class="nav-link" :class="{ active: isActive('/dashboard/transfer') }" to="/dashboard/transfer">
-            <i class="bi bi-arrow-up-right-circle"></i> Transfer
+            <i class="bi bi-arrow-up-right-circle sidebar-icon"></i> Transfer
           </router-link>
         </li>
         <li class="nav-item">
           <router-link class="nav-link" :class="{ active: isActive('/dashboard/reports') }" to="/dashboard/reports">
-            <i class="bi bi-clock-history"></i> Reports
+            <i class="bi bi-clock-history sidebar-icon"></i> Reports
           </router-link>
         </li>
       </ul>
@@ -58,12 +58,12 @@
       <ul class="nav flex-column mt-4">
         <li class="nav-item">
           <router-link class="nav-link" :class="{ active: isActive('/dashboard/profile') }" to="/dashboard/profile">
-            <i class="bi bi-person"></i> My Profile
+            <i class="bi bi-person sidebar-icon"></i> My Profile
           </router-link>
         </li>
         <li class="nav-item">
           <a class="nav-link" href="#" @click.prevent="handleLogout">
-            <i class="bi bi-box-arrow-right"></i> Logout
+            <i class="bi bi-box-arrow-right sidebar-icon"></i> Logout
           </a>
         </li>
       </ul>
@@ -72,7 +72,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from "vue";
+import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { fetchProducts, isLoading } from "@/services/productService"; // ✅ Import product service
 import { useAuthStore } from "@/stores/authStore";
@@ -82,8 +82,8 @@ export default {
   setup() {
     const authStore = useAuthStore();
     const router = useRouter();
-    const availableProducts = ref([]); // Store dynamic products
-    const loadingProducts = isLoading(); // Get loading state from service
+    const availableProducts = ref([]);
+    const loadingProducts = isLoading();
 
     /**
      * ✅ Fetch products from the centralized service
@@ -97,7 +97,7 @@ export default {
      * @param {string} route - The route to check.
      * @returns {boolean} - Returns true if active, otherwise false.
      */
-    const isActive = (route) => computed(() => router.currentRoute.value.path === route);
+    const isActive = (route) => router.currentRoute.value.path === route;
 
     /**
      * Handles user logout & redirects to login.
@@ -121,7 +121,25 @@ export default {
 </script>
 
 <style scoped>
-/* Active state for sidebar links */
+/* ✅ Sidebar link text should be black */
+.sidebar .nav-link {
+  color: black;
+  font-weight: 500;
+  transition: color 0.3s ease-in-out;
+}
+
+/* ✅ Purple Icons */
+.sidebar-icon {
+  color: #6609b8;
+  margin-right: 8px;
+}
+
+/* ✅ Change text color on hover */
+.sidebar .nav-link:hover {
+  color: #555; /* Lighter black */
+}
+
+/* ✅ Active state remains green */
 .sidebar .nav-link.active {
   color: #09b850;
 }

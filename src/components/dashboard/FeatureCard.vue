@@ -1,14 +1,15 @@
 <template>
   <div class="col">
-    <div class="card text-center shadow-sm">
-      <div class="card-body">
-        <h5 class="card-title">
-          <i :class="icon"></i> {{ title }}
-        </h5>
-        <p class="card-text">{{ description }}</p>
-        <router-link :to="link" class="btn btn-success">Go to {{ title }}</router-link>
+    <router-link :to="link" class="card-link">
+      <div class="card text-center shadow-sm custom-card">
+        <div class="card-body">
+          <h5 class="card-title">
+            <i :class="icon" class="text-purple"><br /></i> {{ title }}
+          </h5>
+          <p class="card-text">{{ description }}</p>
+        </div>
       </div>
-    </div>
+    </router-link>
   </div>
 </template>
 
@@ -44,5 +45,20 @@ export default {
 </script>
 
 <style scoped>
-/* Specific card styles can be added here */
+/* ✅ Remove default router-link styling */
+.card-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+
+.custom-card:hover {
+  box-shadow: 0px 6px 14px rgba(0, 0, 0, 0.15);
+  transform: scale(1.02);
+}
+
+/* ✅ Purple Icons */
+.text-purple {
+  color: #6609b8 !important;
+}
 </style>

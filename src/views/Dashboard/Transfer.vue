@@ -71,14 +71,16 @@
             </div>
 
             <!-- Submit Button -->
-            <button type="submit" class="btn btn-orange w-100 mt-3" :disabled="loading">
-              <span v-if="loading">
+            <div class="d-grid gap-2 col-3 mt-3">
+              <button class="btn btn-light" type="submit" :disabled="loading">
+                <span v-if="loading">
                 <i class="spinner-border spinner-border-sm"></i> Processing...
               </span>
               <span v-else>
-                <i class="bi bi-arrow-right-circle"></i> Transfer Now
+                <i id="transfer" class="bi bi-arrow-right-circle"></i> Transfer Now
               </span>
-            </button>
+              </button>
+            </div>
           </form>
         </div>
       </div>
@@ -198,16 +200,20 @@ export default {
   color: #09b850 !important;
 }
 
-.btn-orange {
-  background-color: #ff6f00;
+
+.btn-light {
+  background-color: #6609b8;
   color: white;
   border: none;
+  text-align: left;
 }
 
-.btn-orange:hover {
-  background-color: #e65d00;
+.btn-light:hover {
+  background-color: #723ba2;
 }
-
+#transfer {
+  color: #fff!important;
+}
 /* Compact Input Styles */
 .compact-input {
   display: inline-block;
