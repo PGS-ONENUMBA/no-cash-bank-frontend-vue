@@ -5,7 +5,7 @@
         <h1 class="display-5 fs-1">Africa's First No-Cash Bank</h1>
         <p class="col-md-8 mx-auto fs-3">Experience Banking Without Cash</p>
         <p>
-          At OneNnumba, we envision a world where banking is accessible to everyone, everywhere.<br />
+          At {{ siteName }}, we envision a world where banking is accessible to everyone, everywhere.<br />
           Our mission is to deliver secure, user-friendly online No-Cash banking that empowers<br />
           individuals to make payments with cash!
         </p>
@@ -42,6 +42,8 @@ export default {
     const displayedRaffles = ref([]); // Stores the raffle products to be displayed
     const loading = ref(false); // Controls preloader visibility
     const router = useRouter(); // Initialize Vue Router
+    const siteName = import.meta.env.VITE_SITE_NAME || "OneNnumba"; // Fallback to "OneNnumba" if env variable is missing
+  
 
     /**
      * Fetches all active raffle cycles from the API.
@@ -120,7 +122,8 @@ export default {
     return {
       displayedRaffles,
       redirectToProductPage, // Use this for navigation
-      loading
+      loading,
+      siteName
     };
   }
 };
