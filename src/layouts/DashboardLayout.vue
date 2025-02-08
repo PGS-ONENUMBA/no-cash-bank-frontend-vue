@@ -22,7 +22,7 @@
         <SidebarMenu />
 
         <!-- Main Content -->
-        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 mb-5">
           <router-view></router-view>
         </main>
       </div>
@@ -67,7 +67,7 @@ export default {
     const authStore = useAuthStore();
     const router = useRouter();
 
-    const userDisplayName = computed(() => authStore.user?.user_nicename || "User");
+    const userDisplayName = computed(() => authStore.user?.nicename || "User");
     const showWarning = computed(() => authStore.showWarning);
      // ✅ Define `siteName` properly
      const siteName = import.meta.env.VITE_SITE_NAME || "OneNUMBA"; 

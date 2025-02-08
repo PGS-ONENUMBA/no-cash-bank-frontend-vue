@@ -1,8 +1,7 @@
 <template>
-  <div>
-    <div class="container py-5">
+    <div class="container-fluid py-5">
       <div class="row justify-content-center">
-        <div class="col-md-8">
+        <div class="col-md-12 mx-auto">
           <div class="card shadow-sm">
             <div class="card-body">
               <h2 class="card-title text-center pb-3">
@@ -16,12 +15,12 @@
               <div v-else>
                 <div class="mb-3">
                   <strong>Username:</strong>
-                  <p class="text-muted">{{ user?.user_nicename || "N/A" }}</p>
+                  <p class="text-muted">{{ user?.nicename || "N/A" }}</p>
                 </div>
 
                 <div class="mb-3">
                   <strong>Email:</strong>
-                  <p class="text-muted">{{ user?.user_email || "N/A" }}</p>
+                  <p class="text-muted">{{ user?.email || "N/A" }}</p>
                 </div>
 
                 <div class="mb-3">
@@ -38,7 +37,6 @@
           </div>
         </div>
       </div>
-    </div>
 
     <!-- Mobile Footer Menu (Only on Mobile) -->
     <DashboardFooter />
@@ -115,11 +113,6 @@ export default {
 </script>
 
 <style scoped>
-/* Profile Page Styles */
-.card {
-  max-width: 500px;
-  margin: auto;
-}
 
 /* Hide sidebar on mobile */
 @media (max-width: 768px) {
