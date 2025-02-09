@@ -21,7 +21,7 @@
           </router-link>
         </li>
 
-        <!-- 🟢 Dynamically Render Product Menu Items -->
+        <!-- 🟢 @TODO Dynamically Render Product Menu Items. not working as it should -->
         <li
           v-for="product in availableProducts"
           :key="`${product.raffle_cycle_id}-${product.raffle_type_id}`"
@@ -74,7 +74,7 @@
 <script>
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
-import { fetchProducts, isLoading } from "@/services/productService"; // ✅ Import product service
+import { fetchProducts, isLoading, getIcon, getRoute } from "@/services/productService";
 import { useAuthStore } from "@/stores/authStore";
 
 export default {
@@ -86,28 +86,53 @@ export default {
     const loadingProducts = isLoading();
 
     /**
-     * ✅ Fetch products from the centralized service
+     * Transform raw raffle data into menu items
      */
-    const loadProducts = async () => {
-      availableProducts.value = await fetchProducts();
+    const transformProducts = (raffles) => {
+      const transformed = [];
+      
+      raffles.forEach(raffle => {
+        raffle.associated_types.forEach(type => {
+          transformed.push({
+            raffle_cycle_id: raffle.raffle_cycle_id,
+            raffle_type_id: type.raffle_type_id,
+            raffle_type: type.raffle_type,
+            winnable_amount: raffle.winnable_amount,
+            icon: `${getIcon(type.raffle_type_id)} sidebar-icon`,
+            route: getRoute(type.raffle_type_id)
+          });
+        });
+      });
+
+      return transformed;
     };
 
     /**
-     * Determines if the given route is active.
-     * @param {string} route - The route to check.
-     * @returns {boolean} - Returns true if active, otherwise false.
+     * Load and transform products using cached service
+     */
+    const loadProducts = async () => {
+      try {
+        const rawProducts = await fetchProducts();
+        availableProducts.value = transformProducts(rawProducts);
+      } catch (error) {
+        console.error("❌ Error loading products:", error);
+        availableProducts.value = [];
+      }
+    };
+
+    /**
+     * Check if route is active
      */
     const isActive = (route) => router.currentRoute.value.path === route;
 
     /**
-     * Handles user logout & redirects to login.
+     * Handle user logout
      */
     const handleLogout = async () => {
       await authStore.logout();
       router.push("/login");
     };
 
-    // Fetch product menu items when component loads
     onMounted(loadProducts);
 
     return {

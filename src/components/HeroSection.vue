@@ -13,43 +13,63 @@
         <!-- Display Preloader when fetching -->
         <Preloader v-if="loading" />
 
-        <!-- Dynamically Render Raffle Cycles -->
-        <div v-else>
-          <button
-            v-for="raffle in displayedRaffles"
-            :key="`${raffle.raffle_cycle_id}-${raffle.raffle_type_id}`"
-            @click="redirectToProductPage(raffle.raffle_cycle_id, raffle.raffle_type_id)"
-            class="btn btn-green btn-small mb-3"
+        <!-- Raffle Cycles Display -->
+        <div v-else class="container">
+          <div class="d-grid gap-2 d-md-block text-center">
+            <template v-for="raffle in raffleProducts" :key="raffle.raffle_cycle_id">
+              <button
+                v-for="type in raffle.associated_types"
+                :key="`${raffle.raffle_cycle_id}-${type.raffle_type_id}`"
+                @click="redirectToProductPage(raffle.raffle_cycle_id, type.raffle_type_id)"
+                class="btn btn-green m-2"
+              >
+                <i :class="`${getIcon(type.raffle_type_id)} me-2 text-white fs-3`"></i>
+                <div class="d-flex flex-column">
+                  <span>{{ type.raffle_type }}</span>
+                  <small>Amount ₦{{ formatAmount(raffle.winnable_amount) }}</small>
+                </div>
+              </button>
+            </template>
+          </div>
+        </div>
+
+        <!-- Video Section -->
+        <div class="mt-5 position-relative">
+          <a 
+            href="#" 
+            data-bs-toggle="modal" 
+            data-bs-target="#videoModal" 
+            class="btn position-absolute top-100 start-50 translate-middle ripple-btn"
           >
-            <i class="bi bi-cash-stack bi-white"></i> {{ raffle.raffle_type }}
-          </button>
-          <!-- Video Icon -->
-          <div class="mt-5 position-relative">
-              <a href="#" data-bs-toggle="modal" data-bs-target="#videoModal" class="btn position-absolute top-100 start-50 translate-middle ripple-btn">
-                <i class="bi bi-play-circle bi-green-medium"></i>
-              </a>
-              <span class="ripple"></span>
-              <span class="ripple"></span>
-              <span class="ripple"></span>
-            </div>
-            <!-- Video Modal -->
-            <div class="modal fade" id="videoModal" tabindex="-1" aria-labelledby="videoModalLabel" aria-hidden="true">
-              <div class="modal-dialog modal-dialog-centered modal-lg">
-                <div class="modal-content">
-                  <div class="modal-header border-0">
-                    <h5 class="modal-title" id="videoModalLabel">
-                      <i class="bi bi-play-circle me-2"></i> Testimonial Video
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                  </div>
-                  <div class="modal-body">
-                    <div class="ratio ratio-16x9">
-                      <iframe id="videoIframe" src="https://www.youtube.com/embed/dQw4w9WgXcQ" title="Testimonial Video" allowfullscreen></iframe>
-                    </div>
-                  </div>
+            <i class="bi bi-play-circle bi-green-medium"></i>
+          </a>
+          <span class="ripple"></span>
+          <span class="ripple"></span>
+          <span class="ripple"></span>
+        </div>
+
+        <!-- Video Modal -->
+        <div class="modal fade" id="videoModal" tabindex="-1" aria-labelledby="videoModalLabel" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+              <div class="modal-header border-0">
+                <h5 class="modal-title" id="videoModalLabel">
+                  <i class="bi bi-play-circle me-2"></i> Testimonial Video
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                <div class="ratio ratio-16x9">
+                  <iframe 
+                    id="videoIframe" 
+                    src="https://www.youtube.com/embed/dQw4w9WgXcQ" 
+                    title="Testimonial Video" 
+                    allowfullscreen
+                  ></iframe>
                 </div>
               </div>
             </div>
+          </div>
         </div>
       </div>
     </div>
@@ -58,82 +78,29 @@
 
 <script>
 import { ref, onMounted } from "vue";
-import { useRouter } from "vue-router"; // Import Vue Router
-import Preloader from "@/components/common/Preloader.vue"; 
-import apiClient from "@/services/apiService"; 
+import { useRouter } from "vue-router";
+import Preloader from "@/components/common/Preloader.vue";
+import { fetchProducts, isLoading, getIcon, getRoute } from "@/services/productService";
 
 export default {
   name: "HeroSection",
   components: { Preloader },
-  setup() {
-    const displayedRaffles = ref([]); // Stores the raffle products to be displayed
-    const loading = ref(false); // Controls preloader visibility
-    const router = useRouter(); // Initialize Vue Router
-    const siteName = import.meta.env.VITE_SITE_NAME || "OneNnumba"; // Fallback to "OneNnumba" if env variable is missing
   
+  setup() {
+    const raffleProducts = ref([]);
+    const loading = ref(false);
+    const router = useRouter();
+    const siteName = import.meta.env.VITE_SITE_NAME || "OneNnumba";
 
-    /**
-     * Fetches all active raffle cycles from the API.
-     * Each raffle cycle contains multiple associated types, which are expanded into separate products.
-     */
-    const fetchRaffles = async () => {
-      loading.value = true; // Show preloader
-      try {
-        const response = await apiClient.post("/nocash-bank/v1/action", {
-          action_type: "get_raffle_cycle"
-        });
-
-        if (response.data.success) {
-          const fetchedRaffles = response.data.raffle_cycles; // Handle multiple active cycles
-          let expandedRaffles = [];
-
-          fetchedRaffles.forEach(raffle => {
-            if (Array.isArray(raffle.associated_types)) {
-              // Expand the associated types into multiple products
-              raffle.associated_types.forEach(type => {
-                expandedRaffles.push({
-                  raffle_cycle_id: raffle.raffle_cycle_id,
-                  raffle_type_id: type.raffle_type_id,
-                  raffle_type: type.raffle_type, 
-                  winnable_amount: raffle.winnable_amount
-                });
-              });
-            }
-          });
-
-          displayedRaffles.value = expandedRaffles;
-        }
-      } catch (error) {
-        console.error("Error fetching raffle cycles:", error.message);
-      } finally {
-        loading.value = false; // Hide preloader
-      }
+    // Format amount to 2 decimal places
+    const formatAmount = (amount) => {
+      return parseFloat(amount).toFixed(2);
     };
 
-    /**
-     * Redirects users to the appropriate product page with relevant query parameters.
-     * @param {string} raffleCycleId - The ID of the raffle cycle.
-     * @param {string} raffleTypeId - The ID of the associated raffle type.
-     */
+    // Handle product page navigation
     const redirectToProductPage = (raffleCycleId, raffleTypeId) => {
-      let routePath = "";
-
-      switch (parseInt(raffleTypeId)) {
-        case 1:
-          routePath = "/get-cash";
-          break;
-        case 2:
-          routePath = "/pay4me";
-          break;
-        case 3:
-          routePath = "/on-the-house";
-          break;
-        default:
-          console.warn("Invalid raffle type. No navigation.");
-          return;
-      }
-
-      // Navigate to the corresponding product page with query parameters
+      const routePath = getRoute(raffleTypeId);
+      
       router.push({
         path: routePath,
         query: {
@@ -143,19 +110,95 @@ export default {
       });
     };
 
-    // Fetch raffles on component mount
-    onMounted(fetchRaffles);
+    // Fetch raffle products on component mount
+    onMounted(async () => {
+      loading.value = true;
+      try {
+        const products = await fetchProducts();
+        raffleProducts.value = products;
+      } catch (error) {
+        console.error('Error fetching raffle products:', error);
+      } finally {
+        loading.value = false;
+      }
+    });
 
     return {
-      displayedRaffles,
-      redirectToProductPage, // Use this for navigation
+      raffleProducts,
       loading,
-      siteName
+      siteName,
+      redirectToProductPage,
+      formatAmount,
+      getIcon
     };
   }
 };
 </script>
 
 <style scoped>
-/* Add styles for better layout */
+.btn-green {
+  background-color: #28a745;
+  color: white;
+  min-width: 200px;
+  padding: 0.75rem 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.btn-green:hover {
+  background-color: #218838;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.btn-green small {
+  opacity: 0.9;
+  font-size: 0.875rem;
+}
+
+@media (max-width: 768px) {
+  .btn-green {
+    width: 100%;
+    margin-bottom: 0.5rem;
+    justify-content: center;
+  }
+}
+
+.ripple-btn {
+  z-index: 1;
+}
+
+.ripple {
+  position: absolute;
+  border: 4px solid #e4d2f4;
+  border-radius: 50%;
+  animation: ripple 1.5s linear infinite;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.ripple:nth-child(2) {
+  animation-delay: 0.5s;
+}
+
+.ripple:nth-child(3) {
+  animation-delay: 1s;
+}
+
+@keyframes ripple {
+  0% {
+    width: 0;
+    height: 0;
+    opacity: 0.5;
+  }
+  100% {
+    width: 100px;
+    height: 100px;
+    opacity: 0;
+  }
+}
 </style>

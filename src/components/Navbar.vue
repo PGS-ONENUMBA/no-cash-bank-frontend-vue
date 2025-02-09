@@ -33,7 +33,7 @@
             </router-link>
           </li>
 
-          <!-- 🔥 Dynamically Render Products Dropdown -->
+          <!-- Products Dropdown -->
           <li class="nav-item dropdown mx-2">
             <button
               class="nav-link dropdown-toggle"
@@ -83,12 +83,10 @@
               <i class="bi bi-person-circle me-2"></i> {{ userDisplayName }}
             </button>
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
-              <!-- Show Wallet Balance -->
               <li class="dropdown-item">
                 <strong><i class="bi bi-wallet2"></i> Wallet:</strong>
                 <span class="text-success">{{ formattedBalance }}</span>
               </li>
-              <!-- Show Phone Number (If Available) -->
               <li class="dropdown-item" v-if="userPhoneNumber">
                 <strong><i class="bi bi-phone"></i> Phone:</strong> {{ userPhoneNumber }}
               </li>
@@ -118,13 +116,26 @@
 </template>
 
 <script>
+/**
+ * @component Navbar
+ * @description Main navigation component for the application. Handles user authentication status,
+ * product navigation, and user profile management. Uses Bootstrap for styling and responsive design.
+ * 
+ * @requires Vue
+ * @requires Vue Router
+ * @requires Pinia Auth Store
+ * @requires Product Service
+ */
+
 import { computed, ref, onMounted } from "vue";
 import { useAuthStore } from "@/stores/authStore";
 import { useRouter } from "vue-router";
-import { fetchProducts, isLoading } from "@/services/productService"; // ✅ Use centralized service
+import { fetchProducts, isLoading, getIcon, getRoute } from "@/services/productService";
+
 
 export default {
   name: "Navbar",
+  
   setup() {
     const authStore = useAuthStore();
     const router = useRouter();
@@ -135,45 +146,57 @@ export default {
     const logoPath = "/assets/logo.jpeg";
 
     /**
-     * ✅ Retrieves authentication status
+     * Transform raw raffle data into displayable product format
      */
-    const isAuthenticated = computed(() => authStore.isAuthenticated);
+    const transformProducts = (raffles) => {
+      const transformed = [];
+      
+      raffles.forEach(raffle => {
+        // For each raffle cycle, create entries for all associated types
+        raffle.associated_types.forEach(type => {
+          transformed.push({
+            raffle_cycle_id: raffle.raffle_cycle_id,
+            raffle_type_id: type.raffle_type_id,
+            raffle_type: type.raffle_type,
+            winnable_amount: raffle.winnable_amount,
+            icon: getIcon(type.raffle_type_id),
+            route: getRoute(type.raffle_type_id)
+          });
+        });
+      });
 
-    /**
-     * ✅ Retrieves user display name
-     */
-    const userDisplayName = computed(() => authStore.user?.displayName || "User");
-
-    /**
-     * ✅ Retrieves user's phone number
-     */
-    const userPhoneNumber = computed(() => authStore.user?.phone_number || null);
-
-    /**
-     * ✅ Retrieves formatted wallet balance
-     */
-    const formattedBalance = computed(() =>
-      new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN" }).format(
-        parseFloat(authStore.user?.wallet_balance ?? 0.00)
-      )
-    );
-
-    /**
-     * ✅ Fetch products from the API
-     */
-    const loadProducts = async () => {
-      availableProducts.value = await fetchProducts();
+      console.log('Transformed products:', transformed);
+      return transformed;
     };
 
-    /**
-     * ✅ Handles user logout
-     */
+    // Authentication computed properties
+    const isAuthenticated = computed(() => authStore.isAuthenticated);
+    const userDisplayName = computed(() => authStore.user?.displayName || "User");
+    const userPhoneNumber = computed(() => authStore.user?.phone_number || null);
+    const formattedBalance = computed(() =>
+      new Intl.NumberFormat("en-NG", { 
+        style: "currency", 
+        currency: "NGN" 
+      }).format(parseFloat(authStore.user?.wallet_balance ?? 0.00))
+    );
+
+    // Handle user logout
     const handleLogout = async () => {
       await authStore.logout();
       router.push("/login");
     };
 
-    onMounted(loadProducts);
+    // Fetch and transform products on component mount
+    onMounted(async () => {
+      try {
+        const rawProducts = await fetchProducts();
+        console.log('Raw products received:', rawProducts);
+        availableProducts.value = transformProducts(rawProducts);
+      } catch (error) {
+        console.error('Error fetching products:', error);
+        availableProducts.value = [];
+      }
+    });
 
     return {
       siteName,
@@ -189,3 +212,7 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+/* Add any component-specific styles here */
+</style>

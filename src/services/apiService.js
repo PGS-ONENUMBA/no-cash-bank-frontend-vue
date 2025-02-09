@@ -1,78 +1,80 @@
 import axios from "axios";
-import { useAuthStore } from "@/stores/authStore";
-import { useAppStore } from "@/stores/appStore";
-import { refreshToken, refreshAppToken, logout } from "./authService";
+import { useAuthStore } from "@/stores/authStore"; // Customer Authentication Store
 
-// Create Axios instance
+// ✅ Load API Base URL from environment variables
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+// Load App Credentials from Env
+const APP_USERNAME = import.meta.env.VITE_APP_USER_NAME;
+const APP_PASSWORD = import.meta.env.VITE_APP_USER_PASSWORD;
+
+// Encode Basic Auth credentials
+const encodedCredentials = btoa(`${APP_USERNAME}:${APP_PASSWORD}`);
+
+// ✅ Create Axios instance with Basic Auth
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
-  headers: { "Content-Type": "application/json" },
-  withCredentials: true, // Allow cookies (for refresh tokens)
+  baseURL: API_BASE_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+  withCredentials: true,
 });
 
 /**
- * ✅ Determines whether a request should use the **App Token** or **Customer Token**.
+ * ✅ Returns the correct authentication headers dynamically.
+ * - Uses Basic Auth for app authentication.
+ * - Uses Bearer Token for customer-authenticated requests.
  */
-const useAppTokenForRequest = (url) => {
-  const appTokenEndpoints = [
-    "/nocash-bank/v1/action",
-    "/nocash-bank/v1/products",
-    "/nocash-bank/v1/login",
-  ];
-  return appTokenEndpoints.some((endpoint) => url.includes(endpoint));
+const getAuthHeaders = async (useBasicAuth = false) => {
+  const authStore = useAuthStore();
+
+  if (useBasicAuth) {
+    // ✅ Use Basic Auth (for app authentication)
+    return {
+      Authorization: `Basic ${encodedCredentials}`,
+    };
+  }
+
+  if (!authStore.token) {
+    console.warn("❌ No authentication token found. User may not be logged in.");
+    throw new Error("Missing authentication token");
+  }
+
+  // ✅ Validate the token before making the request
+  try {
+    const validationResponse = await axios.post(`${API_BASE_URL}/jwt-auth/v1/token/validate`, {}, {
+      headers: { Authorization: `Bearer ${authStore.token}` },
+    });
+
+    if (!validationResponse.data.success) {
+      console.warn("⚠ Token validation failed. User may need to reauthenticate.");
+      throw new Error("Invalid or expired authentication token.");
+    }
+  } catch (error) {
+    console.error("❌ Token validation request failed:", error);
+    throw new Error("Authentication error");
+  }
+
+  return {
+    Authorization: `Bearer ${authStore.token}`,
+  };
 };
 
 /**
- * ✅ Axios Request Interceptor: Attaches Bearer Token
+ * ✅ Makes a POST request with the correct authentication method.
+ * @param {string} endpoint - The API endpoint.
+ * @param {object} data - The request body.
+ * @param {boolean} useBasicAuth - Whether to use Basic Auth.
  */
-apiClient.interceptors.request.use(async (config) => {
-  const authStore = useAuthStore();
-  const appStore = useAppStore();
-  let token;
-
-  const isAppAPI = useAppTokenForRequest(config.url);
-
-  if (isAppAPI) {
-    token = appStore.appToken;
-    if (!token) {
-      token = await refreshAppToken();
-    }
-  } else {
-    token = authStore.token;
-    if (authStore.isTokenExpired) {
-      console.log("🔄 Refreshing user token...");
-      token = await refreshToken();
-      if (!token) {
-        logout();
-        return Promise.reject("Session expired. Please log in again.");
-      }
-    }
+export const post = async (endpoint, data = {}, useBasicAuth = false) => {
+  try {
+    const headers = await getAuthHeaders(useBasicAuth);
+    const response = await apiClient.post(endpoint, data, { headers });
+    return response.data;
+  } catch (error) {
+    console.error(`❌ POST request failed: ${endpoint}`, error);
+    throw error;
   }
-
-  config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
-/**
- * ✅ Axios Response Interceptor: Handles Token Expiry
- */
-apiClient.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    if (error.response?.status === 401) {
-      console.warn("⚠ Unauthorized request. Attempting token refresh...");
-      const newToken = await refreshToken();
-
-      if (newToken) {
-        error.config.headers.Authorization = `Bearer ${newToken}`;
-        return apiClient(error.config);
-      } else {
-        console.error("❌ Refresh token failed. Logging out.");
-        logout();
-      }
-    }
-    return Promise.reject(error);
-  }
-);
+};
 
 export default apiClient;

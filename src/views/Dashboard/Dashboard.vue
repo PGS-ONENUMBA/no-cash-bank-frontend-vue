@@ -17,7 +17,7 @@
       </div>
     </div>
 
-    <!-- ✅ Dynamically Render Product Cards with Dynamic Columns -->
+    <!-- ✅ @TODO: Dynamically Render Product Cards with Dynamic Columns -->
     <div v-else-if="availableProducts.length > 0" class="row row-cols-1 g-4" :class="dynamicGridClass">
       <FeatureCard
         v-for="product in availableProducts"
@@ -63,7 +63,7 @@
 
 <script>
 import { ref, computed, onMounted } from "vue";
-import { fetchProducts } from "@/services/productService"; // ✅ No caching, always fetch latest data
+import { fetchProducts, isLoading, getIcon, getRoute } from "@/services/productService";
 import WalletBalance from "@/components/common/WalletBalance.vue";
 import FeatureCard from "@/components/dashboard/FeatureCard.vue";
 import DashboardFooter from "@/components/dashboard/DashboardFooter.vue";
@@ -77,31 +77,48 @@ export default {
   },
   setup() {
     const availableProducts = ref([]);
-    const loadingProducts = ref(true);
-
-    // ✅ Load the environment variable for winnable amount label
+    const loadingProducts = isLoading();
     const winnableAmountLabel = import.meta.env.VITE_WINNABLE_AMOUNT_LABEL || "Winnable Amount";
 
     /**
-     * ✅ Fetch available products dynamically from API (NO CACHE)
+     * Transform raw raffle data into displayable product format
+     * @param {Array} raffles - Raw raffle data from API
+     * @returns {Array} Transformed product array
+     */
+    const transformProducts = (raffles) => {
+      const transformed = [];
+      
+      raffles.forEach(raffle => {
+        raffle.associated_types.forEach(type => {
+          transformed.push({
+            raffle_cycle_id: raffle.raffle_cycle_id,
+            raffle_type_id: type.raffle_type_id,
+            raffle_type: type.raffle_type,
+            winnable_amount: raffle.winnable_amount,
+            icon: getIcon(type.raffle_type_id),
+            route: getRoute(type.raffle_type_id)
+          });
+        });
+      });
+
+      return transformed;
+    };
+
+    /**
+     * Load and transform products using cached service
      */
     const loadProducts = async () => {
       try {
-        loadingProducts.value = true;
-        const latestProducts = await fetchProducts(); // Always fetch new data
-        availableProducts.value = latestProducts;
+        const rawProducts = await fetchProducts();
+        availableProducts.value = transformProducts(rawProducts);
       } catch (error) {
-        console.error("❌ Error fetching products:", error);
-      } finally {
-        loadingProducts.value = false;
+        console.error("❌ Error loading products:", error);
+        availableProducts.value = [];
       }
     };
 
     /**
-     * ✅ Compute Bootstrap's `row-cols-md-{value}` dynamically.
-     * - If products are **1-2**, show in 1 column.
-     * - If **3**, show 3 columns.
-     * - If **4+**, show a max of 4 columns.
+     * Compute dynamic grid class based on product count
      */
     const dynamicGridClass = computed(() => {
       const count = availableProducts.value.length;
@@ -109,7 +126,7 @@ export default {
     });
 
     /**
-     * ✅ Format the currency for display.
+     * Format currency for display
      */
     const formatCurrency = (amount) => {
       return new Intl.NumberFormat("en-NG", {
@@ -118,7 +135,6 @@ export default {
       }).format(amount);
     };
 
-    // Fetch fresh product data every time dashboard is accessed
     onMounted(loadProducts);
 
     return {

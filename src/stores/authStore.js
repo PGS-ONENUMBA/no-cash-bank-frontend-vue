@@ -34,10 +34,6 @@ export const useAuthStore = defineStore("auth", {
         this.refreshToken = data.data.refresh_token;
         this.tokenExpiry = Date.now() + tokenExpiryMin * 60 * 1000;
         this.user = data.data;
-
-        localStorage.setItem("auth_token", this.token);
-        localStorage.setItem("refresh_token", this.refreshToken);
-        localStorage.setItem("token_expiry", this.tokenExpiry);
     
         console.log(`🔑 Token expires in ${tokenExpiryMin} minutes`);
         this.startInactivityTimer();
@@ -74,10 +70,6 @@ export const useAuthStore = defineStore("auth", {
             this.token = data.token;
             this.refreshToken = data.refresh_token;  // ✅ Always store the latest refresh token
             this.tokenExpiry = Date.now() + (parseInt(import.meta.env.VITE_TOKEN_EXPIRY_MIN) || 20) * 60 * 1000;
-
-            localStorage.setItem("auth_token", this.token);
-            localStorage.setItem("token_expiry", this.tokenExpiry);
-
             console.log("✅ Token refreshed successfully!");
           } else {
             console.warn("⚠ Token refresh failed, logging out...");
@@ -99,12 +91,9 @@ export const useAuthStore = defineStore("auth", {
     
       this.resetTimers();
       this.$reset(); // Reset Pinia state
-
       localStorage.removeItem("auth");
-      localStorage.removeItem("auth_token");
       localStorage.removeItem("refresh_token");
-      localStorage.removeItem("token_expiry");
-    
+      document.cookie = "refresh_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
       if (routerInstance) {
         console.log("🔄 Redirecting to login...");
         routerInstance.push("/login").catch((err) =>
@@ -179,8 +168,6 @@ export const useAuthStore = defineStore("auth", {
       this.user = null;
       localStorage.removeItem("auth_token");
       localStorage.removeItem("user");
-      localStorage.removeItem("refresh_token");
-      localStorage.removeItem("token_expiry");
     }
   },
 

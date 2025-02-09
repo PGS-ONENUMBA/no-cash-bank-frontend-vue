@@ -1,58 +1,55 @@
 import { defineStore } from "pinia";
-import { refreshAppToken } from "@/services/authService";
+import apiClient from "@/services/apiService"; // Axios instance
 
-export const useAppStore = defineStore("appStore", {
+export const useAppStore = defineStore("app", {
   state: () => ({
-    appToken: import.meta.env.VITE_APP_AUTH_TOKEN, // Initial token from ENV
-    appRefreshToken: import.meta.env.VITE_APP_REFRESH_TOKEN, // Initial refresh token from ENV
-    appTokenExpiry: null, // Expiry timestamp for app token
+    appAuthToken: null, // No need to persist this
   }),
 
   getters: {
-    isAppTokenExpired: (state) => state.appTokenExpiry && Date.now() > state.appTokenExpiry,
+    isAppAuthenticated: (state) => !!state.appAuthToken,
   },
 
   actions: {
     /**
-     * ✅ Sets new app token & refresh token.
+     * ✅ Generates Basic Auth Token for App Authentication.
+     * Uses credentials stored in environment variables.
      */
-    setAppToken(token, refreshToken, expiryMinutes) {
-      this.appToken = token;
-      this.appRefreshToken = refreshToken;
-      this.appTokenExpiry = Date.now() + (expiryMinutes || 60) * 60 * 1000; // Default to 60 min
-    },
+    generateAppAuthToken() {
+      const username = import.meta.env.VITE_APP_USER_NAME;
+      const password = import.meta.env.VITE_APP_USER_PASSWORD;
 
-    /**
-     * ✅ Refreshes App Token if needed.
-     */
-    async refreshAppTokenIfNeeded() {
-      const bufferTimeMs = (parseInt(import.meta.env.VITE_TOKEN_REFRESH_BUFFER_MIN) || 5) * 60 * 1000; // Refresh 5 min before expiry
-
-      if (this.appTokenExpiry && Date.now() > this.appTokenExpiry - bufferTimeMs) {
-        console.log("🔄 Refreshing App Token before expiry...");
-
-        try {
-          const newToken = await refreshAppToken();
-          if (newToken) {
-            this.setAppToken(newToken, this.appRefreshToken, 60); // Refresh for another 60 minutes
-            console.log("✅ App Token refreshed successfully!");
-          } else {
-            console.warn("⚠ App Token refresh failed. Retrying later...");
-          }
-        } catch (error) {
-          console.error("❌ App Token refresh error:", error);
-        }
+      if (!username || !password) {
+        console.error("❌ Missing App Credentials in .env");
+        return null;
       }
+
+      return `Basic ${btoa(`${username}:${password}`)}`;
     },
 
     /**
-     * ✅ Starts monitoring app token expiry.
+     * ✅ Makes an API request with dynamic Basic Auth.
+     * @param {String} endpoint - API endpoint.
+     * @param {Object} data - Payload.
+     * @returns {Promise<Object>} - API Response.
      */
-    startAppTokenMonitor() {
-      this.refreshAppTokenIfNeeded();
-      setInterval(() => {
-        this.refreshAppTokenIfNeeded();
-      }, 60 * 1000); // Check app token refresh every 60 seconds
+    async makeApiRequest(endpoint, data = {}) {
+      try {
+        const token = this.generateAppAuthToken();
+
+        if (!token) {
+          throw new Error("❌ App authentication token missing.");
+        }
+
+        const response = await apiClient.post(endpoint, data, {
+          headers: { Authorization: token },
+        });
+
+        return response.data;
+      } catch (error) {
+        console.error("❌ Error making API request:", error);
+        return null;
+      }
     },
   },
 });
