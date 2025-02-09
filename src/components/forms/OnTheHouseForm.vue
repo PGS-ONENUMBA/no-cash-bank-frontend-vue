@@ -6,7 +6,7 @@
         <div class="card w-100 shadow-sm">
           <div class="card-body">
             <!-- ✅ Display Winnable Amount -->
-            <h3 class="text-green fs-4">
+            <h3 class="text-success fs-4">
               Transferable Amount: {{ formattedWinnableAmount }}
             </h3>
 

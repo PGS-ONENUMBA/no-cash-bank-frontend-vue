@@ -5,7 +5,7 @@
       <div class="col-lg-6 d-flex">
         <div class="card w-100 shadow-sm">
           <div class="card-body">
-            <h3 class="text-purple fs-4">
+            <h3 class="text-success fs-4">
               Transferable Amount: {{ formattedWinnableAmount }}
             </h3>
 
