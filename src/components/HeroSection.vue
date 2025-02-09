@@ -92,9 +92,12 @@ export default {
     const router = useRouter();
     const siteName = import.meta.env.VITE_SITE_NAME || "OneNnumba";
 
-    // Format amount to 2 decimal places
+  // Format amount with thousand separator and 2 decimal places
     const formatAmount = (amount) => {
-      return parseFloat(amount).toFixed(2);
+      return new Intl.NumberFormat('en-NG', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(parseFloat(amount) || 0);
     };
 
     // Handle product page navigation
@@ -137,7 +140,6 @@ export default {
 
 <style scoped>
 .btn-green {
-  background-color: #28a745;
   color: white;
   min-width: 200px;
   padding: 0.75rem 1.25rem;
@@ -148,7 +150,6 @@ export default {
 }
 
 .btn-green:hover {
-  background-color: #218838;
   color: white;
   transform: translateY(-2px);
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);

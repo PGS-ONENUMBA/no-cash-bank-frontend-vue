@@ -36,7 +36,7 @@
                       required
                     />
                     <button
-                      class="btn btn-outline-secondary toggle-btn"
+                      class="btn btn-light btn-outline-secondary toggle-btn"
                       type="button"
                       @click="togglePasswordVisibility"
                     >
@@ -53,14 +53,14 @@
                 <!-- Submit Button -->
                 <button
                   type="submit"
-                  class="btn btn-orange w-100 mb-3"
+                  class="btn btn-green mb-3"
                   :disabled="loading"
                 >
                   <span v-if="loading">
                     <i class="spinner-border spinner-border-sm"></i> Logging in...
                   </span>
                   <span v-else>
-                    <i class="bi bi-box-arrow-in-right me-2"></i> Login
+                    <i class="bi text-white bi-box-arrow-in-right me-2"></i> Login
                   </span>
                 </button>
               </form>

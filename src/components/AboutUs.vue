@@ -19,7 +19,7 @@
           </p>
           <!-- Read More Button -->
           <router-link to="/about" class="btn btn-green mt-2">
-            Read More <i class="bi bi-arrow-right"></i>
+            Read More <i class="bi bi-arrow-right text-white"></i>
           </router-link>
         </div>
       </div>
