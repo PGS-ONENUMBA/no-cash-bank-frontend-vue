@@ -7,7 +7,7 @@
           <div class="card-body">
             <!-- ✅ Winnable Amount Display -->
             <h4 class="text-success">
-              {{ formatCurrency(raffleData.winnable_amount) }}
+              Transferable Amount: {{ formatCurrency(raffleData.winnable_amount) }}
             </h4>
 
             <p class="text-muted">
