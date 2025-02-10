@@ -7,7 +7,7 @@
         <p>
           At {{ siteName }}, we envision a world where banking is accessible to everyone, everywhere.<br />
           Our mission is to deliver secure, user-friendly online No-Cash banking that empowers<br />
-          individuals to make payments with cash!
+          individuals to make payments by chance without cash!
         </p>
 
         <!-- Display Preloader when fetching -->
