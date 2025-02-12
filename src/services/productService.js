@@ -36,6 +36,8 @@ const getAuthString = () => {
     if (!username || !password) {
         throw new Error('Authentication credentials not found in environment variables');
     }
+
+    // console.log(username);
     
     return btoa(`${username}:${password}`);
 };

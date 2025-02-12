@@ -20,6 +20,9 @@ import ResetPassword from "@/views/Public/ResetPassword.vue";
 import ThankYou from "@/views/common/ThankYouPage.vue";
 import NotFound from "@/views/404.vue";
 
+// Test
+import Test from "@/views/Public/Test.vue";
+
 // Dashboard Views (Protected Routes)
 import Dashboard from "@/views/Dashboard/Dashboard.vue";
 import DashboardGetCash from "@/views/Dashboard/GetCash.vue";
@@ -50,6 +53,7 @@ const routes = [
       { path: "privacy", name: "Privacy", component: Privacy, meta: { title: "Privacy" } },
       { path: "terms", name: "Terms", component: Terms, meta: { title: "Terms & Conditions" } },
       { path: "reset-password", name: "ResetPassword", component: ResetPassword, meta: { title: "Reset Password" } },
+      { path: "test", name: "Test", component: Test, meta: { title: "Test" } },
     ],
   },
 
