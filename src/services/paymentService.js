@@ -66,28 +66,41 @@
    * Create order and log to DB. Return the order ID
    **/
   export const createOrder = async (payload) => {
-    // Generate a random order ID
-    const orderId = Math.floor(Math.random() * 1000000);
-
-    // Log the order to the DB
-    mockDB.orders.push({ ...payload, order_status: 'pending', order_id: orderId });
-
-    console.log(mockDB.orders);
-
+    // Generate a random numeric ID (18-20 digits)
+    const randomNumber = Math.floor(Math.random() * 10 ** 18).toString();
+  
+    // Generate two random uppercase letters
+    const randomLetters = String.fromCharCode(
+      65 + Math.floor(Math.random() * 26),
+      65 + Math.floor(Math.random() * 26)
+    );
+  
+    // Concatenate number and letters
+    const orderId = `${randomNumber}${randomLetters}`;
+  
+    // Log the order to the mock DB
+    mockDB.orders.push({ ...payload, order_status: "pending", order_id: orderId });
+  
+    // console.log(mockDB.orders);
+  
     // Return the order ID
     return orderId;
   };
+  
 
   /**
    * 
-   * 
+   * Call Squad API here to make payment. Pass payload from the form filled by the user
    **/
   export const processPayment = (payload) => {
 
     console.log("Processing payment:", payload);
+   
   
     // Destructure the payload to extract necessary data
-    const { trans_ref, amount, email } = payload;
+    const { email, amount, trans_ref, } = payload;
+
+    // console.log(email, amount, trans_ref);
   
     // Return a Promise to handle async response
     return new Promise((resolve, reject) => {
@@ -96,20 +109,24 @@
         return;
       }
   
+      // Call the Squad API to initiate payment
       const squadInstance = new squad({
-        onClose: () => console.log("Widget closed"),
+        onClose: () => {
+
+          // Throw a message to the user here. Use a modal or toast
+          alert("Oops! You closed the payment modal without completing the transaction.");
+        },
         onLoad: () => console.log("Widget loaded successfully"),
         onSuccess: (response) => {
-          console.log("Payment Successful:", response);
+          // console.log("Payment Successful:", response);
           resolve(response); // ✅ Resolve the response to the calling component
         },
-        key: import.meta.env.VITE_SQUAD_PK, // Replace with your actual key
+        key: import.meta.env.VITE_SQUAD_SANDBOX_PK, // Replace with your actual key
         email: email,
-        amount: 10000 * 100, // Convert to Kobo
-        transaction_ref: "4678388588350909090AH",
-        currency_code: "NGN"
+        amount: amount * 100, // Convert to Kobo
+        transaction_ref: trans_ref,
+        currency_code: "NGN",
       });
-  
       squadInstance.setup();
       squadInstance.open();
     });
@@ -118,26 +135,29 @@
 
   /**
    * 
-   * 
+   * Verify payment by passing in the transaction reference from the url
+   * THis must be called efore deciding whether to give value to the customer or not
    **/
   export const verifyPayment = async (transRef) => {
     console.log("Verifying transaction:", transRef);
+
+    // Call the Squad API to verify the payment
+    const requestOptions = {
+      method: "GET",
+      headers: {
+        "Authorization" : `Bearer ${import.meta.env.VITE_SQUAD_SANDBOX_SK}`
+      },
+    };
     
-    // Simulate different outcomes by changing `success` to `false`
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        if (transRef === "TEST123456") {
-          resolve({ success: true }); // Simulates a successful payment
-        } else {
-          resolve({ success: false }); // Simulates a failed payment
-        }
-      }, 2000);
-    });
+    const response = await fetch(`https://sandbox-api-d.squadco.com/transaction/verify/${transRef}`, requestOptions)
+    const data = await response.json();
+
+    return { statusCode: data.status, transactionStatus: data.data.transaction_status };
   };
 
   /**
    * 
-   * 
+   * Update the earlier created order after verifying the transaction
    **/
   export const updateOrderStatus = async (transRef, status) => {};
 

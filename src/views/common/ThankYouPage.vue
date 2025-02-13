@@ -34,6 +34,7 @@
 import { ref, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { verifyPayment } from "@/services/paymentService";
+import { updateOrderStatus } from "@/services/paymentService";
 
 export default {
   name: "ThankYouPage",
@@ -47,7 +48,7 @@ export default {
     const maxRetries = 3;
 
     const checkPaymentStatus = async () => {
-      const transRef = route.query.trans_ref;
+      const transRef = route.query.reference;
       if (!transRef) {
         errorMessage.value = "Invalid transaction reference.";
         loading.value = false;
@@ -55,11 +56,17 @@ export default {
       }
 
       try {
-        const response = await verifyPayment(transRef);
-        if (response.success) {
+        const response = await verifyPayment("877452248385245300BB");
+
+        if (response.statusCode === 200 && response.transactionStatus === "success") {
+
+          // Update Order Status here
+          // const updateOrderStat = await updateOrderStatus(transRef, response.transactionStatus)
+
+          // Redirect to dashboard after 3 seconds
           paymentStatus.value = "success";
           setTimeout(() => router.push("/dashboard"), 3000);
-        } else if (response.pending) {
+        } else if (response.transactionStatus === "pending") {
           if (attempts < maxRetries) {
             attempts++;
             setTimeout(checkPaymentStatus, 3000); // Retry after 3 seconds

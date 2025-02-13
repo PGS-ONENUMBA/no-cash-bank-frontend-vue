@@ -178,13 +178,14 @@ export default {
 
       try {
         console.log("🚀 Submitting request:", formData.value);
-        // Call create order api here
+
+        // Call create order api here first before calling payment API
         const response = await createOrder(formData.value);
 
-        // Initiate payment request to Squad by pasing the order id returned from the response above
+        // Initiate payment request to Squad by pasing the order id returned from the create order response above
         // The order id is the transaction reference
         if(response !== null) {
-          const paymentResponse = await processPayment({...formData.value, trans_ref:response});
+          const paymentResponse = await processPayment({email:formData.value.email, amount: totalTicketCost.value, trans_ref:response});
 
           console.log("🚀 Payment response:", paymentResponse);
           // if(paymentResponse) {
