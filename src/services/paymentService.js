@@ -112,9 +112,7 @@
       // Call the Squad API to initiate payment
       const squadInstance = new squad({
         onClose: () => {
-
-          // Throw a message to the user here. Use a modal or toast
-          alert("Oops! You closed the payment modal without completing the transaction.");
+            resolve({ status: "closed" }); // ✅ Resolve the response to the calling component
         },
         onLoad: () => console.log("Widget loaded successfully"),
         onSuccess: (response) => {

@@ -81,6 +81,27 @@
         </div>
       </div>
     </div>
+
+    <div 
+      v-if="isPaymentCancelled" 
+      class="alert alert-warning d-flex align-items-center position-fixed top-0 start-50 translate-middle-x shadow"
+      role="alert"
+      style="z-index: 1055; max-width: 500px;"
+    >
+      <svg class="bi flex-shrink-0 me-2" width="24" height="24" role="img" aria-label="Warning:">
+        <use xlink:href="#exclamation-triangle-fill"/>
+      </svg>
+      <div>
+        Payment was cancelled. Please try again.
+      </div>
+
+      <button 
+        type="button" 
+        class="btn-close me-2 m-auto" 
+        @click="dismissAlert"
+        aria-label="Close" ></button>
+  </div>
+  
   </main>
 </template>
 
@@ -89,6 +110,7 @@ import { ref, onMounted, computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { validateRaffleCycle } from "@/services/productService"; // ✅ Ensure valid cycle
 import WalletBalance from "@/components/common/WalletBalance.vue";
+import ToastComponent from "@/components/common/ToastComponent.vue";
 
 // Import Payment Helper
 import { validateProductPricing, createOrder, processPayment } from "@/services/paymentService";
@@ -97,6 +119,7 @@ export default {
   name: "GetCashForm",
   components: {
     WalletBalance,
+    ToastComponent
   },
   setup() {
     const router = useRouter();
@@ -105,6 +128,7 @@ export default {
     const raffleCycleId = route.query.raffle_cycle_id;
     const raffleTypeId = route.query.raffle_type_id;
     const ticketCurrentPrice = ref(0);
+    const isPaymentCancelled = ref(false); // Used to control the ToastComponent visibility if user cancels payment
     const formData = ref({
       email: "",
       phoneNumber: "",
@@ -185,14 +209,17 @@ export default {
         // Initiate payment request to Squad by pasing the order id returned from the create order response above
         // The order id is the transaction reference
         if(response !== null) {
+  
           const paymentResponse = await processPayment({email:formData.value.email, amount: totalTicketCost.value, trans_ref:response});
+          
+          // Check if user cancelled the transaction / closed the modal
+          if(paymentResponse.status === "closed") {
+            console.log("❌ Payment Cancelled by user");
+            // return;
+            isPaymentCancelled.value = true;
+            return
+          }
 
-          console.log("🚀 Payment response:", paymentResponse);
-          // if(paymentResponse) {
-          //   console.log("🚀 Payment response:", paymentResponse);
-          //   console.log("Payment successful! Redirecting...");
-          //   router.push("/thank-you");
-          // }
         }
         
       } catch (error) {
@@ -210,6 +237,10 @@ export default {
       }).format(amount);
     };
 
+    const dismissAlert = () => {
+     isPaymentCancelled.value = !isPaymentCancelled.value;
+    }
+
     onMounted(() => {
       fetchRaffleDetails()
       verifyTicketCost()
@@ -225,6 +256,8 @@ export default {
       formatCurrency,
       ticketCurrentPrice,
       totalTicketCost,
+      dismissAlert,
+      isPaymentCancelled,
     };
   },
 };

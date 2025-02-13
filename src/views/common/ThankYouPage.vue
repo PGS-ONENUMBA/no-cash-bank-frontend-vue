@@ -56,7 +56,7 @@ export default {
       }
 
       try {
-        const response = await verifyPayment("877452248385245300BB");
+        const response = await verifyPayment(transRef);
 
         if (response.statusCode === 200 && response.transactionStatus === "success") {
 
