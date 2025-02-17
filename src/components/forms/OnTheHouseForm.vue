@@ -43,7 +43,9 @@
                 <label for="tickets" class="form-label">
                   <i class="bi bi-ticket me-2"></i> How Many Tickets?
                 </label>
+                <span v-if="ticketCurrentPrice > 0">Current Ticket Price is : <span> {{ formatCurrency(ticketCurrentPrice) }} </span></span>
                 <input type="number" class="form-control" id="tickets" v-model="formData.tickets" required min="1" />
+                <p>You will pay : {{ formatCurrency(totalTicketCost) }}</p>
               </div>
 
               <div class="mb-3">
@@ -82,12 +84,22 @@ import { ref, computed, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { validateRaffleCycle } from "@/services/productService"; // ✅ API Validation Call
 
+// Import Currency Formatter
+import formatCurrency  from "@/services/currencyFormatter";
+
+// Import Payment Helper
+import { validateProductPricing, createOrder, processPayment } from "@/services/paymentService";
+
 export default {
   name: "OnTheHouseForm",
   setup() {
     const router = useRouter();
     const route = useRoute();
     const raffleData = ref({});
+    const raffleCycleId = route.query.raffle_cycle_id;
+    const raffleTypeId = route.query.raffle_type_id;
+    const ticketCurrentPrice = ref(0);
+    const isPaymentCancelled = ref(false); // Used to control the ToastComponent visibility if user cancels payment
     const formData = ref({
       tickets: 1,
       amount: 0,
@@ -102,8 +114,6 @@ export default {
      * ✅ Fetch and validate raffle cycle details.
      */
     const fetchRaffleDetails = async () => {
-      const raffleCycleId = route.query.raffle_cycle_id;
-      const raffleTypeId = route.query.raffle_type_id;
 
       if (!raffleCycleId || !raffleTypeId) {
         console.warn("⚠ Missing raffle cycle parameters in URL.");
@@ -150,19 +160,69 @@ export default {
 
       try {
         console.log("🚀 Submitting request:", formData.value);
-        router.push("/dashboard");
+
+        // Call create order api here first before calling payment API
+        const response = await createOrder(formData.value);
+
+        // Initiate payment request to Squad by pasing the order id returned from the create order response above
+        // The order id is the transaction reference
+        if(response !== null) {
+  
+          const paymentResponse = await processPayment({email:formData.value.email, amount: totalTicketCost.value, trans_ref:response});
+          
+          // Check if user cancelled the transaction / closed the modal
+          if(paymentResponse.status === "closed") {
+            console.log("❌ Payment Cancelled by user");
+            // return;
+            isPaymentCancelled.value = true;
+            return
+          }
+
+        }
+        
       } catch (error) {
         console.error("❌ Submission error:", error);
       }
     };
 
-    onMounted(fetchRaffleDetails); // ✅ Fetch validated data
+    /**
+     * ✅ Fetch current ticket price.
+     */
+     const verifyTicketCost = async () => {
+        try {
+            const price = await validateProductPricing(raffleCycleId);
+            
+            ticketCurrentPrice.value = Number(price.raffle_cycle.ticket_price); 
+            
+        } catch (error) {
+            console.error("❌ Error verifying ticket price:", error);
+        }
+     };
+
+        /**
+     * ✅ Compute Total Ticket Price for the user
+     */
+     const totalTicketCost = computed(() => {
+        if (formData.value.tickets > 0 && ticketCurrentPrice.value > 0) {
+            return formData.value.tickets * ticketCurrentPrice.value;
+        }
+        return 0; // Ensure it always returns a valid value
+    });
+
+    // onMounted(fetchRaffleDetails); // ✅ Fetch validated data
+    onMounted(() => {
+      fetchRaffleDetails()
+      verifyTicketCost()
+    })
 
     return {
       formData,
       handleSubmit,
       raffleData,
       formattedWinnableAmount,
+      formatCurrency,
+      totalTicketCost,
+      ticketCurrentPrice,
     };
   },
 };

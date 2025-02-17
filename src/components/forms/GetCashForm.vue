@@ -115,6 +115,9 @@ import ToastComponent from "@/components/common/ToastComponent.vue";
 // Import Payment Helper
 import { validateProductPricing, createOrder, processPayment } from "@/services/paymentService";
 
+// Import Currency Formatter
+import formatCurrency  from "@/services/currencyFormatter";
+
 export default {
   name: "GetCashForm",
   components: {
@@ -167,20 +170,21 @@ export default {
     };
 
      /**
-     * ✅ Verifies and ouputs current ticket price.
+     * ✅ Fetches current ticket price.
      */
      const verifyTicketCost = async () => {
         try {
-            const price = await validateProductPricing(Number(raffleCycleId), Number(raffleTypeId));
-            ticketCurrentPrice.value = price; 
-            console.log(price);
+            const price = await validateProductPricing(raffleCycleId);
+            
+            ticketCurrentPrice.value = Number(price.raffle_cycle.ticket_price); 
+            
         } catch (error) {
             console.error("❌ Error verifying ticket price:", error);
         }
      };
 
      /**
-     * ✅ Compute Total Ticket Price for the user
+     * ✅ Compute Total Ticket Price for the user. This will update as the user increases ticket count
      */
      const totalTicketCost = computed(() => {
         if (formData.value.tickets > 0 && ticketCurrentPrice.value > 0) {
@@ -227,16 +231,7 @@ export default {
       }
     };
 
-    /**
-     * ✅ Formats currency values for display.
-     */
-    const formatCurrency = (amount) => {
-      return new Intl.NumberFormat("en-NG", {
-        style: "currency",
-        currency: "NGN",
-      }).format(amount);
-    };
-
+    // Dismmissible Alert
     const dismissAlert = () => {
      isPaymentCancelled.value = !isPaymentCancelled.value;
     }
