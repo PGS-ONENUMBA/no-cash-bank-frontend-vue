@@ -30,7 +30,7 @@ const squadPay = () => {
     onClose: () => console.log("Widget closed"),
     onLoad: () => console.log("Widget loaded successfully"),
     onSuccess: () => console.log(`Linked successfully`),
-    key: "sandbox_pk_7e5784759d4d7c36324a84be185a4f4b1be1e2d207ca", // Replace with your actual key
+    key: "", // Replace with your actual key
     email: "t@co.com",
     amount: 10000 * 100, // Convert to Kobo
     transaction_ref: "4678388588350909090AH",

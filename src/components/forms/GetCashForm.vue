@@ -136,8 +136,8 @@ export default {
       email: "",
       phoneNumber: "",
       tickets: 1,
-      raffle_cycle_id: "",
-      raffle_type_id: "",
+      raffle_cycle_id: raffleCycleId,
+      raffle_type_id: raffleTypeId,
       winnable_amount: "",
       price_of_ticket: "",
     });
@@ -208,13 +208,14 @@ export default {
         console.log("🚀 Submitting request:", formData.value);
 
         // Call create order api here first before calling payment API
-        const response = await createOrder(formData.value);
+        const response = await createOrder({...formData.value, amount: totalTicketCost.value, raffleCycleId});
+
 
         // Initiate payment request to Squad by pasing the order id returned from the create order response above
         // The order id is the transaction reference
         if(response !== null) {
   
-          const paymentResponse = await processPayment({email:formData.value.email, amount: totalTicketCost.value, trans_ref:response});
+          const paymentResponse = await processPayment({email:formData.value.email, amount: totalTicketCost.value, trans_ref:response.order_id});
           
           // Check if user cancelled the transaction / closed the modal
           if(paymentResponse.status === "closed") {

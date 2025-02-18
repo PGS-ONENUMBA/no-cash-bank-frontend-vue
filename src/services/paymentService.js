@@ -1,9 +1,7 @@
 import apiClient from "./apiService";
 import axios from "axios";
+
 const authString = btoa(import.meta.env.VITE_APP_USER_NAME.trim() + ":" + import.meta.env.VITE_APP_USER_PASSWORD.trim());
-
-
-
 
 /**
  * 
@@ -40,23 +38,32 @@ export const validateProductPricing = async (raffleCycleId) => {
  * Create order and log to DB. Return the order ID (reference)
  **/
 export const createOrder = async (payload) => {
-  // Generate a random numeric ID (18-20 digits)
-  const randomNumber = Math.floor(Math.random() * 10 ** 18).toString();
 
-  // Generate two random uppercase letters
-  const randomLetters = String.fromCharCode(
-    65 + Math.floor(Math.random() * 26),
-    65 + Math.floor(Math.random() * 26)
-  );
+  try {
+    const response = await axios({
+      method: 'post',
+      url: `${import.meta.env.VITE_API_BASE_URL}/nocash-bank/v1/action`,
+      headers: {
+        'Authorization': `Basic ${authString}`,
+        'Content-Type': 'application/json'
+      },
+      data: {
+        "action_type": "create_order",
+        "customer_email": payload.email,
+        "customer_phone": payload.phoneNumber,
+        "ticket_quantity": payload.tickets,
+        "order_amount": payload.amount,
+        "raffle_cycle_id": payload.raffle_cycle_id,
+        "purchase_platform": "web",
+        "payment_method_used": "NA"
+      }
+    });
 
-  // Concatenate number and letters
-  const orderId = `${randomNumber}${randomLetters}`;
-
-  // Log the order to the mock DB
-  mockDB.orders.push({ ...payload, order_status: "pending", order_id: orderId });
-
-  // Return the order ID
-  return orderId;
+    return response.data;
+  } catch (error) {
+    console.error("❌ Error fetching product by ID:", error);
+    return null;
+  }
 };
 
 
@@ -72,7 +79,7 @@ export const processPayment = (payload) => {
   // Destructure the payload to extract necessary data
   const { email, amount, trans_ref, } = payload;
 
-  // console.log(email, amount, trans_ref);
+  console.log(email, typeof(amount), typeof(trans_ref));
 
   // Return a Promise to handle async response
   return new Promise((resolve, reject) => {
@@ -91,10 +98,10 @@ export const processPayment = (payload) => {
         // console.log("Payment Successful:", response);
         resolve(response); // ✅ Resolve the response to the calling component
       },
-      key: import.meta.env.VITE_SQUAD_SANDBOX_PK, // Replace with your actual key
+      key: "sandbox_pk_7e5784759d4d7c36324a84be185a4f4b1be1e2d207ca", // Replace with your actual key
       email: email,
       amount: amount * 100, // Convert to Kobo
-      transaction_ref: trans_ref,
+      transaction_ref: trans_ref.toString(),
       currency_code: "NGN",
     });
     squadInstance.setup();
