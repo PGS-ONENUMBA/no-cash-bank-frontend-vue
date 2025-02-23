@@ -93,15 +93,16 @@ export const fetchProducts = async (forceRefresh = false) => {
         }
 
         const response = await makeRequestWithRetry({
-            method: 'post',
+            method: 'GET',
             url: `${baseURL}${CONFIG.API_PATH}`,
             timeout: CONFIG.TIMEOUT_MS,
             headers: {
                 'Authorization': `Basic ${getAuthString()}`,
                 'Content-Type': 'application/json'
             },
-            data: { action_type: "get_raffle_cycle" }
+            params: { action_type: "get_raffle_cycle" }
         });
+
 
         if (response.data.success && Array.isArray(response.data.raffle_cycles)) {
             products.value = response.data.raffle_cycles;
@@ -114,13 +115,13 @@ export const fetchProducts = async (forceRefresh = false) => {
         return [];
 
     } catch (error) {
+        console.log(error)
         console.error("❌ Error fetching products:", {
             message: error.message,
             code: error.code,
             status: error.response?.status,
             statusText: error.response?.statusText
         });
-
         // Return cached data if available, even if expired
         if (products.value.length > 0) {
             console.log("⚠ Returning last known good state");
@@ -184,31 +185,43 @@ export const validateRaffleCycle = async (raffleCycleId, raffleTypeId) => {
         const authString = btoa(import.meta.env.VITE_APP_USER_NAME.trim() + ":" + import.meta.env.VITE_APP_USER_PASSWORD.trim());
         
         const response = await axios({
-            method: 'post',
+            method: 'GET',
             url: `${import.meta.env.VITE_API_BASE_URL}/nocash-bank/v1/action`,
             headers: {
                 'Authorization': `Basic ${authString}`,
                 'Content-Type': 'application/json'
             },
-            data: {
+            params: {
                 action_type: "get_raffle_cycle_by_id",
                 raffle_cycle_id: raffleCycleId
             }
         });
 
+        console.log('Response:', response.data);
+
         if (response.data.success) {
             const raffleCycle = response.data.raffle_cycle;
 
-            const selectedType = raffleCycle.associated_types.find(
-                (type) => type.raffle_type_id === parseInt(raffleTypeId)
-            );
+            console.log('Raffle Cycle:', raffleCycle);
+            
+            
+            // const selectedType = raffleCycle.associated_types.find(
+            //     (type) => type.raffle_type_id === parseInt(raffleTypeId)
+            // );
+
+            const associatedTypes = Array.isArray(raffleCycle.associated_types) ? raffleCycle.associated_types : JSON.parse(raffleCycle.associated_types || '[]');
+
+            const selectedType = associatedTypes.find((type) => {
+               // console.log('Type:', type);
+                return type === parseInt(raffleTypeId);
+            })
 
             if (selectedType) {
                 return {
                     raffle_cycle_id: raffleCycle.raffle_cycle_id,
                     winnable_amount: parseFloat(raffleCycle.winnable_amount),
-                    price_of_ticket: parseFloat(raffleCycle.price_of_ticket),
-                    status: raffleCycle.status,
+                    price_of_ticket: parseFloat(raffleCycle.ticket_price),
+                    status: raffleCycle.raffle_status,
                     raffle_type_id: selectedType.raffle_type_id,
                     raffle_type: selectedType.raffle_type,
                 };

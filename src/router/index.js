@@ -63,13 +63,13 @@ const routes = [
     component: DashboardLayout,
     meta: { requiresAuth: true }, // Authentication required
     children: [
-      { path: "", name: "Dashboard", component: Dashboard, meta: { title: "Dashboard" } },
+      { path: "", name: "Dashboard", component: Dashboard, meta: { title: "Dashboard", role: ["customer", "vendor"] } },
       { path: "get-cash", name: "DashboardGetCash", component: DashboardGetCash, meta: { title: "Get Cash" } },
       { path: "pay4me", name: "DashboardPay4Me", component: DashboardPay4Me, meta: { title: "Pay-4-Me" } },
       { path: "on-the-house", name: "DashboardOnTheHouse", component: DashboardOnTheHouse, meta: { title: "On The House" } },
-      { path: "transfer", name: "DashboardTransfer", component: Transfer, meta: { title: "Transfer" } },
-      { path: "reports", name: "DashboardReports", component: Reports, meta: { title: "Reports" } },
-      { path: "profile", name: "DashboardProfile", component: Profile, meta: { title: "Profile Page" } },
+      { path: "transfer", name: "DashboardTransfer", component: Transfer, meta: { title: "Transfer", role:["customer"] } },
+      { path: "reports", name: "DashboardReports", component: Reports, meta: { title: "Reports", role: ["customer", "vendor"] } },
+      { path: "profile", name: "DashboardProfile", component: Profile, meta: { title: "Profile Page", role: ["customer", "vendor"] } },
     ],
   },
 
@@ -103,6 +103,8 @@ const router = createRouter({
   },
 });
 
+
+
 /**
  * Navigation Guards
  *
@@ -113,6 +115,12 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore();
   const isAuthenticated = authStore.isAuthenticated; // Use Pinia getter
+
+   // 2️⃣ 🔹 Vendor cannot access routes with NO meta.role
+   if (!to.meta.role && isAuthenticated && authStore.user.user_role === "vendor") {
+    console.log("No role on this route, and vendor is not allowed to see this route");
+    return next('/dashboard'); // Prevent further execution
+  }
 
   // Redirect to dashboard if already logged in
   if (to.name === "Login" && isAuthenticated) {
@@ -127,6 +135,8 @@ router.beforeEach((to, from, next) => {
     document.title = to.meta.title || "No-Cash-Bank";
     next();
   }
+
+
 });
 
 export default router;

@@ -151,6 +151,7 @@ export default {
 
       try {
         const validatedRaffle = await validateRaffleCycle(raffleCycleId, raffleTypeId);
+
         if (validatedRaffle) {
           raffleData.value = validatedRaffle;
           formData.value.raffle_cycle_id = validatedRaffle.raffle_cycle_id;
