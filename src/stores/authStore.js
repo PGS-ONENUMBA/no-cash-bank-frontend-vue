@@ -1,6 +1,9 @@
 import { defineStore } from "pinia";
 import { loginUser, refreshToken } from "@/services/authService";
 
+import router from '@/router';
+import { logout as logoutAPI } from '@/services/authService';
+
 export const useAuthStore = defineStore("auth", {
   state: () => ({
     user: null,
@@ -25,19 +28,19 @@ export const useAuthStore = defineStore("auth", {
      */
     async login(username, password, routerInstance) {
       if (this.token) return;
-    
+
       try {
         const data = await loginUser(username, password);
         const tokenExpiryMin = parseInt(import.meta.env.VITE_TOKEN_EXPIRY_MIN) || 20;
-    
+
         this.token = data.data.token; // ✅ Ensure correct token path
         this.refreshToken = data.data.refresh_token;
         this.tokenExpiry = Date.now() + tokenExpiryMin * 60 * 1000;
         this.user = data.data;
-    
+
         console.log(`🔑 Token expires in ${tokenExpiryMin} minutes`);
         this.startInactivityTimer();
-    
+
         if (routerInstance) {
           console.log("✅ Redirecting from authStore...");
           setTimeout(() => {
@@ -51,26 +54,26 @@ export const useAuthStore = defineStore("auth", {
         throw error;
       }
     },
-    
-    
+
+
 
     /**
      * ✅ Refreshes the Customer's JWT access token using the refresh token.
      * Prevents logout if refresh is successful.
      */
     async refreshTokenIfNeeded() {
-      const bufferTimeMs = (parseInt(import.meta.env.VITE_TOKEN_REFRESH_BUFFER_MIN) || 2) * 60 * 1000; // Refresh 2 min before expiry
-    
+      const bufferTimeMs = (parseInt(import.meta.env.VITE_TOKEN_REFRESH_BUFFER_MIN) || 2) * 60 * 1000;
+
       if (this.tokenExpiry && Date.now() > this.tokenExpiry - bufferTimeMs) {
         console.log("🔄 Refreshing token before expiry...");
-    
         try {
           const data = await refreshToken();
           if (data?.token && data?.refresh_token) {
             this.token = data.token;
-            this.refreshToken = data.refresh_token;  // ✅ Always store the latest refresh token
+            this.refreshToken = data.refresh_token;
             this.tokenExpiry = Date.now() + (parseInt(import.meta.env.VITE_TOKEN_EXPIRY_MIN) || 20) * 60 * 1000;
             console.log("✅ Token refreshed successfully!");
+            // Do NOT reset inactivity timers or clear the warning flag here.
           } else {
             console.warn("⚠ Token refresh failed, logging out...");
             this.logout();
@@ -80,30 +83,45 @@ export const useAuthStore = defineStore("auth", {
           this.logout();
         }
       }
-    }
-    ,
-
-    /**
-     * ✅ Logs out the user, clears data, and redirects.
-     */
-    logout(routerInstance = null) {
-      console.log("🚀 Logging out user...");
-    
-      this.resetTimers();
-      this.$reset(); // Reset Pinia state
-      localStorage.removeItem("auth");
-      localStorage.removeItem("refresh_token");
-      document.cookie = "refresh_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-      if (routerInstance) {
-        console.log("🔄 Redirecting to login...");
-        routerInstance.push("/login").catch((err) =>
-          console.warn("⚠ Router navigation error:", err)
-        );
-      } else {
-        console.warn("⚠ No router instance provided. Cannot redirect.");
-      }
     },
-    
+  /**
+   * Logs out the user, clears data, calls the server-side logout endpoint,
+   * and redirects to the login page.
+   */
+  async logout(routerInstance = null) {
+    console.log("🚀 Logging out user...");
+
+    // Clear inactivity timers and reset store state.
+    this.resetTimers();
+    this.$reset(); // Reset Pinia state
+
+    // Clear all relevant persisted keys:
+    localStorage.removeItem("auth");           // The key used by the persist plugin
+    localStorage.removeItem("auth_token");       // Token stored on login
+    localStorage.removeItem("refresh_token");    // Refresh token stored on login
+    localStorage.removeItem("token_expiry");     // Token expiry value
+
+    // Call the server-side logout endpoint to clear the HTTP-only refresh token cookie.
+    try {
+      await logoutAPI();
+    } catch (error) {
+      console.warn("⚠ Logout API call failed, proceeding with local cleanups.", error);
+    }
+
+    // Use the provided router instance or fallback to the globally imported router.
+    const redirectRouter = routerInstance || router;
+    if (redirectRouter) {
+      console.log("🔄 Redirecting to login...");
+      redirectRouter.push("/login").catch((err) =>
+        console.warn("⚠ Router navigation error:", err)
+      );
+    } else {
+      console.warn("⚠ No router instance provided. Cannot redirect.");
+    }
+  },
+
+
+
 
     /**
      * ✅ Starts inactivity tracking and auto-logout.
@@ -114,11 +132,7 @@ export const useAuthStore = defineStore("auth", {
       const warningTimeMs = (parseInt(import.meta.env.VITE_INACTIVITY_WARNING_MIN) || 9) * 60 * 1000;
       const autoLogoutTimeMs = (parseInt(import.meta.env.VITE_AUTO_LOGOUT_MIN) || 10) * 60 * 1000;
 
-      console.log(
-        `🕒 Setting inactivity timers: Warning at ${warningTimeMs / 1000}s, Logout at ${
-          autoLogoutTimeMs / 1000
-        }s`
-      );
+      console.log(`🕒 Setting inactivity timers: Warning at ${warningTimeMs / 1000}s, Logout at ${autoLogoutTimeMs / 1000}s`);
 
       this.warningTimeout = setTimeout(() => {
         this.showWarning = true;
@@ -132,10 +146,10 @@ export const useAuthStore = defineStore("auth", {
         }
       }, autoLogoutTimeMs);
 
-      // 🔄 Start periodic token refresh
+      // Periodic token refresh remains independent
       this.tokenRefreshInterval = setInterval(() => {
         this.refreshTokenIfNeeded();
-      }, 60 * 1000); // Check token refresh every 60 seconds
+      }, 60 * 1000);
     },
 
     /**
