@@ -6,13 +6,13 @@ import { useAppStore } from "@/stores/appStore";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const LOGIN_ENDPOINT = "/jwt-auth/v1/token";
 const REFRESH_ENDPOINT = "/jwt-auth/v1/token/refresh";
-
+const LOGOUT_ENDPOINT = "/jwt-auth/v1/logout";
 /**
  * ✅ Logs in the user and stores tokens in Pinia.
  */
 export const loginUser = async (username, password) => {
   try {
-    console.log("🚀 Logging in with:", { username, password });
+    // console.log("🚀 Logging in with:", { username, password });
 
     const response = await axios.post(
       `${API_BASE_URL}${LOGIN_ENDPOINT}`,
@@ -39,14 +39,14 @@ export const loginUser = async (username, password) => {
  */
 export const refreshToken = async () => {
   try {
-    const response = await axios.post(`${API_BASE_URL}${REFRESH_ENDPOINT}`, {}, {
+      const response = await axios.post(`${API_BASE_URL}${LOGIN_ENDPOINT}`, {}, {
       withCredentials: true, // Ensures refresh token is used via cookies
     });
-
+    console.log("✅ Token refresh response:", response.data);
     if (response.data.success) {
-      const authStore = useAuthStore();
-      authStore.setToken(response.data.data.token);
-      authStore.setRefreshToken(response.data.data.refresh_token);  // ✅ Store new refresh token
+       const authStore = useAuthStore();
+       authStore.setToken(response.data.data.token);
+       // authStore.setRefreshToken(response.data.data.refresh_token);  // ✅ Store new refresh token
       return response.data.data;
     } else {
       throw new Error(response.data.message || "Token refresh failed.");
@@ -92,12 +92,11 @@ export const logout = async () => {
   const authStore = useAuthStore();
 
   try {
-    // Attempt API logout if needed
-    await apiClient.post(import.meta.env.VITE_LOGOUT_ENDPOINT || "/api/v1/logout");
-
+    // Call the logout endpoint to clear the HTTP-only refresh token cookie on the server.
+    await axios.post(`${API_BASE_URL}${LOGOUT_ENDPOINT}`, {}, { withCredentials: true });
     // Clear authentication state in Pinia
     authStore.clearAuth();
   } catch (error) {
-    console.warn("⚠ Logout API call failed, proceeding with local cleanup.");
+    console.warn("⚠ Logout API call failed, proceeding with local cleanups.", error);
   }
 };

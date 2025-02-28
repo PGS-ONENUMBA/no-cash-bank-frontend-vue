@@ -22,7 +22,8 @@
         </li>
 
         <!-- 🟢 @TODO Dynamically Render Product Menu Items. not working as it should -->
-        <li
+        <template v-if="authStore?.user.user_role === 'customer'">
+          <li 
           v-for="product in availableProducts"
           :key="`${product.raffle_cycle_id}-${product.raffle_type_id}`"
           class="nav-item"
@@ -41,6 +42,8 @@
             <i :class="product.icon" class="sidebar-icon"></i> {{ product.raffle_type }}
           </router-link>
         </li>
+        </template>
+      
 
         <li class="nav-item">
           <router-link class="nav-link" :class="{ active: isActive('/dashboard/transfer') }" to="/dashboard/transfer">
@@ -136,6 +139,7 @@ export default {
     onMounted(loadProducts);
 
     return {
+      authStore,
       isActive,
       handleLogout,
       availableProducts,
