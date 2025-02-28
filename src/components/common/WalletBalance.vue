@@ -1,5 +1,5 @@
 <template>
-  <div class="card text-center shadow-sm mb-4">
+  <div class="card text-center border-0 shadow-sm mb-4">
     <div class="card-body">
       <h5 class="card-title">
         <i class="bi bi-wallet2"></i> {{ title }}

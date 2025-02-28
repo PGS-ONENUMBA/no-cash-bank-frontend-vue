@@ -37,6 +37,8 @@ const getAuthString = () => {
         throw new Error('Authentication credentials not found in environment variables');
     }
 
+    // console.log(username);
+
     return btoa(`${username}:${password}`);
 };
 
@@ -101,6 +103,7 @@ export const fetchProducts = async (forceRefresh = false) => {
             params: { action_type: "get_raffle_cycle" }
         });
 
+
         if (response.data.success && Array.isArray(response.data.raffle_cycles)) {
             products.value = response.data.raffle_cycles;
             lastFetchTimestamp.value = Date.now();
@@ -112,13 +115,13 @@ export const fetchProducts = async (forceRefresh = false) => {
         return [];
 
     } catch (error) {
+        console.log(error)
         console.error("❌ Error fetching products:", {
             message: error.message,
             code: error.code,
             status: error.response?.status,
             statusText: error.response?.statusText
         });
-
         // Return cached data if available, even if expired
         if (products.value.length > 0) {
             console.log("⚠ Returning last known good state");
@@ -194,19 +197,31 @@ export const validateRaffleCycle = async (raffleCycleId, raffleTypeId) => {
             }
         });
 
+        console.log('Response:', response.data);
+
         if (response.data.success) {
             const raffleCycle = response.data.raffle_cycle;
 
-            const selectedType = raffleCycle.associated_types.find(
-                (type) => type.raffle_type_id === parseInt(raffleTypeId)
-            );
+            console.log('Raffle Cycle:', raffleCycle);
+
+
+            // const selectedType = raffleCycle.associated_types.find(
+            //     (type) => type.raffle_type_id === parseInt(raffleTypeId)
+            // );
+
+            const associatedTypes = Array.isArray(raffleCycle.associated_types) ? raffleCycle.associated_types : JSON.parse(raffleCycle.associated_types || '[]');
+
+            const selectedType = associatedTypes.find((type) => {
+               // console.log('Type:', type);
+                return type === parseInt(raffleTypeId);
+            })
 
             if (selectedType) {
                 return {
                     raffle_cycle_id: raffleCycle.raffle_cycle_id,
                     winnable_amount: parseFloat(raffleCycle.winnable_amount),
-                    price_of_ticket: parseFloat(raffleCycle.price_of_ticket),
-                    status: raffleCycle.status,
+                    price_of_ticket: parseFloat(raffleCycle.ticket_price),
+                    status: raffleCycle.raffle_status,
                     raffle_type_id: selectedType.raffle_type_id,
                     raffle_type: selectedType.raffle_type,
                 };
