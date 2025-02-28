@@ -115,9 +115,6 @@ import ToastComponent from "@/components/common/ToastComponent.vue";
 // Import Payment Helper
 import { validateProductPricing, createOrder, processPayment } from "@/services/paymentService";
 
-// Import Currency Formatter
-import formatCurrency  from "@/services/currencyFormatter";
-
 export default {
   name: "GetCashForm",
   components: {
@@ -136,8 +133,8 @@ export default {
       email: "",
       phoneNumber: "",
       tickets: 1,
-      raffle_cycle_id: raffleCycleId,
-      raffle_type_id: raffleTypeId,
+      raffle_cycle_id: "",
+      raffle_type_id: "",
       winnable_amount: "",
       price_of_ticket: "",
     });
@@ -170,21 +167,20 @@ export default {
     };
 
      /**
-     * ✅ Fetches current ticket price.
+     * ✅ Verifies and ouputs current ticket price.
      */
      const verifyTicketCost = async () => {
         try {
-            const price = await validateProductPricing(raffleCycleId);
-            
-            ticketCurrentPrice.value = Number(price.raffle_cycle.ticket_price); 
-            
+            const price = await validateProductPricing(Number(raffleCycleId), Number(raffleTypeId));
+            ticketCurrentPrice.value = price; 
+            console.log(price);
         } catch (error) {
             console.error("❌ Error verifying ticket price:", error);
         }
      };
 
      /**
-     * ✅ Compute Total Ticket Price for the user. This will update as the user increases ticket count
+     * ✅ Compute Total Ticket Price for the user
      */
      const totalTicketCost = computed(() => {
         if (formData.value.tickets > 0 && ticketCurrentPrice.value > 0) {
@@ -208,14 +204,13 @@ export default {
         console.log("🚀 Submitting request:", formData.value);
 
         // Call create order api here first before calling payment API
-        const response = await createOrder({...formData.value, amount: totalTicketCost.value, raffleCycleId});
-
+        const response = await createOrder(formData.value);
 
         // Initiate payment request to Squad by pasing the order id returned from the create order response above
         // The order id is the transaction reference
         if(response !== null) {
   
-          const paymentResponse = await processPayment({email:formData.value.email, amount: totalTicketCost.value, trans_ref:response.order_id});
+          const paymentResponse = await processPayment({email:formData.value.email, amount: totalTicketCost.value, trans_ref:response});
           
           // Check if user cancelled the transaction / closed the modal
           if(paymentResponse.status === "closed") {
@@ -232,7 +227,16 @@ export default {
       }
     };
 
-    // Dismmissible Alert
+    /**
+     * ✅ Formats currency values for display.
+     */
+    const formatCurrency = (amount) => {
+      return new Intl.NumberFormat("en-NG", {
+        style: "currency",
+        currency: "NGN",
+      }).format(amount);
+    };
+
     const dismissAlert = () => {
      isPaymentCancelled.value = !isPaymentCancelled.value;
     }
