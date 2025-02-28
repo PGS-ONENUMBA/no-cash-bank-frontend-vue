@@ -32,11 +32,11 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 const getAuthString = () => {
     const username = import.meta.env.VITE_APP_USER_NAME?.trim();
     const password = import.meta.env.VITE_APP_USER_PASSWORD?.trim();
-    
+
     if (!username || !password) {
         throw new Error('Authentication credentials not found in environment variables');
     }
-    
+
     return btoa(`${username}:${password}`);
 };
 
@@ -73,9 +73,9 @@ const makeRequestWithRetry = async (config, retryCount = 0) => {
  */
 export const fetchProducts = async (forceRefresh = false) => {
     // Return cached data if valid
-    if (!forceRefresh && 
-        products.value.length > 0 && 
-        lastFetchTimestamp.value && 
+    if (!forceRefresh &&
+        products.value.length > 0 &&
+        lastFetchTimestamp.value &&
         Date.now() - lastFetchTimestamp.value < CACHE_DURATION) {
         console.log("🔄 Using cached products data");
         return products.value;
@@ -91,14 +91,14 @@ export const fetchProducts = async (forceRefresh = false) => {
         }
 
         const response = await makeRequestWithRetry({
-            method: 'post',
+            method: 'GET',
             url: `${baseURL}${CONFIG.API_PATH}`,
             timeout: CONFIG.TIMEOUT_MS,
             headers: {
                 'Authorization': `Basic ${getAuthString()}`,
                 'Content-Type': 'application/json'
             },
-            data: { action_type: "get_raffle_cycle" }
+            params: { action_type: "get_raffle_cycle" }
         });
 
         if (response.data.success && Array.isArray(response.data.raffle_cycles)) {
@@ -106,7 +106,7 @@ export const fetchProducts = async (forceRefresh = false) => {
             lastFetchTimestamp.value = Date.now();
             console.log("✅ Products fetched successfully");
             return products.value;
-        } 
+        }
 
         console.warn("⚠ No products found or invalid response format");
         return [];
@@ -142,15 +142,15 @@ export const fetchProductById = async (raffleTypeId) => {
         console.log(`🔍 Fetching product details for Raffle Type ID: ${raffleTypeId}`);
 
         const authString = btoa(import.meta.env.VITE_APP_USER_NAME.trim() + ":" + import.meta.env.VITE_APP_USER_PASSWORD.trim());
-        
+
         const response = await axios({
-            method: 'post',
+            method: 'GET',
             url: `${import.meta.env.VITE_API_BASE_URL}/nocash-bank/v1/action`,
             headers: {
                 'Authorization': `Basic ${authString}`,
                 'Content-Type': 'application/json'
             },
-            data: {
+            params: {
                 action_type: "get_raffle_cycle_by_id",
                 raffle_cycle_id: raffleTypeId
             }
@@ -180,15 +180,15 @@ export const validateRaffleCycle = async (raffleCycleId, raffleTypeId) => {
         console.log(`🔍 Validating Raffle Cycle: ${raffleCycleId}, Type: ${raffleTypeId}`);
 
         const authString = btoa(import.meta.env.VITE_APP_USER_NAME.trim() + ":" + import.meta.env.VITE_APP_USER_PASSWORD.trim());
-        
+
         const response = await axios({
-            method: 'post',
+            method: 'GET',
             url: `${import.meta.env.VITE_API_BASE_URL}/nocash-bank/v1/action`,
             headers: {
                 'Authorization': `Basic ${authString}`,
                 'Content-Type': 'application/json'
             },
-            data: {
+            params: {
                 action_type: "get_raffle_cycle_by_id",
                 raffle_cycle_id: raffleCycleId
             }
@@ -212,7 +212,6 @@ export const validateRaffleCycle = async (raffleCycleId, raffleTypeId) => {
                 };
             }
         }
-
         console.warn("⚠ Raffle cycle validation failed. Possible data tampering.");
         return null;
     } catch (error) {
