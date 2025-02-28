@@ -37,8 +37,6 @@ const getAuthString = () => {
         throw new Error('Authentication credentials not found in environment variables');
     }
 
-    // console.log(username);
-
     return btoa(`${username}:${password}`);
 };
 
@@ -94,12 +92,14 @@ export const fetchProducts = async (forceRefresh = false) => {
 
         const response = await makeRequestWithRetry({
             method: 'GET',
+            method: 'GET',
             url: `${baseURL}${CONFIG.API_PATH}`,
             timeout: CONFIG.TIMEOUT_MS,
             headers: {
                 'Authorization': `Basic ${getAuthString()}`,
                 'Content-Type': 'application/json'
             },
+            params: { action_type: "get_raffle_cycle" }
             params: { action_type: "get_raffle_cycle" }
         });
 
@@ -186,11 +186,13 @@ export const validateRaffleCycle = async (raffleCycleId, raffleTypeId) => {
 
         const response = await axios({
             method: 'GET',
+            method: 'GET',
             url: `${import.meta.env.VITE_API_BASE_URL}/nocash-bank/v1/action`,
             headers: {
                 'Authorization': `Basic ${authString}`,
                 'Content-Type': 'application/json'
             },
+            params: {
             params: {
                 action_type: "get_raffle_cycle_by_id",
                 raffle_cycle_id: raffleCycleId
@@ -202,19 +204,9 @@ export const validateRaffleCycle = async (raffleCycleId, raffleTypeId) => {
         if (response.data.success) {
             const raffleCycle = response.data.raffle_cycle;
 
-            console.log('Raffle Cycle:', raffleCycle);
-
-
-            // const selectedType = raffleCycle.associated_types.find(
-            //     (type) => type.raffle_type_id === parseInt(raffleTypeId)
-            // );
-
-            const associatedTypes = Array.isArray(raffleCycle.associated_types) ? raffleCycle.associated_types : JSON.parse(raffleCycle.associated_types || '[]');
-
-            const selectedType = associatedTypes.find((type) => {
-               // console.log('Type:', type);
-                return type === parseInt(raffleTypeId);
-            })
+            const selectedType = raffleCycle.associated_types.find(
+                (type) => type.raffle_type_id === parseInt(raffleTypeId)
+            );
 
             if (selectedType) {
                 return {
