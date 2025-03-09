@@ -11,7 +11,7 @@
           <router-link to="/terms" class="footer-link me-3">Terms</router-link>
           <router-link to="/how-it-works" class="footer-link me-3">How it Works</router-link>
           <router-link to="/#faq" class="footer-link me-3">FAQ</router-link>
-          
+
         </div>
       </div>
     </div>
@@ -29,3 +29,4 @@
   text-decoration: underline;
 }
 </style>
+
