@@ -50,12 +50,10 @@ const makeRequestWithRetry = async (config, retryCount = 0) => {
     try {
         return await axios(config);
     } catch (error) {
-        // Don't retry on 4xx errors (client errors)
         if (error.response?.status >= 400 && error.response?.status < 500) {
             throw error;
         }
 
-        // Check if we should retry
         if (retryCount < CONFIG.MAX_RETRIES) {
             console.log(`🔄 Retry attempt ${retryCount + 1} of ${CONFIG.MAX_RETRIES}...`);
             await sleep(CONFIG.RETRY_DELAY_MS);
@@ -72,7 +70,6 @@ const makeRequestWithRetry = async (config, retryCount = 0) => {
  * @returns {Promise<Array>} Array of products
  */
 export const fetchProducts = async (forceRefresh = false) => {
-    // Return cached data if valid
     if (!forceRefresh &&
         products.value.length > 0 &&
         lastFetchTimestamp.value &&
@@ -92,7 +89,6 @@ export const fetchProducts = async (forceRefresh = false) => {
 
         const response = await makeRequestWithRetry({
             method: 'GET',
-            method: 'GET',
             url: `${baseURL}${CONFIG.API_PATH}`,
             timeout: CONFIG.TIMEOUT_MS,
             headers: {
@@ -100,9 +96,7 @@ export const fetchProducts = async (forceRefresh = false) => {
                 'Content-Type': 'application/json'
             },
             params: { action_type: "get_raffle_cycle" }
-            params: { action_type: "get_raffle_cycle" }
         });
-
 
         if (response.data.success && Array.isArray(response.data.raffle_cycles)) {
             products.value = response.data.raffle_cycles;
@@ -115,47 +109,43 @@ export const fetchProducts = async (forceRefresh = false) => {
         return [];
 
     } catch (error) {
-        console.log(error)
         console.error("❌ Error fetching products:", {
             message: error.message,
             code: error.code,
             status: error.response?.status,
             statusText: error.response?.statusText
         });
-        // Return cached data if available, even if expired
         if (products.value.length > 0) {
             console.log("⚠ Returning last known good state");
             return products.value;
         }
-
         return [];
     } finally {
         loading.value = false;
     }
 };
 
-
-
-
 /**
- * ✅ Fetches product details by `raffle_type_id`.
+ * Fetches product details by `raffle_cycle_id`.
+ * @param {number} raffleCycleId - The raffle cycle ID
+ * @returns {Promise<Object|null>} Product details or null
  */
-export const fetchProductById = async (raffleTypeId) => {
+export const fetchProductById = async (raffleCycleId) => {
     try {
-        console.log(`🔍 Fetching product details for Raffle Type ID: ${raffleTypeId}`);
+        console.log(`🔍 Fetching product details for Raffle Cycle ID: ${raffleCycleId}`);
 
-        const authString = btoa(import.meta.env.VITE_APP_USER_NAME.trim() + ":" + import.meta.env.VITE_APP_USER_PASSWORD.trim());
+        const authString = getAuthString();
 
         const response = await axios({
             method: 'GET',
-            url: `${import.meta.env.VITE_API_BASE_URL}/nocash-bank/v1/action`,
+            url: `${import.meta.env.VITE_API_BASE_URL}${CONFIG.API_PATH}`,
             headers: {
                 'Authorization': `Basic ${authString}`,
                 'Content-Type': 'application/json'
             },
             params: {
                 action_type: "get_raffle_cycle_by_id",
-                raffle_cycle_id: raffleTypeId
+                raffle_cycle_id: raffleCycleId
             }
         });
 
@@ -164,8 +154,8 @@ export const fetchProductById = async (raffleTypeId) => {
             return {
                 raffle_cycle_id: raffleCycle.raffle_cycle_id,
                 winnable_amount: parseFloat(raffleCycle.winnable_amount),
-                price_of_ticket: parseFloat(raffleCycle.price_of_ticket),
-                status: raffleCycle.status,
+                price_of_ticket: parseFloat(raffleCycle.ticket_price), // Fixed typo
+                status: raffleCycle.raffle_status, // Adjusted field name
                 associated_types: raffleCycle.associated_types,
             };
         }
@@ -177,22 +167,25 @@ export const fetchProductById = async (raffleTypeId) => {
     }
 };
 
-// Rest of your existing code remains the same...
+/**
+ * Validates raffle cycle and type
+ * @param {number} raffleCycleId - The raffle cycle ID
+ * @param {number} raffleTypeId - The raffle type ID
+ * @returns {Promise<Object|null>} Validated raffle details or null
+ */
 export const validateRaffleCycle = async (raffleCycleId, raffleTypeId) => {
     try {
         console.log(`🔍 Validating Raffle Cycle: ${raffleCycleId}, Type: ${raffleTypeId}`);
 
-        const authString = btoa(import.meta.env.VITE_APP_USER_NAME.trim() + ":" + import.meta.env.VITE_APP_USER_PASSWORD.trim());
+        const authString = getAuthString();
 
         const response = await axios({
             method: 'GET',
-            method: 'GET',
-            url: `${import.meta.env.VITE_API_BASE_URL}/nocash-bank/v1/action`,
+            url: `${import.meta.env.VITE_API_BASE_URL}${CONFIG.API_PATH}`,
             headers: {
                 'Authorization': `Basic ${authString}`,
                 'Content-Type': 'application/json'
             },
-            params: {
             params: {
                 action_type: "get_raffle_cycle_by_id",
                 raffle_cycle_id: raffleCycleId
@@ -203,7 +196,6 @@ export const validateRaffleCycle = async (raffleCycleId, raffleTypeId) => {
 
         if (response.data.success) {
             const raffleCycle = response.data.raffle_cycle;
-
             const selectedType = raffleCycle.associated_types.find(
                 (type) => type.raffle_type_id === parseInt(raffleTypeId)
             );
@@ -227,9 +219,17 @@ export const validateRaffleCycle = async (raffleCycleId, raffleTypeId) => {
     }
 };
 
+/**
+ * Returns loading state
+ * @returns {boolean} Whether data is currently loading
+ */
 export const isLoading = () => loading.value;
 
-// Keep the utility functions
+/**
+ * Gets icon class for raffle type
+ * @param {number} typeId - Raffle type ID
+ * @returns {string} Bootstrap icon class
+ */
 export const getIcon = (typeId) => {
     const icons = {
         1: "bi bi-currency-exchange",
@@ -239,6 +239,11 @@ export const getIcon = (typeId) => {
     return icons[typeId] || "bi bi-box";
 };
 
+/**
+ * Gets route for raffle type
+ * @param {number} typeId - Raffle type ID
+ * @returns {string} Route path
+ */
 export const getRoute = (typeId) => {
     const routes = {
         1: "/get-cash",
