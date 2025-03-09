@@ -120,7 +120,7 @@
  * @component Navbar
  * @description Main navigation component for the application. Handles user authentication status,
  * product navigation, and user profile management. Uses Bootstrap for styling and responsive design.
- * 
+ *
  * @requires Vue
  * @requires Vue Router
  * @requires Pinia Auth Store
@@ -135,7 +135,7 @@ import { fetchProducts, isLoading, getIcon, getRoute } from "@/services/productS
 
 export default {
   name: "Navbar",
-  
+
   setup() {
     const authStore = useAuthStore();
     const router = useRouter();
@@ -150,7 +150,7 @@ export default {
      */
     const transformProducts = (raffles) => {
       const transformed = [];
-      
+
       raffles.forEach(raffle => {
         // For each raffle cycle, create entries for all associated types
         raffle.associated_types.forEach(type => {
@@ -174,9 +174,9 @@ export default {
     const userDisplayName = computed(() => authStore.user?.displayName || "User");
     const userPhoneNumber = computed(() => authStore.user?.phone_number || null);
     const formattedBalance = computed(() =>
-      new Intl.NumberFormat("en-NG", { 
-        style: "currency", 
-        currency: "NGN" 
+      new Intl.NumberFormat("en-NG", {
+        style: "currency",
+        currency: "NGN"
       }).format(parseFloat(authStore.user?.wallet_balance ?? 0.00))
     );
 

@@ -1,7 +1,7 @@
 <template>
-  <div class="container text-center py-5">
+  <div class="container text-center py-5 mt-5">
     <div class="card shadow-sm p-4 mx-auto" style="max-width: 500px;">
-      <h2 class="text-primary">Thank You!</h2>
+      <h2 class="text-dark">Thank You!</h2>
       <p class="lead">We are processing your payment...</p>
 
       <div v-if="loading" class="text-center">

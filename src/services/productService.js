@@ -1,6 +1,3 @@
-/**
- * @fileoverview Product Service with retry logic and improved error handling
- */
 import { ref } from "vue";
 import axios from 'axios';
 
@@ -91,18 +88,15 @@ export const fetchProducts = async (forceRefresh = false) => {
         }
 
         const response = await makeRequestWithRetry({
-            method: 'GET',
-            method: 'GET',
+            method: 'GET', // Removed duplicate
             url: `${baseURL}${CONFIG.API_PATH}`,
             timeout: CONFIG.TIMEOUT_MS,
             headers: {
                 'Authorization': `Basic ${getAuthString()}`,
                 'Content-Type': 'application/json'
             },
-            params: { action_type: "get_raffle_cycle" }
-            params: { action_type: "get_raffle_cycle" }
+            params: { action_type: "get_raffle_cycle" } // Removed duplicate
         });
-
 
         if (response.data.success && Array.isArray(response.data.raffle_cycles)) {
             products.value = response.data.raffle_cycles;
@@ -115,7 +109,6 @@ export const fetchProducts = async (forceRefresh = false) => {
         return [];
 
     } catch (error) {
-        console.log(error)
         console.error("❌ Error fetching products:", {
             message: error.message,
             code: error.code,
@@ -133,9 +126,6 @@ export const fetchProducts = async (forceRefresh = false) => {
         loading.value = false;
     }
 };
-
-
-
 
 /**
  * ✅ Fetches product details by `raffle_type_id`.
@@ -177,7 +167,9 @@ export const fetchProductById = async (raffleTypeId) => {
     }
 };
 
-// Rest of your existing code remains the same...
+/**
+ * ✅ Validates a raffle cycle.
+ */
 export const validateRaffleCycle = async (raffleCycleId, raffleTypeId) => {
     try {
         console.log(`🔍 Validating Raffle Cycle: ${raffleCycleId}, Type: ${raffleTypeId}`);
@@ -185,15 +177,13 @@ export const validateRaffleCycle = async (raffleCycleId, raffleTypeId) => {
         const authString = btoa(import.meta.env.VITE_APP_USER_NAME.trim() + ":" + import.meta.env.VITE_APP_USER_PASSWORD.trim());
 
         const response = await axios({
-            method: 'GET',
-            method: 'GET',
+            method: 'GET', // Removed duplicate
             url: `${import.meta.env.VITE_API_BASE_URL}/nocash-bank/v1/action`,
             headers: {
                 'Authorization': `Basic ${authString}`,
                 'Content-Type': 'application/json'
             },
-            params: {
-            params: {
+            params: { // Removed duplicate
                 action_type: "get_raffle_cycle_by_id",
                 raffle_cycle_id: raffleCycleId
             }
@@ -229,7 +219,7 @@ export const validateRaffleCycle = async (raffleCycleId, raffleTypeId) => {
 
 export const isLoading = () => loading.value;
 
-// Keep the utility functions
+// Utility functions
 export const getIcon = (typeId) => {
     const icons = {
         1: "bi bi-currency-exchange",

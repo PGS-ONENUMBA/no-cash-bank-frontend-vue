@@ -35,10 +35,10 @@
 
         <!-- Video Section -->
         <div class="mt-5 position-relative">
-          <a 
-            href="#" 
-            data-bs-toggle="modal" 
-            data-bs-target="#videoModal" 
+          <a
+            href="#"
+            data-bs-toggle="modal"
+            data-bs-target="#videoModal"
             class="btn position-absolute top-100 start-50 translate-middle ripple-btn"
           >
             <i class="bi bi-play-circle bi-green-medium"></i>
@@ -60,10 +60,10 @@
               </div>
               <div class="modal-body">
                 <div class="ratio ratio-16x9">
-                  <iframe 
-                    id="videoIframe" 
-                    src="https://www.youtube.com/embed/dQw4w9WgXcQ" 
-                    title="Testimonial Video" 
+                  <iframe
+                    id="videoIframe"
+                    src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+                    title="Testimonial Video"
                     allowfullscreen
                   ></iframe>
                 </div>
@@ -85,7 +85,7 @@ import { fetchProducts, isLoading, getIcon, getRoute } from "@/services/productS
 export default {
   name: "HeroSection",
   components: { Preloader },
-  
+
   setup() {
     const raffleProducts = ref([]);
     const loading = ref(false);
@@ -103,7 +103,7 @@ export default {
     // Handle product page navigation
     const redirectToProductPage = (raffleCycleId, raffleTypeId) => {
       const routePath = getRoute(raffleTypeId);
-      
+
       router.push({
         path: routePath,
         query: {
