@@ -1,3 +1,8 @@
+import apiClient from "./apiService";
+import axios from "axios";
+
+const authString = btoa(import.meta.env.VITE_APP_USER_NAME.trim() + ":" + import.meta.env.VITE_APP_USER_PASSWORD.trim());   
+   
    /**
    * Create Mock DB
    * 
@@ -46,19 +51,29 @@
    * 
    * 
    **/
-  export const validateProductPricing = async (raffleCycleId, raffleTypeId) => {
-    // Find the matching raffle cycle
-    const raffle = mockDB.raffle_cycles.find(
-        (r) => r.raffle_cycle_id === raffleCycleId && r.raffle_type_id === raffleTypeId
-    );
+export const validateProductPricing = async (raffleCycleId) => {
+  console.log("Validating raffle cycle:", raffleCycleId);
 
-    // If not found, return null or handle accordingly
-    if (!raffle) {
-        return null; // Or handle it differently (e.g., throw an error)
-    }
+  try {
+    const response = await axios({
+      method: 'get',
+      url: `${import.meta.env.VITE_API_BASE_URL}/nocash-bank/v1/action`,
+      headers: {
+        'Authorization': `Basic ${authString}`,
+        'Content-Type': 'application/json'
+      },
+      params: {
+        action_type: "get_raffle_cycle_by_id",
+        raffle_cycle_id: raffleCycleId
+      }
+    });
 
-    // Return the ticket price
-    return raffle.ticket_price;
+    console.log(response.data);
+    return response.data;
+  } catch (error) {
+    console.error("❌ Error fetching product by ID:", error);
+    return null;
+  }
 };
 
   /**
