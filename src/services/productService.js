@@ -218,6 +218,58 @@ export const validateRaffleCycle = async (raffleCycleId, raffleTypeId) => {
         return null;
     }
 };
+/**
+ * Fetches vendor details by vendor_id
+ * @param {number} vendorId - The vendor ID
+ * @returns {Promise<Object|null>} Vendor details or null
+ */
+/**
+ * Fetches vendor details by vendor_id
+ * @param {number} vendorId - The vendor ID
+ * @returns {Promise<Object|null>} Vendor details or null
+ */
+export const fetchVendorDetails = async (vendorId) => {
+  try {
+      console.log(`🔍 Fetching vendor details for Vendor ID: ${vendorId}`);
+      const authString = getAuthString();
+
+      const response = await axios({
+          method: 'GET',
+          url: `${import.meta.env.VITE_API_BASE_URL}${CONFIG.API_PATH}`,
+          headers: {
+              'Authorization': `Basic ${authString}`,
+              'Content-Type': 'application/json'
+          },
+          params: {
+              action_type: "get_vendor_details",
+              vendor_id: vendorId
+          }
+      });
+
+      if (response.data.success) {
+          const vendor = response.data.vendor;
+          console.log('Vendor:', vendor);
+          return {
+              vendor_id: vendor.vendor_id,
+              email: vendor.email,
+              display_name: vendor.display_name,
+              phone_number: vendor.phone_number,
+              business_name: vendor.business_name,
+              business_address: vendor.business_address,
+              industry: vendor.industry,
+              bank_name: vendor.bank_name,
+              bank_account_number: vendor.bank_account_number,
+              cac_number: vendor.cac_number,
+              contact_name: vendor.contact_name
+          };
+      }
+      console.warn("⚠ Vendor not found.");
+      return null;
+  } catch (error) {
+      console.error("❌ Error fetching vendor details:", error);
+      return null;
+  }
+};
 
 /**
  * Returns loading state
