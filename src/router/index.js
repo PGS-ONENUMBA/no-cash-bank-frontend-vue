@@ -19,6 +19,7 @@ import Terms from "@/views/Terms.vue";
 import ResetPassword from "@/views/Public/ResetPassword.vue";
 import ThankYou from "@/views/common/ThankYouPage.vue";
 import NotFound from "@/views/404.vue";
+import PublicScan2Pay4Me from "@/views/Public/Scan2Pay4Me.vue";
 
 // Test
 import Test from "@/views/Public/Test.vue";
@@ -53,6 +54,7 @@ const routes = [
       { path: "privacy", name: "Privacy", component: Privacy, meta: { title: "Privacy" } },
       { path: "terms", name: "Terms", component: Terms, meta: { title: "Terms & Conditions" } },
       { path: "reset-password", name: "ResetPassword", component: ResetPassword, meta: { title: "Reset Password" } },
+      { path: "scan2pay4me", name: "PublicScan2Pay4Me", component: PublicScan2Pay4Me, meta: { title: "Scan to Pay4Me" } }, // New route
       { path: "test", name: "Test", component: Test, meta: { title: "Test" } },
     ],
   },

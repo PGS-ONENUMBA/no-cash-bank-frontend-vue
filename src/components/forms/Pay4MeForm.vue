@@ -10,15 +10,15 @@
             </h3>
 
             <p class="text-muted">
-              Need someone to cover a payment on your behalf? With **Pay4Me**, request payment assistance, and let someone else handle the bill.
+              Need someone to cover a payment on your behalf? With **Pay4Me**, request payment assistance, and let us handle the bill.
             </p>
 
             <h5 class="fw-bold"><i class="bi bi-lightbulb"></i> How It Works</h5>
             <ul class="list-unstyled">
               <li><i class="bi bi-1-circle text-success"></i> Enter the **amount** and **payment details**.</li>
-              <li><i class="bi bi-2-circle text-success"></i> Enter the email of a **sponsor** (friend, family, or business partner).</li>
-              <li><i class="bi bi-3-circle text-success"></i> The sponsor gets a **notification** and can approve the payment.</li>
-              <li><i class="bi bi-4-circle text-success"></i> Once approved, the payment is processed automatically.</li>
+              <li><i class="bi bi-2-circle text-success"></i> Enter the phone number/email of the recipient.</li>
+              <li><i class="bi bi-3-circle text-success"></i> Pay for your raffle ticket.</li>
+              <li><i class="bi bi-4-circle text-success"></i> When you win in the instant raffle draw, the payment is processed automatically.</li>
             </ul>
           </div>
         </div>
