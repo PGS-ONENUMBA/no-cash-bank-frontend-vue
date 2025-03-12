@@ -43,10 +43,11 @@
                 <!-- Email Field -->
                 <div class="col-md-6">
                   <label for="email" class="form-label">
-                    <i class="bi bi-envelope me-2"></i> Email
+                    <i class="bi bi-envelope me-2"></i> Email <small style="font-size: 13px; font-style:italic">(Optional)</small>
                   </label>
-                  <input type="email" class="form-control" id="email" v-model="formData.email" required />
+                  <input type="email" class="form-control" id="email" v-model="formData.email" />
                 </div>
+
                 <!-- Phone Number Field -->
                 <div class="col-md-6">
                   <label for="phoneNumber" class="form-label">
@@ -201,7 +202,7 @@ export default {
      * Create order
      */
     const handleSubmit = async () => {
-      if (!formData.value.email || !formData.value.phoneNumber || formData.value.tickets < 1) {
+      if ( !formData.value.phoneNumber || formData.value.tickets < 1) {
         alert("Please fill out all required fields correctly.");
         return;
       }
@@ -212,12 +213,11 @@ export default {
         // Call create order api here first before calling payment API
         const response = await createOrder({...formData.value, amount: totalTicketCost.value, raffleCycleId});
 
-
         // Initiate payment request to Squad by pasing the order id returned from the create order response above
         // The order id is the transaction reference
         if(response !== null) {
   
-          const paymentResponse = await processPayment({email:formData.value.email, amount: totalTicketCost.value, trans_ref:response.order_id});
+          const paymentResponse = await processPayment({email: formData.value.email || `${formData.value.phoneNumber}@paybychance.com`, amount: totalTicketCost.value, trans_ref:response.order_id});
           
           // Check if user cancelled the transaction / closed the modal
           if(paymentResponse.status === "closed") {

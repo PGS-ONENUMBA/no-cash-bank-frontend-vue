@@ -58,10 +58,17 @@ export default {
       try {
         const response = await verifyPayment(transRef);
 
-        if (response.statusCode === 200 && response.transactionStatus === "success") {
+
+
+        if (response.data.status === 200 && response.data.message === "Success") {
+          console.log(response.data.data.transaction_amount)
 
           // Update Order Status here
-          // const updateOrderStat = await updateOrderStatus(transRef, response.transactionStatus)
+          const updateOrderStat = await updateOrderStatus(response.data.data.transaction_ref, response.data.data.transaction_type, response.data.data.transaction_amount)
+
+          console.log(updateOrderStat)
+          return
+          if( updateOrderStat )
 
           // Redirect to dashboard after 3 seconds
           paymentStatus.value = "success";
