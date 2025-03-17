@@ -112,18 +112,6 @@ export default {
         return;
       }
 
-      try {
-        const response = await axios.post(
-          `${import.meta.env.VITE_API_BASE_URL}/nocash-bank/v1/action`,
-          { action_type: "submit_order", order_id: transRef, amount: "2750000" },
-          { headers: { Authorization: `Basic ${btoa("webappclient:3tw5JUNoOt2C8NfK2FPxRGBL")}` } }
-        );
-
-        if (!response.data.success) {
-          errorMessage.value = response.data.message || "Failed to submit order.";
-          return;
-        }
-
         // Connect to Socket.IO with custom UA
         socket.value = io(socketUrl, {
           transports: ["websocket"],
