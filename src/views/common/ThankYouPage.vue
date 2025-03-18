@@ -4,16 +4,45 @@
       <h2 class="text-dark">Thank You!</h2>
       <p class="lead">Your raffle journey begins...</p>
 
-      <!-- Stage: Submitted (Verification) -->
+      <!-- Stage: Submitted (Payment Verification) -->
       <div v-if="stage === 'submitted'" class="text-center">
         <div class="coin-stack">
           <div class="coin" v-for="n in 5" :key="n" :style="{ '--i': n }"></div>
         </div>
-        <p>Verifying payment, please wait...</p>
+        <p>Verifying your payment...</p>
       </div>
 
-      <!-- Stage: Payment Verified (Raffle) -->
+      <!-- Stage: Payment Verified (Amount Check) -->
       <div v-if="stage === 'payment_verified'" class="text-center">
+        <div class="spinner-border text-success" role="status">
+          <span class="visually-hidden">Checking payment...</span>
+        </div>
+        <p>Payment verified, checking amount...</p>
+      </div>
+
+      <!-- Stage: Amount Matched (Raffle Prep) -->
+      <div v-if="stage === 'amount_matched'" class="text-center">
+        <svg class="check-circle" width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="#28a745" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M9 12l2 2 4-4"/>
+        </svg>
+        <p>Amount matches, preparing raffle...</p>
+      </div>
+
+      <!-- Stage: Amount Mismatch (Wallet Credited) -->
+      <div v-if="stage === 'amount_mismatch_wallet_updated'" class="text-center">
+        <div class="wallet-icon">
+          <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="#ffc107" stroke-width="2">
+            <rect x="2" y="6" width="20" height="12" rx="2"/>
+            <path d="M18 14h4M6 10h12"/>
+          </svg>
+        </div>
+        <p>{{ message }}</p>
+        <div class="alert alert-warning mt-3">Wallet credited! Check your dashboard...</div>
+      </div>
+
+      <!-- Stage: Raffle Queued (Spinning) -->
+      <div v-if="stage === 'raffle_queued'" class="text-center">
         <svg class="raffle-wheel" viewBox="0 0 100 100">
           <circle cx="50" cy="50" r="45" fill="none" stroke="#28a745" stroke-width="10"/>
           <circle cx="50" cy="50" r="35" fill="#fff"/>
@@ -22,18 +51,22 @@
         <p>Raffle spinning...</p>
       </div>
 
-      <!-- Stage: Raffle Complete (Result) -->
-      <div v-if="stage === 'raffle_complete'" class="text-center">
-        <div v-if="result === '1'" class="result-confetti">
+      <!-- Stage: Winner Selected -->
+      <div v-if="stage === 'winner_selected'" class="text-center">
+        <div class="result-confetti">
           <div class="confetti-piece" v-for="n in 20" :key="n" :style="{ '--i': n }"></div>
           <div class="alert alert-success mt-3">🎉 You Won! Redirecting...</div>
         </div>
-        <div v-else-if="result === 'moved'" class="alert alert-info mt-3">
-          Moved to a new raffle cycle! Check your dashboard...
-        </div>
-        <div v-else class="alert alert-warning mt-3">
-          Better luck next time! Redirecting...
-        </div>
+      </div>
+
+      <!-- Stage: Moved to Next Cycle -->
+      <div v-if="stage === 'moved_to_next_cycle' || stage === 'cycle_moved'" class="text-center">
+        <svg class="cycle-arrow" width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="#17a2b8" stroke-width="2">
+          <path d="M12 2a10 10 0 0 1 10 10h-4M12 22a10 10 0 0 1-10-10h4"/>
+          <path d="M22 12h-4l2-2m-6 12h4l-2 2"/>
+        </svg>
+        <p>{{ message }}</p>
+        <div class="alert alert-info mt-3">Moved to new cycle! Redirecting...</div>
       </div>
 
       <!-- Error State -->
@@ -56,11 +89,11 @@ export default {
     const route = useRoute();
     const router = useRouter();
     const stage = ref("submitted");
-    const result = ref(null);
+    const message = ref("");
     const errorMessage = ref(null);
     const socket = ref(null);
 
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || "https://socket.paybychance.com/";
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || "https://socket.paybychance.com:5000";
 
     const getWheelSegment = (i) => {
       const angle = (i * 45 - 22.5) * Math.PI / 180;
@@ -74,9 +107,9 @@ export default {
     const animateStage = () => {
       if (stage.value === "submitted") {
         gsap.to(".coin", { rotation: 360, yoyo: true, repeat: -1, duration: 1, stagger: 0.1 });
-      } else if (stage.value === "payment_verified") {
+      } else if (stage.value === "raffle_queued") {
         gsap.to(".raffle-wheel", { rotation: 360, duration: 3, repeat: -1, ease: "power2.inOut" });
-      } else if (stage.value === "raffle_complete" && result.value === "1") {
+      } else if (stage.value === "winner_selected") {
         gsap.to(".confetti-piece", {
           y: 100,
           x: () => Math.random() * 100 - 50,
@@ -88,7 +121,7 @@ export default {
     };
 
     const submitOrder = () => {
-      const transRef = route.query.reference;
+      const transRef = route.query.order_id; // Changed from 'reference' to match backend
       if (!transRef) {
         errorMessage.value = "Invalid transaction reference.";
         return;
@@ -99,7 +132,6 @@ export default {
         return;
       }
 
-      // Initialize Socket.IO connection
       socket.value = io(socketUrl, {
         transports: ["websocket"],
         extraHeaders: {
@@ -107,7 +139,6 @@ export default {
         },
       });
 
-      // Start animation for initial "submitted" stage
       animateStage();
 
       socket.value.on("connect", () => {
@@ -118,24 +149,26 @@ export default {
       socket.value.on("status_update", (data) => {
         console.log("Status update:", data);
         stage.value = data.status;
-        if (data.status === "raffle_complete") {
-          result.value = data.raffle_win_status; // '0', '1', or 'moved'
+        message.value = data.message || "";
+
+        // Handle terminal states with redirect
+        if (["amount_mismatch_wallet_updated", "winner_selected", "cycle_moved"].includes(data.status)) {
           setTimeout(() => router.push("/dashboard"), 4000);
         }
+
         animateStage();
       });
 
       socket.value.on("connect_error", (err) => {
-        errorMessage.value = "Connection error: " + err.message;
+        errorMessage.value = "Connection error: " . err.message;
         console.error("Socket.IO connect error:", err);
       });
 
       socket.value.on("error", (err) => {
-        errorMessage.value = "Socket error: " + err.message;
+        errorMessage.value = "Socket error: " . err.message;
         console.error("Socket.IO error:", err);
       });
 
-      // Fallback if no update within 10 seconds
       setTimeout(() => {
         if (stage.value === "submitted") {
           errorMessage.value = "Verification timed out. Please try again later.";
@@ -152,7 +185,7 @@ export default {
 
     return {
       stage,
-      result,
+      message,
       errorMessage,
       getWheelSegment,
     };
@@ -197,6 +230,16 @@ h2 {
 .raffle-wheel {
   width: 150px;
   height: 150px;
+  margin: 20px auto;
+}
+
+/* Check Circle and Wallet Icon */
+.check-circle, .wallet-icon {
+  margin: 20px auto;
+}
+
+/* Cycle Arrow */
+.cycle-arrow {
   margin: 20px auto;
 }
 
