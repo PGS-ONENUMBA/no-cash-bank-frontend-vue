@@ -139,19 +139,11 @@ body {
 }
 
 .btn-small {
-  width: 150px; /* Adjust width as needed */
+  width: 100px; /* Adjust width as needed */
   color: #ffffff !important;
 }
 
-/* ---------------------------------- */
-/* Jumbotron Styles */
-/* ---------------------------------- */
-.jumbotron-bg {
-  background: url('@/assets/jb_background.svg') no-repeat top right;
-  background-size: cover;
-  padding: 4rem 2rem;
-  border-radius: 0.75rem; /* Maintain rounded corners */
-}
+
 
 /* Mobile-specific styles */
 @media (max-width: 768px) {
