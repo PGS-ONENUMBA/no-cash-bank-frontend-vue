@@ -9,7 +9,9 @@ import './assets/main.css'
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
-
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/service-worker.js");
+}
 
 // ✅ Initialize Pinia and use the persisted state plugin
 // const app = createApp(App);

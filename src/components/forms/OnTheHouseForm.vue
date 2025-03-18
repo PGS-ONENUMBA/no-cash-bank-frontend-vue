@@ -6,14 +6,9 @@
         <div class="card w-100 shadow-sm">
           <div class="card-body">
             <!-- ✅ Display Winnable Amount -->
-              <h4 class="text-success">
-                <span v-if="formattedWinnableAmount">
-                Transferable Amount: {{ formatCurrency(formattedWinnableAmount) }}
-                </span>
-                <span v-else>
-                <i class="bi bi-arrow-repeat text-muted"></i>
-                Loading winnable amount. Please wait ........</span>
-            </h4>
+            <h3 class="text-success fs-4">
+              Transferable Amount: {{ formattedWinnableAmount }}
+            </h3>
 
             <p class="text-muted">
               Use raffle tickets to pay for a client. The cash goes to the business, and any balance is refunded to the customer.

@@ -7,12 +7,13 @@
           <div class="card-body">
             <!-- ✅ Winnable Amount Display -->
             <h4 class="text-success">
-                <span v-if="raffleData.winnable_amount">
-                Transferable Amount: {{ formatCurrency(raffleData.winnable_amount) }}
-                </span>
-                <span v-else>
-                <i class="bi bi-arrow-repeat text-muted"></i>
-                Loading winnable amount. Please wait ........</span>
+              Transferable Amount:
+              <span v-if="raffleData.winnable_amount">
+                {{ formatCurrency(raffleData.winnable_amount) }}
+              </span>
+              <span v-else>
+                <i class="bi bi-arrow-repeat text-muted"></i> Loading...
+              </span>
             </h4>
 
             <p class="text-muted">
