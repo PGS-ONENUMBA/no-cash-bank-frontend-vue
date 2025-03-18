@@ -13,19 +13,7 @@ if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/service-worker.js");
 }
 
-// ✅ Initialize Pinia and use the persisted state plugin
-// const app = createApp(App);
-// app.use(piniaPersistedState);
-// app.use(createPinia()); // Register Pinia
-// app.use(router);
-// app.mount("#app");
 
-
-// import { createApp } from "vue";
-// import { createPinia } from "pinia";
-// import piniaPluginPersistedstate from "pinia-plugin-persistedstate"; // ✅ Import persist plugin
-// import App from "./App.vue";
-// import router from "./router";
 
 const pinia = createPinia();
 pinia.use(piniaPluginPersistedstate); // ✅ Enable persistence
