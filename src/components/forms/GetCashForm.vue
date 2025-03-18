@@ -43,10 +43,11 @@
                 <!-- Email Field -->
                 <div class="col-md-6">
                   <label for="email" class="form-label">
-                    <i class="bi bi-envelope me-2"></i> Email
+                    <i class="bi bi-envelope me-2"></i> Email <small style="font-size: 13px; font-style:italic">(Optional)</small>
                   </label>
-                  <input type="email" class="form-control" id="email" v-model="formData.email" required />
+                  <input type="email" class="form-control" id="email" v-model="formData.email" />
                 </div>
+
                 <!-- Phone Number Field -->
                 <div class="col-md-6">
                   <label for="phoneNumber" class="form-label">
@@ -115,6 +116,9 @@ import ToastComponent from "@/components/common/ToastComponent.vue";
 // Import Payment Helper
 import { validateProductPricing, createOrder, processPayment } from "@/services/paymentService";
 
+// Import Currency Formatter
+import formatCurrency  from "@/services/currencyFormatter";
+
 export default {
   name: "GetCashForm",
   components: {
@@ -133,8 +137,8 @@ export default {
       email: "",
       phoneNumber: "",
       tickets: 1,
-      raffle_cycle_id: "",
-      raffle_type_id: "",
+      raffle_cycle_id: raffleCycleId,
+      raffle_type_id: raffleTypeId,
       winnable_amount: "",
       price_of_ticket: "",
     });
@@ -151,7 +155,6 @@ export default {
 
       try {
         const validatedRaffle = await validateRaffleCycle(raffleCycleId, raffleTypeId);
-
         if (validatedRaffle) {
           raffleData.value = validatedRaffle;
           formData.value.raffle_cycle_id = validatedRaffle.raffle_cycle_id;
@@ -168,20 +171,23 @@ export default {
     };
 
      /**
-     * ✅ Verifies and ouputs current ticket price.
+     * ✅ Fetches current ticket price.
      */
      const verifyTicketCost = async () => {
         try {
-            const price = await validateProductPricing(Number(raffleCycleId), Number(raffleTypeId));
-            ticketCurrentPrice.value = price; 
-            console.log(price);
+            const price = await validateProductPricing(raffleCycleId);
+
+            console.log("Ticket Price is: ", price)
+            
+            ticketCurrentPrice.value = Number(price.raffle_cycle.ticket_price); 
+            
         } catch (error) {
             console.error("❌ Error verifying ticket price:", error);
         }
      };
 
      /**
-     * ✅ Compute Total Ticket Price for the user
+     * ✅ Compute Total Ticket Price for the user. This will update as the user increases ticket count
      */
      const totalTicketCost = computed(() => {
         if (formData.value.tickets > 0 && ticketCurrentPrice.value > 0) {
@@ -196,7 +202,7 @@ export default {
      * Create order
      */
     const handleSubmit = async () => {
-      if (!formData.value.email || !formData.value.phoneNumber || formData.value.tickets < 1) {
+      if ( !formData.value.phoneNumber || formData.value.tickets < 1) {
         alert("Please fill out all required fields correctly.");
         return;
       }
@@ -205,13 +211,13 @@ export default {
         console.log("🚀 Submitting request:", formData.value);
 
         // Call create order api here first before calling payment API
-        const response = await createOrder(formData.value);
+        const response = await createOrder({...formData.value, amount: totalTicketCost.value, raffleCycleId});
 
         // Initiate payment request to Squad by pasing the order id returned from the create order response above
         // The order id is the transaction reference
         if(response !== null) {
   
-          const paymentResponse = await processPayment({email:formData.value.email, amount: totalTicketCost.value, trans_ref:response});
+          const paymentResponse = await processPayment({email: formData.value.email || `${formData.value.phoneNumber}@paybychance.com`, amount: totalTicketCost.value, trans_ref:response.order_id});
           
           // Check if user cancelled the transaction / closed the modal
           if(paymentResponse.status === "closed") {
@@ -228,16 +234,7 @@ export default {
       }
     };
 
-    /**
-     * ✅ Formats currency values for display.
-     */
-    const formatCurrency = (amount) => {
-      return new Intl.NumberFormat("en-NG", {
-        style: "currency",
-        currency: "NGN",
-      }).format(amount);
-    };
-
+    // Dismmissible Alert
     const dismissAlert = () => {
      isPaymentCancelled.value = !isPaymentCancelled.value;
     }
@@ -263,14 +260,3 @@ export default {
   },
 };
 </script>
-
-<style scoped>
-.btn-orange {
-  background-color: #ff6f00;
-  color: white;
-  border: none;
-}
-.btn-orange:hover {
-  background-color: #e65d00;
-}
-</style>
