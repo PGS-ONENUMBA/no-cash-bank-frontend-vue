@@ -161,16 +161,16 @@ export default {
 
         // Call create order api here first before calling payment API
         const response = await createOrder({...formData.value, amount: totalTicketCost.value, raffleCycleId});
-       
+
         // console.log(response);
-  
+
         // Initiate payment request to Squad by pasing the order id returned from the create order response above
         // The order id is the transaction reference
         if(response !== null) {
-          
+
           // const userEmail = formData.value.email || `${formData.value.phoneNumber}@paybychance.com`
           const paymentResponse = await processPayment({email: formData.value.email || `${formData.value.phoneNumber}@paybychance.com`, amount: totalTicketCost.value, trans_ref:response.order_id});
-          
+
           // Check if user cancelled the transaction / closed the modal
           if(paymentResponse.status === "closed") {
             console.log("❌ Payment Cancelled by user");
@@ -180,7 +180,7 @@ export default {
           }
 
         }
-        
+
       } catch (error) {
         console.error("❌ Submission error:", error);
       }
@@ -202,9 +202,9 @@ export default {
      const verifyTicketCost = async () => {
         try {
             const price = await validateProductPricing(raffleCycleId);
-            
-            ticketCurrentPrice.value = Number(price.raffle_cycle.ticket_price); 
-            
+
+            ticketCurrentPrice.value = Number(price.raffle_cycle.ticket_price);
+
         } catch (error) {
             console.error("❌ Error verifying ticket price:", error);
         }

@@ -26,10 +26,16 @@
 
 <script>
 import HeroActions from "@/components/HeroActions.vue";
+import heroImage from "@/assets/hero-paybychance.png"; // Import the image explicitly
 export default {
   name: "HeroDesktop",
   components: { HeroActions },
   props: ["raffleProducts", "loading", "redirectToProductPage"],
+  data() {
+    return {
+      heroImageUrl: heroImage, // Make the image URL available to the template or style
+    };
+  },
 };
 </script>
 
@@ -42,6 +48,7 @@ export default {
   position: relative;
   padding: 4rem 2rem;
 }
+
 .text-purple {
   color: #6609b8;
 }
