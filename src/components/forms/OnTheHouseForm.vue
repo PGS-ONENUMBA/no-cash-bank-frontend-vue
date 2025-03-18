@@ -64,7 +64,7 @@
                 </label>
                 <span v-if="ticketCurrentPrice > 0">Current Ticket Price is : <span> {{ formatCurrency(ticketCurrentPrice) }} </span></span>
                 <input type="number" class="form-control" id="tickets" v-model="formData.tickets" required min="1" />
-                <p>You will pay : {{ formatCurrency(totalTicketCost) }}</p>
+                <p class="text-success fw-bold"><strong>You will pay : {{ formatCurrency(totalTicketCost) }}</strong></p>
               </div>
 
               <!-- ✅ Hidden Fields for Backend Validation -->
@@ -237,12 +237,15 @@ export default {
 </script>
 
 <style scoped>
-.btn-orange {
-  background-color: #ff6f00;
-  color: white;
-  border: none;
-}
-.btn-orange:hover {
-  background-color: #e65d00;
-}
+  .text-purple {
+    color: #6f42c1;
+  }
+  .btn-orange {
+    background-color: #ff6f00;
+    color: white;
+    border: none;
+  }
+  .btn-orange:hover {
+    background-color: #e65d00;
+  }
 </style>

@@ -222,6 +222,10 @@ export default {
 </script>
 
 <style scoped>
+
+.text-purple {
+  color: #6f42c1;
+}
 .btn-orange {
   background-color: #ff6f00;
   color: white;
