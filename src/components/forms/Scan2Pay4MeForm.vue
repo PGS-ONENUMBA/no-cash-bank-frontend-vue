@@ -5,9 +5,14 @@
       <div class="col-lg-6 d-flex">
         <div class="card w-100 shadow-sm">
           <div class="card-body">
-            <h3 class="text-success fs-4">
-              Transferable Amount: {{ formattedWinnableAmount }}
-            </h3>
+            <h4 class="text-success">
+                <span v-if="formattedWinnableAmount">
+                Transferable Amount: {{ formatCurrency(formattedWinnableAmount) }}
+                </span>
+                <span v-else>
+                <i class="bi bi-arrow-repeat text-muted"></i>
+                Loading winnable amount. Please wait ........</span>
+            </h4>
             <div v-if="vendorDetails" class="mt-2">
               <p><strong>Business Name:</strong> {{ vendorDetails.business_name }}</p>
               <p><strong>Address:</strong> {{ vendorDetails.business_address }}</p>

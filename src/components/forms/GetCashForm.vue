@@ -7,7 +7,12 @@
           <div class="card-body">
             <!-- ✅ Winnable Amount Display -->
             <h4 class="text-success">
-              Transferable Amount: {{ formatCurrency(raffleData.winnable_amount) }}
+                <span v-if="raffleData.winnable_amount">
+                Transferable Amount: {{ formatCurrency(raffleData.winnable_amount) }}
+                </span>
+                <span v-else>
+                <i class="bi bi-arrow-repeat text-muted"></i>
+                Loading winnable amount. Please wait ........</span>
             </h4>
 
             <p class="text-muted">
@@ -83,8 +88,8 @@
       </div>
     </div>
 
-    <div 
-      v-if="isPaymentCancelled" 
+    <div
+      v-if="isPaymentCancelled"
       class="alert alert-warning d-flex align-items-center position-fixed top-0 start-50 translate-middle-x shadow"
       role="alert"
       style="z-index: 1055; max-width: 500px;"
@@ -96,13 +101,13 @@
         Payment was cancelled. Please try again.
       </div>
 
-      <button 
-        type="button" 
-        class="btn-close me-2 m-auto" 
+      <button
+        type="button"
+        class="btn-close me-2 m-auto"
         @click="dismissAlert"
         aria-label="Close" ></button>
   </div>
-  
+
   </main>
 </template>
 
@@ -178,9 +183,9 @@ export default {
             const price = await validateProductPricing(raffleCycleId);
 
             console.log("Ticket Price is: ", price)
-            
-            ticketCurrentPrice.value = Number(price.raffle_cycle.ticket_price); 
-            
+
+            ticketCurrentPrice.value = Number(price.raffle_cycle.ticket_price);
+
         } catch (error) {
             console.error("❌ Error verifying ticket price:", error);
         }
@@ -216,9 +221,9 @@ export default {
         // Initiate payment request to Squad by pasing the order id returned from the create order response above
         // The order id is the transaction reference
         if(response !== null) {
-  
+
           const paymentResponse = await processPayment({email: formData.value.email || `${formData.value.phoneNumber}@paybychance.com`, amount: totalTicketCost.value, trans_ref:response.order_id});
-          
+
           // Check if user cancelled the transaction / closed the modal
           if(paymentResponse.status === "closed") {
             console.log("❌ Payment Cancelled by user");
@@ -228,7 +233,7 @@ export default {
           }
 
         }
-        
+
       } catch (error) {
         console.error("❌ Submission error:", error);
       }
