@@ -48,7 +48,6 @@
 import { ref, onMounted, onBeforeUnmount } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { io } from "socket.io-client";
-import axios from "axios";
 import gsap from "gsap";
 
 export default {
@@ -56,23 +55,13 @@ export default {
   setup() {
     const route = useRoute();
     const router = useRouter();
-    /** @type {Ref<string>} Current stage of the raffle process */
     const stage = ref("submitted");
-    /** @type {Ref<string|null>} Result of the raffle ('0', '1', 'moved') */
     const result = ref(null);
-    /** @type {Ref<string|null>} Error message if something fails */
     const errorMessage = ref(null);
-    /** @type {Ref<Socket|null>} Socket.IO client instance */
     const socket = ref(null);
 
-    /** @type {string} Socket.IO server URL from environment or default */
     const socketUrl = import.meta.env.VITE_SOCKET_URL || "https://socket.paybychance.com/";
 
-    /**
-     * Generates SVG path for raffle wheel segments.
-     * @param {number} i - Segment index (1-8).
-     * @returns {string} SVG path string.
-     */
     const getWheelSegment = (i) => {
       const angle = (i * 45 - 22.5) * Math.PI / 180;
       const x1 = 50 + 35 * Math.cos(angle);
@@ -81,10 +70,7 @@ export default {
       const y2 = 50 + 35 * Math.sin(angle + Math.PI / 4);
       return `M50,50 L${x1},${y1} A35,35 0 0,1 ${x2},${y2} Z`;
     };
-    /**
-     * Animates UI elements based on current stage.
-     * @function animateStage
-     */
+
     const animateStage = () => {
       if (stage.value === "submitted") {
         gsap.to(".coin", { rotation: 360, yoyo: true, repeat: -1, duration: 1, stagger: 0.1 });
@@ -92,63 +78,70 @@ export default {
         gsap.to(".raffle-wheel", { rotation: 360, duration: 3, repeat: -1, ease: "power2.inOut" });
       } else if (stage.value === "raffle_complete" && result.value === "1") {
         gsap.to(".confetti-piece", {
-          y: 150,
-          x: () => Math.random() * 80 - 40,
+          y: 100,
+          x: () => Math.random() * 100 - 50,
           rotation: () => Math.random() * 360,
           duration: 2,
           stagger: 0.05,
         });
       }
     };
-    /**
-     * Submits the order to the backend and sets up Socket.IO for updates.
-     * @async
-     * @function submitOrder
-     */
-    const submitOrder = async () => {
+
+    const submitOrder = () => {
       const transRef = route.query.reference;
       if (!transRef) {
         errorMessage.value = "Invalid transaction reference.";
         return;
       }
 
-        // Connect to Socket.IO with custom UA
-        socket.value = io(socketUrl, {
-          transports: ["websocket"],
-          extraHeaders: {
-            "User-Agent": "PayByChanceApp/1.0 Capacitor",
-          },
-        });
-
-        socket.value.on("connect", () => {
-          console.log("Connected to Socket.IO");
-          socket.value.emit("join_order", transRef);
-          animateStage();
-        });
-
-        socket.value.on("status_update", (data) => {
-          console.log("Status update:", data);
-          stage.value = data.status;
-          if (data.status === "raffle_complete") {
-            result.value = data.raffle_win_status; // '0', '1', or 'moved'
-            setTimeout(() => router.push("/dashboard"), 4000);
-          }
-          animateStage();
-        });
-
-        socket.value.on("connect_error", (err) => {
-          errorMessage.value = "Connection error: " + err.message;
-          console.error("Socket.IO connect error:", err);
-        });
-
-        socket.value.on("error", (err) => {
-          errorMessage.value = "Socket error: " + err.message;
-          console.error("Socket.IO error:", err);
-        });
-      } catch (error) {
-        errorMessage.value = "Error submitting order: " + error.message;
-        console.error("Order submission error:", error);
+      if (!socketUrl) {
+        errorMessage.value = "Socket server URL is not configured.";
+        return;
       }
+
+      // Initialize Socket.IO connection
+      socket.value = io(socketUrl, {
+        transports: ["websocket"],
+        extraHeaders: {
+          "User-Agent": "PayByChanceApp/1.0 Capacitor",
+        },
+      });
+
+      // Start animation for initial "submitted" stage
+      animateStage();
+
+      socket.value.on("connect", () => {
+        console.log("Connected to Socket.IO");
+        socket.value.emit("join_order", transRef);
+      });
+
+      socket.value.on("status_update", (data) => {
+        console.log("Status update:", data);
+        stage.value = data.status;
+        if (data.status === "raffle_complete") {
+          result.value = data.raffle_win_status; // '0', '1', or 'moved'
+          setTimeout(() => router.push("/dashboard"), 4000);
+        }
+        animateStage();
+      });
+
+      socket.value.on("connect_error", (err) => {
+        errorMessage.value = "Connection error: " + err.message;
+        console.error("Socket.IO connect error:", err);
+      });
+
+      socket.value.on("error", (err) => {
+        errorMessage.value = "Socket error: " + err.message;
+        console.error("Socket.IO error:", err);
+      });
+
+      // Fallback if no update within 10 seconds
+      setTimeout(() => {
+        if (stage.value === "submitted") {
+          errorMessage.value = "Verification timed out. Please try again later.";
+          socket.value.disconnect();
+        }
+      }, 10000);
     };
 
     onMounted(submitOrder);
@@ -195,7 +188,7 @@ h2 {
   height: 50px;
   background: radial-gradient(circle, #FFD700 40%, #DAA520 70%);
   border-radius: 50%;
-  top: calc(50% - 25px + var(--i) * 4px);
+  top: calc(50% - 25px + var(--i) * 6px);
   left: calc(50% - 25px);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
 }
