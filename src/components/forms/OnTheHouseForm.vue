@@ -5,7 +5,7 @@
       <div class="col-lg-6 d-flex">
         <div class="card w-100 shadow-sm">
           <div class="card-body">
-            <!-- ✅ Display Winnable Amount -->
+            <!-- ✅ Display Winnable Amount ------>
 
 
             <h3 class="text-muted fs-4">

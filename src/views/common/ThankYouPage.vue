@@ -38,7 +38,7 @@
           </svg>
         </div>
         <p>{{ message }}</p>
-        <div class="alert alert-warning mt-3">Wallet credited! Check your dashboard...</div>
+        <div class="alert alert-warning mt-3">Wallet credited! Check your balance on the dashboard...</div>
       </div>
 
       <!-- Stage: Raffle Queued (Spinning) ------->

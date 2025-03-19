@@ -5,9 +5,15 @@
       <div class="col-lg-6 d-flex">
         <div class="card w-100 shadow-sm">
           <div class="card-body">
-            <h3 class="text-success fs-4">
+            <!-- Pay-4-Me Introduction -->
+            <div class="text-center mb-4 mt-5">
+              <h3 class="fw-bold fs-4">
+                <i class="bi bi-qr-code-scan me-2"></i> Pay Vendor via QR Code Scan
+              </h3>
+            </div>
+            <p class="text-success fs-5">
               Transferable Amount: {{ formattedWinnableAmount }}
-            </h3>
+            </p>
             <div v-if="vendorDetails" class="mt-2">
               <p><strong>Business Name:</strong> {{ vendorDetails.business_name }}</p>
               <p><strong>Address:</strong> {{ vendorDetails.business_address }}</p>
