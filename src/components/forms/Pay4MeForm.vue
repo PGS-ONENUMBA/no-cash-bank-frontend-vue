@@ -5,12 +5,13 @@
       <div class="col-lg-6 d-flex">
         <div class="card w-100 shadow-sm">
           <div class="card-body">
-            <h3 class="text-success fs-4">
-              Transferable Amount: {{ formattedWinnableAmount }}
+
+            <h3 class="text-muted fs-4">
+              We can pay for you to cover your expenses up to {{ formattedWinnableAmount }} at the ticket price of : <span v-if="ticketCurrentPrice > 0"><span> {{ formatCurrency(ticketCurrentPrice) }} </span></span>
             </h3>
 
-            <p class="text-muted">
-              Need someone to cover a payment on your behalf? With **Pay4Me**, request payment assistance, and let us handle the bill.
+            <p class="text-success fs-5">
+              Transferable Amount: {{ formattedWinnableAmount }}
             </p>
 
             <h5 class="fw-bold"><i class="bi bi-lightbulb"></i> How It Works</h5>

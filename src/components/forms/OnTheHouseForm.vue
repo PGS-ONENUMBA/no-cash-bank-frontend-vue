@@ -6,27 +6,27 @@
         <div class="card w-100 shadow-sm">
           <div class="card-body">
             <!-- ✅ Display Winnable Amount -->
-            <h3 class="text-success fs-4">
-              Transferable Amount: {{ formattedWinnableAmount }}
-            </h3>
 
-            <p class="text-muted">
-              Use raffle tickets to pay for a client. The cash goes to the business, and any balance is refunded to the customer.
-              Follow these steps:
+
+            <h3 class="text-muted fs-4">
+              Special deals and discounts worth up to  {{ formattedWinnableAmount }} on our OnTheHouse program at the ticket price of: <span v-if="ticketCurrentPrice > 0"><span> {{ formatCurrency(ticketCurrentPrice) }} </span></span>
+            </h3>
+            <p class="text-success fs-5">
+              Transferable Amount: {{ formattedWinnableAmount }}
             </p>
 
             <ul class="list-group">
               <li class="list-group-item d-flex align-items-start">
                 <i class="bi bi-1-circle-fill text-success me-3"></i>
-                <div><strong>Step 1:</strong> Select "On The House" from the dashboard.</div>
+                <div><strong>Step 1:</strong> Fill the form.</div>
               </li>
               <li class="list-group-item d-flex align-items-start">
                 <i class="bi bi-2-circle-fill text-success me-3"></i>
-                <div><strong>Step 2:</strong> Enter the ticket and recipient details.</div>
+                <div><strong>Step 2:</strong> Specify number of ticket and recipient details.</div>
               </li>
               <li class="list-group-item d-flex align-items-start">
                 <i class="bi bi-3-circle-fill text-success me-3"></i>
-                <div><strong>Step 3:</strong> Confirm the transaction.</div>
+                <div><strong>Step 3:</strong> Confirm the transaction, and wait for instant update</div>
               </li>
             </ul>
           </div>

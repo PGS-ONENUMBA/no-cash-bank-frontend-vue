@@ -1,5 +1,5 @@
 <template>
-  
+
   <div class="container py-5">
     <!-- Pay-4-Me Introduction -->
     <div class="text-center mb-4 mt-5">
@@ -8,7 +8,7 @@
       </h2>
     </div>
 
-    <!-- Pay-4-Me Form -->
+    <!-- Pay-4-Me Form, -->
     <OnTheHouseForm />
   </div>
 </template>
