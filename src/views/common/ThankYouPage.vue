@@ -41,21 +41,21 @@
         <div class="alert alert-warning mt-3">Wallet credited! Check your dashboard...</div>
       </div>
 
-      <!-- Stage: Raffle Queued (Spinning) -->
+      <!-- Stage: Raffle Queued (Spinning) ------->
       <div v-if="stage === 'raffle_queued'" class="text-center">
         <svg class="raffle-wheel" viewBox="0 0 100 100">
           <circle cx="50" cy="50" r="45" fill="none" stroke="#28a745" stroke-width="10"/>
           <circle cx="50" cy="50" r="35" fill="#fff"/>
           <path v-for="i in 8" :key="i" :d="getWheelSegment(i)" fill="#28a745"/>
         </svg>
-        <p>Raffle spinning...</p>
+        <p>Raffle ongoin please wait...</p>
       </div>
 
       <!-- Stage: Winner Selected -->
       <div v-if="stage === 'winner_selected'" class="text-center">
         <div class="result-confetti">
           <div class="confetti-piece" v-for="n in 20" :key="n" :style="{ '--i': n }"></div>
-          <div class="alert alert-success mt-3">🎉 You Won! Redirecting...</div>
+          <div class="alert alert-success mt-3">🎉 You Won!...</div>
         </div>
       </div>
 
@@ -66,7 +66,7 @@
           <path d="M22 12h-4l2-2m-6 12h4l-2 2"/>
         </svg>
         <p>{{ message }}</p>
-        <div class="alert alert-info mt-3">Moved to new cycle! Redirecting...</div>
+        <div class="alert alert-info mt-3">Moved to new cycle!...</div>
       </div>
 
       <!-- Error State -->
