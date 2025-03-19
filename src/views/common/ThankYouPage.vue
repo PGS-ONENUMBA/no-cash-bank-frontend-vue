@@ -130,6 +130,7 @@ export default {
     const submitOrder = async () => {
       // Get reference from query param (e.g., ?reference=test4242)
       const transRef = route.query.reference;
+      console.log("Transaction reference:", transRef);
       if (!transRef) {
         errorMessage.value = "Invalid transaction reference.";
         return;
