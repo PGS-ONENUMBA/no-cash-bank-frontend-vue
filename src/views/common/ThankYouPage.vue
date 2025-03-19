@@ -150,7 +150,7 @@ export default {
         const response = await fetch(apiUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reference: transRef, amount })
+          body: JSON.stringify({ reference: transRef })
         });
         const result = await response.json();
 
