@@ -1,7 +1,3 @@
-<!--
-  Thank You page showing order processing stages after payment submission.
-  Displays conditional outcomes based on Socket.IO updates from payment_status_queue.
--->
 <template>
   <div class="container text-center py-5 mt-5">
     <div class="card shadow-sm p-4 mx-auto" style="max-width: 500px;">
@@ -70,7 +66,6 @@
           <path d="M22 12h-4l2-2m-6 12h4l-2 2"/>
         </svg>
         <p>{{ message }}</p>
-        <!-- Show different text based on stage -->
         <div class="alert alert-info mt-3" v-if="stage === 'moved_to_next_cycle'">
           Moving to a new raffle cycle...
         </div>
@@ -98,14 +93,14 @@ export default {
   setup() {
     const route = useRoute();
     const router = useRouter();
-    const stage = ref("submitted"); // Stage 1 by default
-    const message = ref(""); // Dynamic message from backend
+    const stage = ref("submitted");
+    const message = ref("");
     const errorMessage = ref(null);
     const socket = ref(null);
 
     const socketUrl = import.meta.env.VITE_SOCKET_URL || "https://socket.paybychance.com:5000";
+    const apiUrl = import.meta.env.VITE_API_BASE_URL+"/nocash-bank/v1/action";
 
-    // Raffle wheel segment generator
     const getWheelSegment = (i) => {
       const angle = (i * 45 - 22.5) * Math.PI / 180;
       const x1 = 50 + 35 * Math.cos(angle);
@@ -115,7 +110,6 @@ export default {
       return `M50,50 L${x1},${y1} A35,35 0 0,1 ${x2},${y2} Z`;
     };
 
-    // Animate based on stage
     const animateStage = () => {
       if (stage.value === "submitted") {
         gsap.to(".coin", { rotation: 360, yoyo: true, repeat: -1, duration: 1, stagger: 0.1 });
@@ -132,11 +126,17 @@ export default {
       }
     };
 
-    // Socket.IO setup and status listener
-    const submitOrder = () => {
-      const transRef = route.query.reference; // Backend uses 'reference' as 'order_id' in URL
+    // Post to API and setup Socket.IO listener
+    const submitOrder = async () => {
+      // Get reference from query param (e.g., ?reference=test4242)
+      const transRef = route.query.reference;
       if (!transRef) {
         errorMessage.value = "Invalid transaction reference.";
+        return;
+      }
+
+      if (!apiUrl) {
+        errorMessage.value = "API URL is not configured.";
         return;
       }
 
@@ -145,11 +145,33 @@ export default {
         return;
       }
 
+      // Step 1: Post to submit-order API to queue the order
+      try {
+        const response = await fetch(apiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reference: transRef })
+        });
+        const result = await response.json();
+
+        if (!result.success) {
+          errorMessage.value = result.message || "Failed to queue order for verification.";
+          return;
+        }
+        console.log("API response:", result);
+      } catch (err) {
+        errorMessage.value = "API request failed: " + err.message;
+        console.error("API error:", err);
+        return;
+      }
+
+      // Step 2: Connect to Socket.IO after successful API call
       socket.value = io(socketUrl, {
         transports: ["websocket"],
         extraHeaders: { "User-Agent": "PayByChanceApp/1.0 Capacitor" },
       });
 
+      // Start animation for submitted stage
       animateStage();
 
       socket.value.on("connect", () => {
@@ -157,13 +179,11 @@ export default {
         socket.value.emit("join_order", transRef);
       });
 
-      // Handle conditional status updates
       socket.value.on("status_update", (data) => {
         console.log("Status update:", data);
         stage.value = data.status;
         message.value = data.message || "";
 
-        // Redirect for terminal states
         if (["amount_mismatch_wallet_updated", "winner_selected", "cycle_moved"].includes(data.status)) {
           setTimeout(() => router.push("/dashboard"), 4000);
         }
@@ -203,22 +223,11 @@ export default {
 .card { border-radius: 15px; background: #f8f9fa; }
 h2 { font-weight: bold; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
 .lead { color: #6c757d; }
-.coin-stack {
-  position: relative;
-  width: 100px;
-  height: 100px;
-  margin: 20px
-  auto;
-}
+.coin-stack { position: relative; width: 100px; height: 100px; margin: 20px auto; }
 .coin {
-  position: absolute;
-  width: 50px;
-  height: 50px;
-  background:
-  radial-gradient(circle, #FFD700 40%, #DAA520 70%);
-  border-radius: 50%;
-  top: calc(50% - 25px + var(--i) * 6px);
-  left: calc(50% - 25px);
+  position: absolute; width: 50px; height: 50px;
+  background: radial-gradient(circle, #FFD700 40%, #DAA520 70%);
+  border-radius: 50%; top: calc(50% - 25px + var(--i) * 6px); left: calc(50% - 25px);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
 }
 .raffle-wheel { width: 150px; height: 150px; margin: 20px auto; }
@@ -226,17 +235,8 @@ h2 { font-weight: bold; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
 .cycle-arrow { margin: 20px auto; }
 .result-confetti { position: relative; height: 150px; }
 .confetti-piece {
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  background: #28a745;
-  top: -20px;
-  left: calc(50% + (var(--i) - 10) * 8px);
-  transform: rotate(45deg);
+  position: absolute; width: 8px; height: 8px; background: #28a745;
+  top: -20px; left: calc(50% + (var(--i) - 10) * 8px); transform: rotate(45deg);
 }
-p {
-  font-size: 1.2rem;
-  margin-top: 15px;
-  color: #343a40;
-  }
+p { font-size: 1.2rem; margin-top: 15px; color: #343a40; }
 </style>
