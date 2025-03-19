@@ -5,8 +5,6 @@
       <div class="col-lg-6 d-flex">
         <div class="card w-100 shadow-sm">
           <div class="card-body">
-
-
             <p class="text-muted fs-4">
               Need cash urgently? Get up to <span v-if="raffleData.winnable_amount">
                 {{ formatCurrency(raffleData.winnable_amount) }}
@@ -15,7 +13,7 @@
                 <i class="bi bi-arrow-repeat text-muted"></i> Loading...
               </span> instantly at the price of <span v-if="ticketCurrentPrice > 0"> <span> {{ formatCurrency(ticketCurrentPrice) }} </span></span> ticket only.
             </p>
-            <!-- ✅ Winnable Amount Display -->
+            <!-- ✅ Winnable Amount Display ------>
             <p class="text-success fs-5">
               Transferable Amount:
               <span v-if="raffleData.winnable_amount">

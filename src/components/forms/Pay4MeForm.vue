@@ -1,7 +1,7 @@
 <template>
   <main class="container py-2 mt-2">
     <div class="row g-4 d-flex align-items-stretch">
-      <!-- Left Column: Instructions -->
+      <!-- Left Column: Instructions ------>
       <div class="col-lg-6 d-flex">
         <div class="card w-100 shadow-sm">
           <div class="card-body">
