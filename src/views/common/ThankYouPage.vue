@@ -1,7 +1,7 @@
 <template>
   <div class="container text-center py-5 mt-5">
     <div class="card shadow-sm p-4 mx-auto" style="max-width: 500px;">
-      <h2 class="text-dark">Thank You for you payment!</h2>
+      <h2 class="text-dark">Thank You!</h2>
       <p class="lead">Please wait while we process your request...</p>
 
       <!-- Stage: Submitted (Payment Verification) -->
@@ -41,14 +41,14 @@
         <div class="alert alert-warning mt-3">Wallet credited! Check your balance on the dashboard...</div>
       </div>
 
-      <!-- Stage: Raffle Queued (Spinning) ------->
+      <!-- Stage: Raffle Queued (Spinning) -->
       <div v-if="stage === 'raffle_queued'" class="text-center">
         <svg class="raffle-wheel" viewBox="0 0 100 100">
           <circle cx="50" cy="50" r="45" fill="none" stroke="#28a745" stroke-width="10"/>
           <circle cx="50" cy="50" r="35" fill="#fff"/>
           <path v-for="i in 8" :key="i" :d="getWheelSegment(i)" fill="#28a745"/>
         </svg>
-        <p>Raffle ongoin please wait...</p>
+        <p>Raffle spinning...</p>
       </div>
 
       <!-- Stage: Winner Selected -->
