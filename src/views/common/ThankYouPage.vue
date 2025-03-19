@@ -1,10 +1,14 @@
+<!--
+  Thank You page showing order processing stages after payment submission.
+  Displays conditional outcomes based on Socket.IO updates from payment_status_queue.
+-->
 <template>
   <div class="container text-center py-5 mt-5">
     <div class="card shadow-sm p-4 mx-auto" style="max-width: 500px;">
-      <h2 class="text-dark">Thank You for you payment!</h2>
+      <h2 class="text-dark">Thank You!</h2>
       <p class="lead">Please wait while we process your request...</p>
 
-      <!-- Stage: Submitted (Payment Verification) -->
+      <!-- Stage 1: Submitted - Initial payment verification -->
       <div v-if="stage === 'submitted'" class="text-center">
         <div class="coin-stack">
           <div class="coin" v-for="n in 5" :key="n" :style="{ '--i': n }"></div>
@@ -12,7 +16,7 @@
         <p>Verifying your payment...</p>
       </div>
 
-      <!-- Stage: Payment Verified (Amount Check) -->
+      <!-- Stage 2: Payment Verified - Payment confirmed, checking amount -->
       <div v-if="stage === 'payment_verified'" class="text-center">
         <div class="spinner-border text-success" role="status">
           <span class="visually-hidden">Checking payment...</span>
@@ -20,7 +24,7 @@
         <p>Payment verified, checking amount...</p>
       </div>
 
-      <!-- Stage: Amount Matched (Raffle Prep) -->
+      <!-- Stage 3: Amount Matched - Amount matches, raffle next -->
       <div v-if="stage === 'amount_matched'" class="text-center">
         <svg class="check-circle" width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="#28a745" stroke-width="2">
           <circle cx="12" cy="12" r="10"/>
@@ -29,7 +33,7 @@
         <p>Amount matches, preparing raffle...</p>
       </div>
 
-      <!-- Stage: Amount Mismatch (Wallet Credited) -->
+      <!-- Stage 4: Amount Mismatch - Wallet credited, terminal state -->
       <div v-if="stage === 'amount_mismatch_wallet_updated'" class="text-center">
         <div class="wallet-icon">
           <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="#ffc107" stroke-width="2">
@@ -41,35 +45,41 @@
         <div class="alert alert-warning mt-3">Wallet credited! Check your balance on the dashboard...</div>
       </div>
 
-      <!-- Stage: Raffle Queued (Spinning) ------->
+      <!-- Stage 5: Raffle Queued - Raffle processing started -->
       <div v-if="stage === 'raffle_queued'" class="text-center">
         <svg class="raffle-wheel" viewBox="0 0 100 100">
           <circle cx="50" cy="50" r="45" fill="none" stroke="#28a745" stroke-width="10"/>
           <circle cx="50" cy="50" r="35" fill="#fff"/>
           <path v-for="i in 8" :key="i" :d="getWheelSegment(i)" fill="#28a745"/>
         </svg>
-        <p>Raffle ongoin please wait...</p>
+        <p>Raffle spinning...</p>
       </div>
 
-      <!-- Stage: Winner Selected -->
+      <!-- Stage 6: Winner Selected - User won, terminal state -->
       <div v-if="stage === 'winner_selected'" class="text-center">
         <div class="result-confetti">
           <div class="confetti-piece" v-for="n in 20" :key="n" :style="{ '--i': n }"></div>
-          <div class="alert alert-success mt-3">🎉 You Won!...</div>
+          <div class="alert alert-success mt-3">🎉 You Won! Redirecting to dashboard...</div>
         </div>
       </div>
 
-      <!-- Stage: Moved to Next Cycle -->
+      <!-- Stage 7 & 8: Moved to Next Cycle - Cycle transition, conditional -->
       <div v-if="stage === 'moved_to_next_cycle' || stage === 'cycle_moved'" class="text-center">
         <svg class="cycle-arrow" width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="#17a2b8" stroke-width="2">
           <path d="M12 2a10 10 0 0 1 10 10h-4M12 22a10 10 0 0 1-10-10h4"/>
           <path d="M22 12h-4l2-2m-6 12h4l-2 2"/>
         </svg>
         <p>{{ message }}</p>
-        <div class="alert alert-info mt-3">Moved to new cycle!...</div>
+        <!-- Show different text based on stage -->
+        <div class="alert alert-info mt-3" v-if="stage === 'moved_to_next_cycle'">
+          Moving to a new raffle cycle...
+        </div>
+        <div class="alert alert-info mt-3" v-else-if="stage === 'cycle_moved'">
+          Moved to new cycle! Redirecting to dashboard...
+        </div>
       </div>
 
-      <!-- Error State -->
+      <!-- Error State - Fallback for failures -->
       <div v-if="errorMessage" class="alert alert-danger mt-3">
         {{ errorMessage }}
       </div>
@@ -88,13 +98,14 @@ export default {
   setup() {
     const route = useRoute();
     const router = useRouter();
-    const stage = ref("submitted");
-    const message = ref("");
+    const stage = ref("submitted"); // Stage 1 by default
+    const message = ref(""); // Dynamic message from backend
     const errorMessage = ref(null);
     const socket = ref(null);
 
     const socketUrl = import.meta.env.VITE_SOCKET_URL || "https://socket.paybychance.com:5000";
 
+    // Raffle wheel segment generator
     const getWheelSegment = (i) => {
       const angle = (i * 45 - 22.5) * Math.PI / 180;
       const x1 = 50 + 35 * Math.cos(angle);
@@ -104,6 +115,7 @@ export default {
       return `M50,50 L${x1},${y1} A35,35 0 0,1 ${x2},${y2} Z`;
     };
 
+    // Animate based on stage
     const animateStage = () => {
       if (stage.value === "submitted") {
         gsap.to(".coin", { rotation: 360, yoyo: true, repeat: -1, duration: 1, stagger: 0.1 });
@@ -120,8 +132,9 @@ export default {
       }
     };
 
+    // Socket.IO setup and status listener
     const submitOrder = () => {
-      const transRef = route.query.order_id; // Changed from 'reference' to match backend
+      const transRef = route.query.reference; // Backend uses 'reference' as 'order_id' in URL
       if (!transRef) {
         errorMessage.value = "Invalid transaction reference.";
         return;
@@ -134,9 +147,7 @@ export default {
 
       socket.value = io(socketUrl, {
         transports: ["websocket"],
-        extraHeaders: {
-          "User-Agent": "PayByChanceApp/1.0 Capacitor",
-        },
+        extraHeaders: { "User-Agent": "PayByChanceApp/1.0 Capacitor" },
       });
 
       animateStage();
@@ -146,12 +157,13 @@ export default {
         socket.value.emit("join_order", transRef);
       });
 
+      // Handle conditional status updates
       socket.value.on("status_update", (data) => {
         console.log("Status update:", data);
         stage.value = data.status;
         message.value = data.message || "";
 
-        // Handle terminal states with redirect
+        // Redirect for terminal states
         if (["amount_mismatch_wallet_updated", "winner_selected", "cycle_moved"].includes(data.status)) {
           setTimeout(() => router.push("/dashboard"), 4000);
         }
@@ -160,12 +172,12 @@ export default {
       });
 
       socket.value.on("connect_error", (err) => {
-        errorMessage.value = "Connection error: " . err.message;
+        errorMessage.value = "Connection error: " + err.message;
         console.error("Socket.IO connect error:", err);
       });
 
       socket.value.on("error", (err) => {
-        errorMessage.value = "Socket error: " . err.message;
+        errorMessage.value = "Socket error: " + err.message;
         console.error("Socket.IO error:", err);
       });
 
@@ -178,76 +190,41 @@ export default {
     };
 
     onMounted(submitOrder);
-
     onBeforeUnmount(() => {
       if (socket.value) socket.value.disconnect();
     });
 
-    return {
-      stage,
-      message,
-      errorMessage,
-      getWheelSegment,
-    };
+    return { stage, message, errorMessage, getWheelSegment };
   },
 };
 </script>
 
 <style scoped>
-.card {
-  border-radius: 15px;
-  background: #f8f9fa;
-}
-
-h2 {
-  font-weight: bold;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.lead {
-  color: #6c757d;
-}
-
-/* Coin Stack Animation */
+.card { border-radius: 15px; background: #f8f9fa; }
+h2 { font-weight: bold; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+.lead { color: #6c757d; }
 .coin-stack {
   position: relative;
   width: 100px;
   height: 100px;
-  margin: 20px auto;
+  margin: 20px
+  auto;
 }
 .coin {
   position: absolute;
   width: 50px;
   height: 50px;
-  background: radial-gradient(circle, #FFD700 40%, #DAA520 70%);
+  background:
+  radial-gradient(circle, #FFD700 40%, #DAA520 70%);
   border-radius: 50%;
   top: calc(50% - 25px + var(--i) * 6px);
   left: calc(50% - 25px);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
 }
-
-/* Raffle Wheel */
-.raffle-wheel {
-  width: 150px;
-  height: 150px;
-  margin: 20px auto;
-}
-
-/* Check Circle and Wallet Icon */
-.check-circle, .wallet-icon {
-  margin: 20px auto;
-}
-
-/* Cycle Arrow */
-.cycle-arrow {
-  margin: 20px auto;
-}
-
-/* Confetti */
-.result-confetti {
-  position: relative;
-  height: 150px;
-}
+.raffle-wheel { width: 150px; height: 150px; margin: 20px auto; }
+.check-circle, .wallet-icon { margin: 20px auto; }
+.cycle-arrow { margin: 20px auto; }
+.result-confetti { position: relative; height: 150px; }
 .confetti-piece {
   position: absolute;
   width: 8px;
@@ -257,10 +234,9 @@ h2 {
   left: calc(50% + (var(--i) - 10) * 8px);
   transform: rotate(45deg);
 }
-
 p {
   font-size: 1.2rem;
   margin-top: 15px;
   color: #343a40;
-}
+  }
 </style>

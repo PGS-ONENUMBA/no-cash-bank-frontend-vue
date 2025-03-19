@@ -6,8 +6,6 @@
         <div class="card w-100 shadow-sm">
           <div class="card-body">
             <!-- ✅ Display Winnable Amount ------>
-
-
             <h3 class="text-muted fs-4">
               Special deals and discounts worth up to  {{ formattedWinnableAmount }} on our OnTheHouse program at the ticket price of: <span v-if="ticketCurrentPrice > 0"><span> {{ formatCurrency(ticketCurrentPrice) }} </span></span>
             </h3>
