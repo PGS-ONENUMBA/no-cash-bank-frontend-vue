@@ -2,7 +2,7 @@
   <div class="container text-center py-5 mt-5">
     <div class="card shadow-sm p-4 mx-auto" style="max-width: 500px;">
       <h2 class="text-dark">Thank You!</h2>
-      <p class="lead">Your raffle journey begins...</p>
+      <p class="lead">Please wait while we process your request...</p>
 
       <!-- Stage: Submitted (Payment Verification) -->
       <div v-if="stage === 'submitted'" class="text-center">
