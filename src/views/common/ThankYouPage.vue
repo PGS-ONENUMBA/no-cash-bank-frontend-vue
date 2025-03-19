@@ -55,7 +55,7 @@
       <div v-if="stage === 'winner_selected'" class="text-center">
         <div class="result-confetti">
           <div class="confetti-piece" v-for="n in 20" :key="n" :style="{ '--i': n }"></div>
-          <div class="alert alert-success mt-3">🎉 You Won! Redirecting...</div>
+          <div class="alert alert-success mt-3">🎉 You Won!...</div>
         </div>
       </div>
 
@@ -66,7 +66,7 @@
           <path d="M22 12h-4l2-2m-6 12h4l-2 2"/>
         </svg>
         <p>{{ message }}</p>
-        <div class="alert alert-info mt-3">Moved to new cycle! Redirecting...</div>
+        <div class="alert alert-info mt-3">Moved to new cycle!...</div>
       </div>
 
       <!-- Error State -->
