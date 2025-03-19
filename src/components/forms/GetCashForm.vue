@@ -5,8 +5,18 @@
       <div class="col-lg-6 d-flex">
         <div class="card w-100 shadow-sm">
           <div class="card-body">
+
+
+            <p class="text-muted fs-4">
+              Need cash urgently? Get up to <span v-if="raffleData.winnable_amount">
+                {{ formatCurrency(raffleData.winnable_amount) }}
+              </span>
+              <span v-else>
+                <i class="bi bi-arrow-repeat text-muted"></i> Loading...
+              </span> instantly at the price of <span v-if="ticketCurrentPrice > 0"> <span> {{ formatCurrency(ticketCurrentPrice) }} </span></span> ticket only.
+            </p>
             <!-- ✅ Winnable Amount Display -->
-            <h4 class="text-success">
+            <p class="text-success fs-5">
               Transferable Amount:
               <span v-if="raffleData.winnable_amount">
                 {{ formatCurrency(raffleData.winnable_amount) }}
@@ -14,25 +24,20 @@
               <span v-else>
                 <i class="bi bi-arrow-repeat text-muted"></i> Loading...
               </span>
-            </h4>
-
-            <p class="text-muted">
-              Follow these simple steps to withdraw cash from your account quickly and securely.
-              Ensure all your details are up-to-date before proceeding.
             </p>
 
             <ul class="list-group">
               <li class="list-group-item d-flex align-items-start">
                 <i class="bi bi-1-circle-fill text-success me-3"></i>
-                <div><strong>Step 1:</strong> Log in to your account.</div>
+                <div><strong>Step 1:</strong> Fill the form.</div>
               </li>
               <li class="list-group-item d-flex align-items-start">
                 <i class="bi bi-2-circle-fill text-success me-3"></i>
-                <div><strong>Step 2:</strong> Select "Get Cash" from the dashboard.</div>
+                <div><strong>Step 2:</strong> Submit the form for processing.</div>
               </li>
               <li class="list-group-item d-flex align-items-start">
                 <i class="bi bi-3-circle-fill text-success me-3"></i>
-                <div><strong>Step 3:</strong> Enter your details and confirm the request.</div>
+                <div><strong>Step 3:</strong> Wait for confirmation if successful.</div>
               </li>
             </ul>
           </div>
