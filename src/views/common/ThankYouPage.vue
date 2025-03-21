@@ -96,7 +96,7 @@
 
 <script>
 import { ref, onMounted, onBeforeUnmount } from "vue";
-import { useRouter, useRoute } from "vue-router";
+import { gituseRoute } from "vue-router";
 import { io } from "socket.io-client";
 import gsap from "gsap";
 
@@ -104,7 +104,7 @@ export default {
   name: "ThankYouPage",
   setup() {
     const route = useRoute();
-    const router = useRouter();
+    // const router = useRouter();
     const stage = ref("submitted");
     const message = ref("");
     const errorMessage = ref(null);
@@ -175,9 +175,9 @@ export default {
         console.log("Status update:", data);
         stage.value = data.status;
         message.value = data.message || "";
-        if (["amount_mismatch_wallet_updated", "winner_selected", "cycle_moved", "failed"].includes(data.status)) {
-          setTimeout(() => router.push(data.status === "failed" ? "/payment" : "/dashboard"), 4000);
-        }
+        // if (["amount_mismatch_wallet_updated", "winner_selected", "cycle_moved", "failed"].includes(data.status)) {
+        //   setTimeout(() => router.push(data.status === "failed" ? "/payment" : "/dashboard"), 4000);
+        // }
         animateStage();
       });
 
