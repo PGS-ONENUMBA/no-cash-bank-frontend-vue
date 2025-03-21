@@ -222,7 +222,7 @@ export default {
             "Authorization": authHeader // Basic Auth header
           },
           body: JSON.stringify({
-            reference: transRef, // Transaction ID
+            reference: transRef, // Transaction thanks to URL query
             action_type: 'submit_order' // Action to queue order
           })
         });
