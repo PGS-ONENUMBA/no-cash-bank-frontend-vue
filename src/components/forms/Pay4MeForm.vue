@@ -238,11 +238,11 @@ export default {
       showDropdown.value = false; // Hide dropdown after selection
     };
 
-    const delayHideDropdown = () => {
-      setTimeout(() => {
-        showDropdown.value = false;
-      }, 200); // Delay to allow click to register
-    };
+    // const delayHideDropdown = () => {
+    //   setTimeout(() => {
+    //     showDropdown.value = false;
+    //   }, 200); // Delay to allow click to register
+    // };
 
     const selectedVendorName = computed(() => {
       const selected = vendors.value.find((v) => v.vendor_id === formData.value.vendor_id);
