@@ -5,7 +5,7 @@ const authString = btoa(import.meta.env.VITE_APP_USER_NAME.trim() + ":" + import
 
 /**
 * Create Mock DB
-* 
+*
 **/
 
 const mockDB = {
@@ -48,8 +48,8 @@ const mockDB = {
 
 
 /**
- * 
- * 
+ *
+ *
  **/
 export const validateProductPricing = async (raffleCycleId) => {
   console.log("Validating raffle cycle:", raffleCycleId);
@@ -77,7 +77,7 @@ export const validateProductPricing = async (raffleCycleId) => {
 };
 
 /**
- * 
+ *
  * Create order and log to DB. Return the order ID
  **/
 export const createOrder = async (payload) => {
@@ -96,12 +96,15 @@ export const createOrder = async (payload) => {
       data: {
         "action_type": "create_order",
         "customer_email": payload.email || '',
+        "recipient_phone": payload.recipient_phone || '',
+        "recipient_email": payload.recipient_email || '',
+        "amount_due": payload.amount_due || '',
         "customer_phone": payload.phoneNumber,
         "ticket_quantity": payload.tickets,
         "order_amount": payload.amount,
-        "raffle_cycle_id": 1,
+        "raffle_cycle_id": payload.raffle_cycle_id,
         "purchase_platform": "web",
-        "payment_method_used": "card"
+        "payment_method_used": ""
       }
     });
 
@@ -114,7 +117,7 @@ export const createOrder = async (payload) => {
 
 
 /**
- * 
+ *
  * Call Squad API here to make payment. Pass payload from the form filled by the user
  **/
 export const processPayment = (payload) => {
@@ -155,7 +158,7 @@ export const processPayment = (payload) => {
 };
 
 /**
- * 
+ *
  * Verify payment by passing in the transaction reference from the url
  * THis must be called efore deciding whether to give value to the customer or not
  **/
@@ -186,7 +189,7 @@ export const verifyPayment = async (transRef) => {
 };
 
 /**
- * 
+ *
  * Update the earlier created order after verifying the transaction
  **/
 export const updateOrderStatus = async (transactionReference, transactionType, transactionAmount) => {
