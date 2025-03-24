@@ -99,6 +99,7 @@ export const createOrder = async (payload) => {
         "recipient_phone": payload.recipient_phone || '',
         "recipient_email": payload.recipient_email || '',
         "amount_due": payload.amount_due || '',
+        "vendor_id": payload.vendor_id || '',
         "customer_phone": payload.phoneNumber,
         "ticket_quantity": payload.tickets,
         "order_amount": payload.amount,
