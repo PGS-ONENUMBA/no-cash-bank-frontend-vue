@@ -6,7 +6,8 @@
       <!-- Header thanking the user -->
       <h2 class="text-dark">Thank You!</h2>
       <!-- Lead text prompting the user to wait during processing -->
-      <p class="lead">Please wait while we process your request...</p>
+      <p class="lead">Please wait while we process your request<span class="ellipsis"></span></p>
+
 
       <!-- Stage 1: 'submitted' - Displays when payment is initially submitted -->
       <!-- Shows animated coins to indicate verification in progress -->
@@ -50,6 +51,7 @@
       <div v-if="stage === 'raffle_queued'" class="text-center">
 
         <p>Raffle spinning...</p>
+        <p> {{ message }} </p>
       </div>
 
       <!-- Stage 6: 'winner_selected' - Terminal state, user won -->
@@ -211,12 +213,12 @@ export default {
       });
 
       // Timeout: Fail if stuck on 'submitted' for 30 seconds
-      // setTimeout(() => {
-      //   if (stage.value === "submitted") {
-      //     errorMessage.value = "Verification timed out. Please try again later.";
-      //     socket.value.disconnect();
-      //   }
-      // }, 30000);
+      setTimeout(() => {
+        if (stage.value === "submitted") {
+          errorMessage.value = "Verification timed out. Please try again later.";
+          socket.value.disconnect();
+        }
+      }, 30000);
     };
 
     // Lifecycle hook: Run submitOrder when component mounts
@@ -272,4 +274,27 @@ h2 { font-weight: bold; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
 
 /* Paragraphs: Larger font, dark color, spaced from icons */
 p { font-size: 1.2rem; margin-top: 15px; color: #343a40; }
+
+/* The ellipsis container */
+
+.ellipsis {
+  width: 25px; /* Reserve space */
+  display: inline-block;
+  font-weight: 500;
+}
+.ellipsis::after {
+  content: "..."; /* Default to full ellipses */
+  
+  overflow: hidden;
+  animation: dots 1.5s steps(3) infinite;
+}
+
+/* Animation for dots */
+@keyframes dots {
+  0% { content: ""; }
+  33% { content: "."; }
+  66% { content: ".."; }
+  100% { content: "..."; }
+}
+
 </style>
