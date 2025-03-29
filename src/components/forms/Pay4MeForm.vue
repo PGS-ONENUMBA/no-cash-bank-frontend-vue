@@ -290,12 +290,10 @@ export default {
 
       try {
         const orderData = {
-          customer_phone: formData.value.customerPhone,
-          ticket_quantity: parseInt(formData.value.tickets, 10),
-          order_amount: totalTicketCost.value,
+          phoneNumber: formData.value.customerPhone,
+          tickets: parseInt(formData.value.tickets, 10),
+          amount: totalTicketCost.value,
           raffle_cycle_id: parseInt(raffleCycleId, 10),
-          purchase_platform: "web",
-          payment_method_used: "card",
         };
 
         if (hasVendor.value) {
@@ -304,6 +302,7 @@ export default {
         }
 
         const response = await createOrder(orderData);
+
         if (response?.order_id) {
           const paymentResponse = await processPayment({
             email: `${formData.value.customerPhone}@paybychance.com`,
