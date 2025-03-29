@@ -83,7 +83,7 @@ export const validateProductPricing = async (raffleCycleId) => {
 export const createOrder = async (payload) => {
 
   console.log("Creating order:", payload);
-  console.log("Type Of: ", typeof(payload.raffle_cycle_id))
+  console.log("Type Of rafflecycleid: ", typeof(payload.raffle_cycle_id))
 
   try {
     const response = await axios({
@@ -96,16 +96,14 @@ export const createOrder = async (payload) => {
       data: {
         "action_type": "create_order",
         "customer_email": payload.email || '',
-        "recipient_phone": payload.recipient_phone || '',
-        "recipient_email": payload.recipient_email || '',
-        "amount_due": payload.amount_due || '',
+        "amount_due": payload.amount_due || '', // Payment to vendor
         "vendor_id": payload.vendor_id || '',
         "customer_phone": payload.phoneNumber,
         "ticket_quantity": payload.tickets,
-        "order_amount": payload.amount,
+        "order_amount": payload.amount, // Ticket total cost
         "raffle_cycle_id": payload.raffle_cycle_id,
         "purchase_platform": "web",
-        "payment_method_used": ""
+        "payment_method_used": "card"
       }
     });
 
