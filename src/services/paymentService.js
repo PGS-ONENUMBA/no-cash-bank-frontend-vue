@@ -1,219 +1,89 @@
-import apiClient from "./apiService";
+
+// src/services/paymentService.js
+
 import axios from "axios";
 
-const authString = btoa(import.meta.env.VITE_APP_USER_NAME.trim() + ":" + import.meta.env.VITE_APP_USER_PASSWORD.trim());
-
 /**
-* Create Mock DB
-*
-**/
-
-const mockDB = {
-  raffle_cycles: [
-    {
-      raffle_cycle_id: 1,
-      raffle_type_id: 1, // Get Cash
-      winnable_amount: 100000,
-      ticket_price: 50,
-      created_at: "2021-09-01T00:00:00Z",
-    },
-    {
-      raffle_cycle_id: 2,
-      raffle_type_id: 2, // Pay4Me
-      winnable_amount: 5000000,
-      ticket_price: 5000,
-      created_at: "2021-09-01T00:00:00Z",
-    },
-    {
-      raffle_cycle_id: 3,
-      raffle_type_id: 3, // OneTheHouse
-      winnable_amount: 5000000,
-      ticket_price: 5000,
-      created_at: "2021-09-01T00:00:00Z",
-    },
-  ],
-  orders: [
-    {
-      order_id: 1,
-      order_status: "pending",
-      raffle_cycle_id: 1,
-      raffle_type_id: 1,
-      amount: 1000,
-      number_of_tickets: 1,
-      email: "ter@gmail.com",
-      phone_number: "08012345678",
+ * Validates the pricing of a product by fetching raffle cycle details via API proxy.
+ *
+ * @async
+ * @function validateProductPricing
+ * @param {string} raffleCycleId - The ID of the raffle cycle to validate.
+ * @returns {Promise<Object|null>} The raffle cycle details if successful, or null if an error occurs.
+ */
+  export const validateProductPricing = async (raffleCycleId) => {
+    try {
+      const response = await axios.get("/api/nocash-action", {
+        params: {
+          action_type: "get_raffle_cycle_by_id",
+          raffle_cycle_id: raffleCycleId
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error("❌ Error validating raffle cycle:", error);
+      return null;
     }
-  ],
-}
-
-
+  };
 /**
+ * Creates a new order using a secure backend proxy.
  *
- *
- **/
-export const validateProductPricing = async (raffleCycleId) => {
-  console.log("Validating raffle cycle:", raffleCycleId);
-
-  try {
-    const response = await axios({
-      method: 'get',
-      url: `${import.meta.env.VITE_API_BASE_URL}/nocash-bank/v1/action`,
-      headers: {
-        'Authorization': `Basic ${authString}`,
-        'Content-Type': 'application/json'
-      },
-      params: {
-        action_type: "get_raffle_cycle_by_id",
-        raffle_cycle_id: raffleCycleId
-      }
-    });
-
-    console.log(response.data);
-    return response.data;
-  } catch (error) {
-    console.error("❌ Error fetching product by ID:", error);
-    return null;
-  }
-};
-
-/**
- *
- * Create order and log to DB. Return the order ID
- **/
-export const createOrder = async (payload) => {
-
-  console.log("Creating order:", payload);
-  console.log("Type Of rafflecycleid: ", typeof(payload.raffle_cycle_id))
-
-  try {
-    const response = await axios({
-      method: 'post',
-      url: `${import.meta.env.VITE_API_BASE_URL}/nocash-bank/v1/action`,
-      headers: {
-        'Authorization': `Basic ${authString}`,
-        'Content-Type': 'application/json'
-      },
-      data: {
-        "action_type": "create_order",
-        "customer_email": payload.email || '',
-        "amount_due": payload.amount_due || '', // Payment to vendor
-        "vendor_id": payload.vendor_id || '',
-        "customer_phone": payload.phoneNumber,
-        "ticket_quantity": payload.tickets,
-        "order_amount": payload.amount, // Ticket total cost
-        "raffle_cycle_id": payload.raffle_cycle_id,
-        "purchase_platform": "web",
-        "payment_method_used": "card"
-      }
-    });
-
-    return response.data;
-  } catch (error) {
-    console.error("❌ Error fetching product by ID:", error);
-    return null;
-  }
-};
-
-
-/**
- *
- * Call Squad API here to make payment. Pass payload from the form filled by the user
- **/
-export const processPayment = (payload) => {
-
-  console.log("Processing payment:", payload);
-
-  // Destructure the payload to extract necessary data
-  const { email, amount, trans_ref, } = payload;
-
-  console.log(email, amount, trans_ref);
-
-  // Return a Promise to handle async response
-  return new Promise((resolve, reject) => {
-    if (!window.squad) {
-      reject("Squad script not loaded!");
-      return;
+ * @async
+ * @function createOrder
+ * @param {Object} payload - The payload containing order details.
+ * @returns {Promise<Object|null>} The created order details if successful, or null if an error occurs.
+ */
+  export const createOrder = async (payload) => {
+    try {
+      const response = await axios.post("/api/create-order", payload);
+      return response.data;
+    } catch (error) {
+      console.error("❌ Error creating order:", error);
+      return null;
     }
-
-    // Call the Squad API to initiate payment
-    const squadInstance = new squad({
-      onClose: () => {
-        resolve({ status: "closed" }); // ✅ Resolve the response to the calling component
-      },
-      onLoad: () => console.log("Widget loaded successfully"),
-      onSuccess: (response) => {
-        // console.log("Payment Successful:", response);
-        resolve(response); // ✅ Resolve the response to the calling component
-      },
-      key: import.meta.env.VITE_SQUAD_SANDBOX_PK, // Replace with your actual key
-      email: email,
-      amount: amount * 100, // Convert to Kobo
-      transaction_ref: trans_ref,
-      currency_code: "NGN",
-    });
-    squadInstance.setup();
-    squadInstance.open();
-  });
-};
+  };
 
 /**
+ * Verifies a Squad payment using a secure backend proxy.
  *
- * Verify payment by passing in the transaction reference from the url
- * THis must be called efore deciding whether to give value to the customer or not
- **/
-export const verifyPayment = async (transRef) => {
-
-  try {
-    // Call the Squad API to verify the payment
-    const response = await axios( {
-      method: "GET",
-      url: `https://sandbox-api-d.squadco.com/transaction/verify/${transRef}`,
-      headers: {
-        "Authorization": `Bearer ${import.meta.env.VITE_SQUAD_SANDBOX_SK}`
-      },
-    });
-
-    console.log("Payment Verification Response:", response);
-    // return response;
-    return response
-  } catch (error) {
-    console.error("❌ Error verifying transaction:", error);
-    return { statusCode: 500, transactionStatus: "failed" };
-
-  }
-
-
-
-  // return { statusCode: data.status, transactionStatus: data.data.transaction_status };
-};
+ * @async
+ * @function verifyPayment
+ * @param {string} transRef - The transaction reference to verify.
+ * @returns {Promise<Object>} The verification result, including status code and transaction status.
+ */
+  export const verifyPayment = async (transRef) => {
+    try {
+      const response = await axios.get("/api/verify-payment", {
+        params: { trans_ref: transRef }
+      });
+      return response.data;
+    } catch (error) {
+      console.error("❌ Error verifying payment:", error);
+      return { statusCode: 500, transactionStatus: "failed" };
+    }
+  };
 
 /**
+ * Completes an order after successful payment by updating its status.
  *
- * Update the earlier created order after verifying the transaction
- **/
+ * @async
+ * @function updateOrderStatus
+ * @param {string} transactionReference - The reference ID of the transaction.
+ * @param {string} transactionType - The type of transaction (e.g., payment method used).
+ * @param {number} transactionAmount - The amount involved in the transaction.
+ * @returns {Promise<Object|null>} The updated order details if successful, or null if an error occurs.
+ */
 export const updateOrderStatus = async (transactionReference, transactionType, transactionAmount) => {
-  console.log("check amount ",transactionAmount)
   try {
-    const response = await axios({
-      method: 'post',
-      url: `${import.meta.env.VITE_API_BASE_URL}/nocash-bank/v1/action`,
-      headers: {
-        'Authorization': `Basic ${authString}`,
-        'Content-Type': 'application/json'
-      },
-      data: {
-      "action_type": "complete_order",
-      "order_id": transactionReference,
-      "amount": transactionAmount,
-      "payment_method_used": transactionType
-      }
+    const response = await axios.post("/api/nocash-action", {
+      action_type: "complete_order",
+      order_id: transactionReference,
+      amount: transactionAmount,
+      payment_method_used: transactionType
     });
-    console.log("Order Update Response:", response);
-    return response
+    return response.data;
   } catch (error) {
-    console.error("❌ Error Updating order", error);
+    console.error("❌ Error updating order status:", error);
     return null;
   }
 };
-
-
