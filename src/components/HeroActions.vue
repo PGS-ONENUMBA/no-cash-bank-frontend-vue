@@ -29,14 +29,16 @@
             <div v-else class="row g-3">
               <template v-for="raffle in raffleProducts" :key="raffle.raffle_cycle_id">
                 <div
-                  v-for="type in raffle.associated_types"
-                  :key="`${raffle.raffle_cycle_id}-${type.raffle_type_id}`"
-                  :class="columnClass"
-                >
-                  <button
-                    @click="$emit('redirect', raffle.raffle_cycle_id, type.raffle_type_id)"
-                    class="btn btn-purple text-center w-100"
+                    v-for="type in raffle.associated_types"
+                    :key="`${raffle.raffle_cycle_id}-${type.raffle_type_id}`"
+                    :class="columnClass"
                   >
+                    {{ console.log("Type ID:", type.raffle_type_id) }}
+                    <button
+                      @click="$emit('redirect', raffle.raffle_cycle_id, type.raffle_type_id)"
+                      class="btn btn-purple text-center w-100"
+                    >
+
                     <div class="d-flex flex-column justify-content-center align-items-center">
                       <i :class="`${getIcon(type.raffle_type_id)} me-2 text-white fs-4`"></i>
                       <span>{{ type.raffle_type }}</span>
