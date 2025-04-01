@@ -284,9 +284,13 @@ export const isLoading = () => loading.value;
  */
 export const getIcon = (typeId) => {
     const icons = {
-        1: "bi bi-currency-exchange",
-        2: "bi bi-check-circle",
-        3: "bi bi-gift",
+      1: "bi bi-currency-exchange",
+      2: "bi bi-check-circle",
+      3: "bi bi-gift",
+      4: "bi bi-wallet2", // represents fund account
+      5: "bi bi-phone", // represents buy airtime
+      6: "bi bi-broadcast", // represents buy data
+      7: "bi bi-wallet2",
     };
     return icons[typeId] || "bi bi-box";
 };
