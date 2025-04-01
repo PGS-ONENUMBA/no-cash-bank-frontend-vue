@@ -42,7 +42,7 @@
                     <div class="d-flex flex-column justify-content-center align-items-center">
                       <i :class="`${getIcon(type.raffle_type_id)} me-2 text-white fs-4`"></i>
                       <span>{{ type.raffle_type }}</span>
-                      <small>₦{{ formatAmount(raffle.winnable_amount) }}</small>
+                      <!-- <small>₦{{ formatAmount(raffle.winnable_amount) }}</small> -->
                     </div>
                   </button>
                 </div>
