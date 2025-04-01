@@ -2,49 +2,73 @@
   <div class="container text-center py-5 mt-5">
     <div class="card shadow-sm p-4 mx-auto" style="max-width: 600px;">
       <h2 class="text-dark">Thank You!</h2>
-      <p class="lead">We are processing your request<span class="ellipsis"></span></p>
+      <p class="lead">We’re processing your request—here’s the progress:</p>
 
-      <!-- Progress Checklist -->
-      <ul class="list-group text-start mt-4">
-        <li class="list-group-item" :class="getStatusClass('submitted')">
-          ✅ Payment submitted
-        </li>
-        <li class="list-group-item" :class="getStatusClass('payment_verified')">
-          ✅ Payment verified
-        </li>
-        <li class="list-group-item" :class="getStatusClass('amount_matched')">
-          ✅ Amount matched
-        </li>
-        <li class="list-group-item" :class="getStatusClass('amount_mismatch_wallet_updated')">
-          ⚠️ Payment mismatch, wallet credited instead
-        </li>
-        <li class="list-group-item" :class="getStatusClass('raffle_queued')">
-          🎲 Raffle entry confirmed
-        </li>
-        <li class="list-group-item" :class="getStatusClass('winner_selected')">
-          🎉 You won the raffle!
-        </li>
-        <li class="list-group-item" :class="getStatusClass('entry_processed')">
-          📨 Raffle processed. Try again next time.
-        </li>
-        <li class="list-group-item" :class="getStatusClass('payment_failed')">
-          ❌ Payment verification failed
-        </li>
-      </ul>
+      <div class="stage-display mt-4">
+        <!-- Step 1: Payment Verification -->
+        <div class="step d-flex align-items-center mb-3">
+          <span class="status-icon me-2">{{ paymentVerified ? '✅' : '⏳' }}</span>
+          <span class="step-text">Payment Verification</span>
+          <span v-if="stage === 'submitted'" class="ms-2 ellipsis"></span>
+        </div>
 
-      <!-- Current Message -->
-      <div class="mt-4">
-        <p class="fw-bold">Current Status: {{ stage }}</p>
-        <p>{{ message }}</p>
+        <!-- Step 2: Checking Amount -->
+        <div class="step d-flex align-items-center mb-3" :class="{ 'text-muted': !paymentVerified }">
+          <span class="status-icon me-2">{{ amountMatched ? '✅' : paymentVerified ? '⏳' : ' ' }}</span>
+          <span class="step-text">Confirming Amount</span>
+          <span v-if="stage === 'payment_verified'" class="ms-2 ellipsis"></span>
+        </div>
+
+        <!-- Step 3: Crediting Wallet (only if discrepancy) -->
+        <div v-if="walletCredited" class="step d-flex align-items-center mb-3">
+          <span class="status-icon me-2">{{ walletCredited ? '✅' : '⏳' }}</span>
+          <span class="step-text">Crediting Wallet</span>
+          <span v-if="stage === 'amount_mismatch_wallet_updated'" class="ms-2 ellipsis"></span>
+        </div>
+
+        <!-- Step 4: Discrepancy Message (if wallet credited) -->
+        <div v-if="walletCredited" class="alert alert-warning mt-2 mb-3">
+          Sorry, due to a payment discrepancy, you couldn’t join the raffle. Your wallet has been credited—check your balance later!
+        </div>
+
+        <!-- Step 5: Running Raffle (only if no discrepancy) -->
+        <div v-if="!walletCredited" class="step d-flex align-items-center mb-3" :class="{ 'text-muted': !amountMatched }">
+          <span class="status-icon me-2">{{ raffleQueued ? '✅' : amountMatched ? '⏳' : ' ' }}</span>
+          <span class="step-text">Running Raffle</span>
+          <span v-if="stage === 'raffle_queued'" class="ms-2 ellipsis"></span>
+        </div>
+
+        <!-- Step 6: Win Status (only if raffle ran) -->
+        <div v-if="raffleQueued" class="step d-flex align-items-center mb-3" :class="{ 'text-muted': !raffleQueued }">
+          <span class="status-icon me-2">{{ winStatusChecked ? '✅' : raffleQueued ? '⏳' : ' ' }}</span>
+          <span class="step-text">Win Status</span>
+          <span v-if="stage === 'entry_processed' || stage === 'winner_selected'" class="ms-2">
+            {{ winnerSelected ? '🎉 You Won!' : 'Try again next time!' }}
+          </span>
+        </div>
+
+        <!-- Internal States (placeholders) -->
+        <div v-if="stage === 'moved_to_next_cycle'" class="alert alert-info mt-3">
+          Moving to a new raffle cycle... (Internal state)
+        </div>
+        <div v-if="stage === 'cycle_moved'" class="alert alert-info mt-3">
+          Raffle cycle completed. (Internal state)
+        </div>
+
+        <!-- Failure State -->
+        <div v-if="stage === 'payment_failed'" class="alert alert-danger mt-3">
+          Payment verification failed: {{ message }}
+        </div>
+
+        <!-- Error Message -->
+        <div v-if="errorMessage" class="alert alert-danger mt-3">{{ errorMessage }}</div>
       </div>
-
-      <div v-if="errorMessage" class="alert alert-danger mt-3">{{ errorMessage }}</div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { useRoute } from "vue-router";
 import { io } from "socket.io-client";
 
@@ -53,38 +77,42 @@ const stage = ref("submitted");
 const message = ref("");
 const errorMessage = ref("");
 const socket = ref(null);
-const completedStages = ref(new Set());
 
 const apiUrl = import.meta.env.VITE_API_BASE_URL + "/nocash-bank/v1/action";
 const socketUrl = "https://socket.paybychance.com";
-
 const reference = route.query.reference;
-const terminalStages = new Set([
-  "payment_failed",
-  "winner_selected",
-  "entry_processed"
-]);
 
+// Derived states for step completion
+const paymentVerified = computed(() => stage.value !== "submitted" && stage.value !== "payment_failed");
+const amountMatched = computed(() => ["amount_matched", "raffle_queued", "winner_selected", "entry_processed"].includes(stage.value));
+const walletCredited = computed(() => stage.value === "amount_mismatch_wallet_updated");
+const raffleQueued = computed(() => ["raffle_queued", "winner_selected", "entry_processed"].includes(stage.value));
+const winStatusChecked = computed(() => ["winner_selected", "entry_processed"].includes(stage.value));
+const winnerSelected = computed(() => stage.value === "winner_selected");
+
+// Terminal states to freeze updates
+const terminalStages = new Set(["payment_failed", "winner_selected", "entry_processed", "amount_mismatch_wallet_updated"]);
+
+/**
+ * Handles real-time status updates from the socket
+ * @param {object} data - Incoming message from server
+ */
 function handleStatusUpdate(data) {
   if (!data || !data.status) return;
-  if (terminalStages.has(stage.value)) return;
+  if (terminalStages.has(stage.value)) return; // Freeze on terminal states
 
   stage.value = data.status;
   message.value = data.message || "";
-  completedStages.value.add(data.status);
   console.log("🟢 Status updated:", stage.value);
 }
 
-function getStatusClass(checkStage) {
-  return completedStages.value.has(checkStage)
-    ? "list-group-item-success"
-    : "list-group-item-secondary";
-}
-
+/**
+ * Initializes the socket connection and joins the reference room
+ */
 function initSocket() {
   socket.value = io(socketUrl, {
     transports: ["websocket"],
-    extraHeaders: { "User-Agent": "PayByChanceApp/1.0" }
+    extraHeaders: { "User-Agent": "PayByChanceApp/1.0" },
   });
 
   socket.value.on("connect", () => {
@@ -103,6 +131,9 @@ function initSocket() {
   });
 }
 
+/**
+ * Submits the order to the backend API
+ */
 async function submitOrder() {
   if (!reference) {
     errorMessage.value = "No reference provided in the URL.";
@@ -115,16 +146,15 @@ async function submitOrder() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: auth
+        Authorization: auth,
       },
       body: JSON.stringify({
         reference,
-        action_type: "submit_order"
-      })
+        action_type: "submit_order",
+      }),
     });
 
     const result = await res.json();
-
     if (!result.success) {
       errorMessage.value = result.message || "Failed to submit order.";
       return;
@@ -145,6 +175,7 @@ async function submitOrder() {
 }
 
 onMounted(submitOrder);
+onBeforeUnmount(() => socket.value?.disconnect());
 </script>
 
 <style scoped>
@@ -154,12 +185,24 @@ onMounted(submitOrder);
 }
 h2 {
   font-weight: bold;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 .lead {
   color: #6c757d;
 }
-p {
+.stage-display {
+  text-align: left;
+}
+.step {
   font-size: 1.1rem;
+}
+.step-text {
+  flex-grow: 1;
+}
+.status-icon {
+  font-size: 1.2rem;
+  width: 24px;
+  text-align: center;
 }
 .ellipsis {
   display: inline-block;
@@ -173,5 +216,8 @@ p {
   33% { content: "."; }
   66% { content: ".."; }
   100% { content: "..."; }
+}
+.text-muted {
+  color: #6c757d;
 }
 </style>
