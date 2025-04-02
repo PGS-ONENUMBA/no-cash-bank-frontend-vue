@@ -24,7 +24,7 @@
       <div class="col-lg-6 d-flex">
         <div class="card w-100 shadow-sm">
           <div class="card-body">
-            <h2 class="card-title pb-3 fs-4">Pay4Me Request</h2>
+            <h2 class="card-title pb-3 fs-4">Transfer Moni</h2>
 
             <!-- Loading State -->
             <div v-if="isLoading" class="text-center">
