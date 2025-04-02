@@ -17,12 +17,12 @@
             <!-- Loading State -->
             <div v-if="loading" class="d-flex align-items-center">
               <Preloader />
-              <span class="fs-6 text-dark ms-2">Please wait, loading products...</span>
+              <span class="fs-6 text-dark ms-2">Please wait, loading services...</span>
             </div>
 
             <!-- No Products State -->
             <div v-else-if="raffleProducts.length === 0" class="text-muted fs-6">
-              No products available.
+              No services available.
             </div>
 
             <!-- Product Grid with Dynamic Columns and Gaps -->
@@ -33,7 +33,6 @@
                     :key="`${raffle.raffle_cycle_id}-${type.raffle_type_id}`"
                     :class="columnClass"
                   >
-                    {{ console.log("Type ID:", type.raffle_type_id) }}
                     <button
                       @click="$emit('redirect', raffle.raffle_cycle_id, type.raffle_type_id)"
                       class="btn btn-purple text-center w-100"

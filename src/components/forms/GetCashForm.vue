@@ -172,7 +172,7 @@ export default {
           formData.value.price_of_ticket = validatedRaffle.price_of_ticket;
         } else {
           console.error("❌ Raffle validation failed. Redirecting...");
-          router.push("/");
+          router.push("/404");
         }
       } catch (error) {
         console.error("❌ Error validating raffle cycle:", error);

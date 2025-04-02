@@ -134,7 +134,7 @@ import { fetchProducts, isLoading, getIcon, getRoute } from "@/services/productS
 
 
 export default {
-  name: "Navbar",
+  name: "FrontEndAppNavbar",
 
   setup() {
     const authStore = useAuthStore();

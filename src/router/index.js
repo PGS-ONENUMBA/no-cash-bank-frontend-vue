@@ -56,6 +56,7 @@ const routes = [
       { path: "reset-password", name: "ResetPassword", component: ResetPassword, meta: { title: "Reset Password" } },
       { path: "scan2pay4me", name: "PublicScan2Pay4Me", component: PublicScan2Pay4Me, meta: { title: "Scan to Pay4Me" } }, // New route
       { path: "test", name: "Test", component: Test, meta: { title: "Test" } },
+      { path: "404", name: "ExplicitNotFound", component: NotFound, meta: { title: "404 - Page Not Found" } }, // Explicit 404
     ],
   },
 
@@ -134,7 +135,7 @@ router.beforeEach((to, from, next) => {
   if (to.meta.requiresAuth && !isAuthenticated) {
     next({ name: "Login" });
   } else {
-    document.title = to.meta.title || "No-Cash-Bank";
+    document.title = to.meta.title || "PayByChance";
     next();
   }
 

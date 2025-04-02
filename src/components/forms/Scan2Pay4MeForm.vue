@@ -140,7 +140,7 @@ export default {
           }
         } else {
           console.error("❌ No raffle cycles available.");
-          router.push("/dashboard");
+          router.push("/404");
           return;
         }
 

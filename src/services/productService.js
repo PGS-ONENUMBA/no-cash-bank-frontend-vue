@@ -306,5 +306,5 @@ export const getRoute = (typeId) => {
         2: "/pay4me",
         3: "/on-the-house",
     };
-    return routes[typeId] || "/dashboard";
+    return routes[typeId] || "/404";
 };
