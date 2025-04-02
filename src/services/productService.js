@@ -306,5 +306,10 @@ export const getRoute = (typeId) => {
         2: "/pay4me",
         3: "/on-the-house",
     };
-    return routes[typeId] || "/404";
+    //return routes[typeId] || "/404";
+    const route = routes[typeId];
+    if (!route) {
+        console.warn(`⚠ No specific route defined for raffle_type_id=${typeId}. Redirecting to Coming Soon.`);
+    }
+    return route || "/coming-soon";
 };

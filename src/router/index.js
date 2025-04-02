@@ -20,6 +20,7 @@ import ResetPassword from "@/views/Public/ResetPassword.vue";
 import ThankYou from "@/views/common/ThankYouPage.vue";
 import NotFound from "@/views/404.vue";
 import PublicScan2Pay4Me from "@/views/Public/Scan2Pay4Me.vue";
+import ComingSoon from "@/views/ComingSoon.vue"; // Import ComingSoon component
 
 // Test
 import Test from "@/views/Public/Test.vue";
@@ -57,6 +58,7 @@ const routes = [
       { path: "scan2pay4me", name: "PublicScan2Pay4Me", component: PublicScan2Pay4Me, meta: { title: "Scan to Pay4Me" } }, // New route
       { path: "test", name: "Test", component: Test, meta: { title: "Test" } },
       { path: "404", name: "ExplicitNotFound", component: NotFound, meta: { title: "404 - Page Not Found" } }, // Explicit 404
+      { path: "coming-soon", name: "ComingSoon", component: ComingSoon, meta: { title: "Coming Soon" } }, // ComingSoon
     ],
   },
 
