@@ -22,7 +22,7 @@ export default {
   },
   setup() {
     return {
-      productName: import.meta.env.VITE_PRODUCT_TWO || "Transfer Moni", // Uses env variable, fallback to "Pay4Me"
+      productName: import.meta.env.VITE_PRODUCT_TWO || "Transfer Moni", // Uses env variable, fallback to "Transfer Moni"
     };
   },
 };
