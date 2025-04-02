@@ -41,7 +41,7 @@ export default {
 
 <style scoped>
 .hero-section {
-  background: url('@/assets/hero-paybychance.png') no-repeat center center;
+  background: #eadbf9 url('@/assets/hero-paybychance.png') no-repeat center center;
   background-size: cover;
   width: 100%;
   height: 100vh;
