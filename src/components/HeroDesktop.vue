@@ -1,7 +1,7 @@
 <template>
   <section class="hero-section d-flex align-items-center mt-5">
     <div class="container text-start text-dark">
-      <h1 class="display-5 fw-bold mb-3">
+      <h1 class="fs-3 display-5 fw-bold mb-3">
         PayByChance: <span class="text-purple">Achieve Your Goals With Ease</span>
       </h1>
 
