@@ -84,7 +84,7 @@ export default {
           content: `<p>Terms may change anytime. Updates are posted on our platform. Continued use implies acceptance of changes.</p>`
         },
         {
-          title: "13. Disputes and Governing Law",
+          title: "13. Disputes and Governing Law:",
           content: `<p>These Terms are governed by Nigerian law. Disputes are to be settled via Mediation at the Lagos Multidoor Courthouse.</p>`
         },
         {
