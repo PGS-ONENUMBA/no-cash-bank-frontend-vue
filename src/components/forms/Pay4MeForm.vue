@@ -8,7 +8,7 @@
             <h3 class="text-muted fs-4">
               We can pay for you to cover expenses up to {{ formattedWinnableAmount }} at the ticket price of: <span v-if="ticketCurrentPrice > 0">{{ formatCurrency(ticketCurrentPrice) }}</span>
             </h3>
-            <p class="text-success fs-5">Transferable Amount: {{ formattedWinnableAmount }}</p>
+            <p class="text-success fs-5">Winnable Amount: {{ formattedWinnableAmount }}</p>
             <h5 class="fw-bold"><i class="bi bi-lightbulb"></i> How It Works</h5>
             <ul class="list-unstyled">
               <li><i class="bi bi-1-circle text-success"></i> Enter your phone number.</li>
@@ -24,7 +24,7 @@
       <div class="col-lg-6 d-flex">
         <div class="card w-100 shadow-sm">
           <div class="card-body">
-            <h2 class="card-title pb-3 fs-4">Pay4Me Request</h2>
+            <h2 class="card-title pb-3 fs-4">Pay Merchant Request</h2>
 
             <!-- Loading State -->
             <div v-if="isLoading" class="text-center">
