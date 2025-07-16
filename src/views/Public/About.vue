@@ -26,8 +26,9 @@
               <img :src="missionImage" class="card-img-top rounded-top" alt="Our Mission" />
               <div class="card-body d-flex flex-column">
                 <p class="card-text flex-grow-1">
-                  At {{ companyName }}, our mission is to redefine banking by introducing a 
-                  revolutionary no-cash platform that fosters financial inclusivity for everyone.
+                  At {{ companyName }}, our mission is to turn everyday spending into exciting
+                  opportunities — giving everyone a fun, fair shot at meeting their needs and
+                  desires at the price of a raffle ticket.
                 </p>
               </div>
             </div>
@@ -42,8 +43,8 @@
               <img :src="visionImage" class="card-img-top rounded-top" alt="Our Vision" />
               <div class="card-body d-flex flex-column">
                 <p class="card-text flex-grow-1">
-                  We envision a world where banking goes beyond cash, providing equal 
-                  opportunities for individuals and businesses to thrive in the digital economy.
+                  To be Africa's favorite way to turn everyday spending into exciting
+                  wins — where every tap holds a chance to change your story.
                 </p>
               </div>
             </div>
@@ -77,7 +78,7 @@ import { ref, onMounted } from "vue";
 import Preloader from "@/components/common/Preloader.vue"; // Import Preloader
 
 export default {
-  name: "About",
+  name: "AboutPage",
   components: { Preloader },
   setup() {
     const loading = ref(true);
