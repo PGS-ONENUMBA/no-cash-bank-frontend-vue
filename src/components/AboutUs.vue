@@ -16,10 +16,11 @@
               <i class="bi bi-info-circle bi-green me-2 d-none d-md-inline"></i> About Us
             </h2>
             <p class="fs-6">
-              {{ siteName }} is redefining banking across Africa by introducing an
-              innovative No-Cash-Bank solution. Our platform is designed to bridge
-              the gap between traditional banking and the digital economy,
-              ensuring financial inclusion for everyone.<span v-if="!isMobile"><br /><br /></span> <span v-if="isMobile">.....</span>
+              {{ siteName }} is redefining access to everyday transactions in Africa
+              through our breakthrough chance based transaction model. As Africa's first Universal Transaction Chancification platform,
+              PayByChance introduces a contributory, chance-based experience that empowers
+              consumers to meet their needs by simply purchasing low-cost raffle tickets—without
+              requiring full cash up front.<span v-if="!isMobile"><br /><br /></span> <span v-if="isMobile">.....</span>
               <span v-if="!isMobile">
                 We are committed to providing secure, efficient, and easy-to-use
                 financial services tailored to the unique needs of our customers.
