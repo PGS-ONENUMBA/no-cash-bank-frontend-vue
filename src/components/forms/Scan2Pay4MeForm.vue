@@ -1,11 +1,10 @@
 <template>
   <main class="container py-2 mt-2">
     <div class="row g-4 d-flex align-items-stretch">
-      <!-- Left Column: Instructions -->
+      <!-- Left Column: Vendor Details -->
       <div class="col-lg-6 d-flex">
         <div class="card w-100 shadow-sm">
           <div class="card-body">
-            <!-- Pay-4-Me Introduction -->
             <div class="text-center mb-4 mt-5">
               <h3 class="fw-bold fs-4">
                 <i class="bi bi-qr-code-scan me-2"></i> Pay Vendor via QR Code Scan
@@ -70,8 +69,8 @@
 <script>
 import { ref, computed, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import axios from "axios";
 import { fetchProducts, fetchVendorDetails } from "@/services/productService";
+import { createOrder, processPayment } from "@/services/paymentService";
 
 export default {
   name: "Scan2Pay4Me",
@@ -91,7 +90,7 @@ export default {
       raffle_type_id: "",
       winnable_amount: "",
       price_of_ticket: "",
-      vendor_id: "", // Already present, ensuring it’s used
+      vendor_id: "",
     });
 
     const formattedWinnableAmount = computed(() => {
@@ -114,7 +113,6 @@ export default {
       }
 
       try {
-        // Fetch raffle cycles
         const cycles = await fetchProducts();
         if (cycles.length) {
           const cycle = cycles.find(cycle =>
@@ -132,9 +130,9 @@ export default {
             formData.value.raffle_type_id = raffleTypeId;
             formData.value.winnable_amount = cycle.winnable_amount;
             formData.value.price_of_ticket = cycle.ticket_price;
-            formData.value.vendor_id = vendorId; // Set from query
+            formData.value.vendor_id = vendorId;
           } else {
-            console.error("❌ No matching raffle cycle found for type:", raffleTypeId);
+            console.error("❌ No matching raffle cycle found.");
             router.push("/dashboard");
             return;
           }
@@ -144,20 +142,18 @@ export default {
           return;
         }
 
-        // Fetch vendor details
         const vendor = await fetchVendorDetails(vendorId);
         if (vendor) {
-          console.log("✅ Vendor details:", vendor);
           vendorDetails.value = {
             business_name: vendor.business_name,
             business_address: vendor.business_address,
             industry: vendor.industry,
-            contact_name: vendor.contact_name, // Added for display
+            contact_name: vendor.contact_name,
           };
           formData.value.recipientPhoneNumber = vendor.phone_number || "N/A";
-          formData.value.vendor_id = vendor.vendor_id; // Confirm it’s set
+          formData.value.vendor_id = vendor.vendor_id;
         } else {
-          console.error("❌ Vendor details fetch failed for ID:", vendorId);
+          console.error("❌ Vendor details fetch failed.");
           router.push("/dashboard");
         }
       } catch (error) {
@@ -175,38 +171,37 @@ export default {
       isSubmitting.value = true;
       try {
         const orderAmount = formData.value.tickets * formData.value.price_of_ticket;
-        const authString = btoa(`${import.meta.env.VITE_APP_USER_NAME}:${import.meta.env.VITE_APP_USER_PASSWORD}`);
-        const response = await axios.post(
-          `${import.meta.env.VITE_API_BASE_URL}/nocash-bank/v1/action`,
-          {
-            action_type: "create_order",
-            customer_email: "qrscan@paybychance.com",
-            customer_phone: formData.value.phoneNumber,
-            ticket_quantity: formData.value.tickets,
-            order_amount: orderAmount,
-            raffle_cycle_id: formData.value.raffle_cycle_id,
-            purchase_platform: "web-qr",
-            payment_method_used: "Squad",
-            vendor_id: formData.value.vendor_id, // Pass to backend
-            recipient_phone_number: formData.value.recipientPhoneNumber,
-            amount_due: formData.value.amountDue,
-          },
-          {
-            headers: {
-              "Authorization": `Basic ${authString}`,
-              "Content-Type": "application/json"
-            }
-          }
-        );
 
-        if (response.data.success) {
-          console.log("✅ Order created:", response.data.order_id);
-          router.push("/dashboard");
+        const orderData = {
+          phoneNumber: formData.value.phoneNumber,
+          tickets: parseInt(formData.value.tickets, 10),
+          amount: orderAmount,
+          raffle_cycle_id: parseInt(formData.value.raffle_cycle_id, 10),
+          vendor_id: formData.value.vendor_id,
+          amount_due: parseFloat(formData.value.amountDue),
+          recipient_phone_number: formData.value.recipientPhoneNumber,
+        };
+
+        const response = await createOrder(orderData);
+
+        if (response?.order_id) {
+          const paymentResponse = await processPayment({
+            email: `${formData.value.phoneNumber}@paybychance.com`,
+            amount: orderAmount,
+            trans_ref: response.order_id,
+          });
+
+          if (paymentResponse?.status === "closed") {
+            console.log("❌ Payment Cancelled by user");
+            return;
+          }
+
+          router.push("/thank-you");
         } else {
-          alert(`Error: ${response.data.message}`);
+          alert(`Error: ${response?.message || "Could not create order."}`);
         }
       } catch (error) {
-        console.error("❌ Submission error:", error.response ? error.response.data : error.message);
+        console.error("❌ Submission error:", error);
         alert("Failed to process payment. Please try again.");
       } finally {
         isSubmitting.value = false;
@@ -228,7 +223,6 @@ export default {
 </script>
 
 <style scoped>
-
 .text-purple {
   color: #6f42c1;
 }
@@ -244,6 +238,6 @@ export default {
   width: 200px;
 }
 .card-body {
-  padding: 1.25rem; /* Consistent with typical Pay4MeForm padding */
+  padding: 1.25rem;
 }
 </style>

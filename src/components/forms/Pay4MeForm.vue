@@ -134,7 +134,7 @@
               <input type="hidden" v-model="formData.price_of_ticket" />
 
               <button type="submit" class="btn btn-orange custom-width mb-3">
-                <i class="bi bi-cash-coin me-2"></i> Submit Payment Request
+                <i class="bi bi-cash-coin me-2"></i> Pay Now
               </button>
               <button type="button" class="btn btn-secondary custom-width mb-3 ms-2" @click="showFullForm = false; showVendorQuestion = true">
                 <i class="bi bi-arrow-left-circle me-2"></i> Back
