@@ -25,6 +25,7 @@
       </div>
 
       <!-- Right Column: Form -->
+      <!-- @todo rework the form to reflect the ticket pricing and value as user is typing in number of tickets. -->
       <div class="col-lg-6 d-flex">
         <div class="card w-100 shadow-sm">
           <div class="card-body">
