@@ -168,7 +168,7 @@ export default {
     const showFullForm = ref(false);
     const hasVendor = ref(false);
     const isLoading = ref(true);
-    const vendors = ref([]); // All vendors from DB
+    const vendors = ref([]);
     const filteredVendors = ref([]);
     const vendorSearch = ref("");
     const showDropdown = ref(false);
@@ -214,7 +214,7 @@ export default {
       try {
         const vendorData = await fetchVendors();
         vendors.value = vendorData;
-        filteredVendors.value = vendorData; // Initially show all vendors
+        filteredVendors.value = vendorData;
       } catch (error) {
         console.error("❌ Error fetching vendors:", error);
       }
@@ -223,8 +223,8 @@ export default {
     const filterVendors = () => {
       const searchTerm = vendorSearch.value.toLowerCase();
       if (!searchTerm) {
-        filteredVendors.value = vendors.value; // Reset to full list
-        formData.value.vendor_id = ""; // Clear selection when search is empty
+        filteredVendors.value = vendors.value;
+        formData.value.vendor_id = "";
       } else {
         filteredVendors.value = vendors.value.filter((vendor) =>
           vendor.vendor_name.toLowerCase().includes(searchTerm)
@@ -235,14 +235,8 @@ export default {
     const selectVendor = (vendor) => {
       formData.value.vendor_id = vendor.vendor_id;
       vendorSearch.value = vendor.vendor_name;
-      showDropdown.value = false; // Hide dropdown after selection
+      showDropdown.value = false;
     };
-
-    // const delayHideDropdown = () => {
-    //   setTimeout(() => {
-    //     showDropdown.value = false;
-    //   }, 200); // Delay to allow click to register
-    // };
 
     const selectedVendorName = computed(() => {
       const selected = vendors.value.find((v) => v.vendor_id === formData.value.vendor_id);
@@ -263,6 +257,11 @@ export default {
     });
 
     const handleSubmit = async () => {
+      if (!navigator.onLine) {
+        alert("You are offline. Please check your internet connection and try again.");
+        return;
+      }
+
       if (isLoading.value || !winnableAmount.value) {
         alert("Please wait for raffle details to load.");
         return;
@@ -314,10 +313,16 @@ export default {
             console.log("❌ Payment Cancelled by user");
             return;
           }
+
+          router.push("/thank-you");
         }
       } catch (error) {
         console.error("❌ Submission error:", error.message, error);
-        alert(`Error: ${error.message || "Failed to submit order. Please try again."}`);
+        if (error.message === "Network Error") {
+          alert("Network error. Please check your internet connection and try again.");
+        } else {
+          alert(`Error: ${error.message || "Failed to submit order. Please try again."}`);
+        }
       }
     };
 
