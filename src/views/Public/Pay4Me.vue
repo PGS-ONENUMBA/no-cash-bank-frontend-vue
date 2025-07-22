@@ -22,7 +22,8 @@ export default {
   },
   setup() {
     return {
-      productName: import.meta.env.VITE_PRODUCT_TWO || "Pay4Me", // Uses env variable, fallback to "Pay4Me"
+      //productName: import.meta.env.VITE_PRODUCT_TITLE || "Pay Merchant", // Uses env variable, fallback to "Pay Merchant"
+      productName: "Pay Merchant", // Uses env variable, fallback to "Pay Merchant"
     };
   },
 };
