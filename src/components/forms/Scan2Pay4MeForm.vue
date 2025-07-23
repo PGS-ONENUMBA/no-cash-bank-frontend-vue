@@ -11,7 +11,7 @@
               </h3>
             </div>
             <p class="text-success fs-5">
-              Transferable Amount: {{ formattedWinnableAmount }}
+              Spendable Amount: {{ formattedWinnableAmount }}
             </p>
             <div v-if="vendorDetails" class="mt-2">
               <p><strong>Business Name:</strong> {{ vendorDetails.business_name }}</p>
@@ -46,11 +46,30 @@
                 <label for="tickets" class="form-label">
                   <i class="bi bi-ticket me-2"></i> How Many Tickets?
                 </label>
-                <input type="number" class="form-control" id="tickets" v-model="formData.tickets" required min="1" />
+
+                <!-- Show ticket price per unit -->
+                <p class="text-muted mb-1">
+                  Ticket Price:
+                  <span class="fw-semibold">
+                    {{ Number(formData.price_of_ticket).toLocaleString("en-NG", { style: "currency", currency: "NGN" }) }}
+                  </span>
+                </p>
+
+                <input
+                  type="number"
+                  class="form-control"
+                  id="tickets"
+                  v-model="formData.tickets"
+                  required
+                  min="1"
+                />
+
+                <!-- Total cost preview -->
                 <p class="text-success fw-bold mt-1">
                   You will pay: {{ totalTicketCost.toLocaleString("en-NG", { style: "currency", currency: "NGN" }) }}
                 </p>
               </div>
+
 
 
               <!-- Hidden Fields -->
