@@ -47,7 +47,11 @@
                   <i class="bi bi-ticket me-2"></i> How Many Tickets?
                 </label>
                 <input type="number" class="form-control" id="tickets" v-model="formData.tickets" required min="1" />
+                <p class="text-success fw-bold mt-1">
+                  You will pay: {{ totalTicketCost.toLocaleString("en-NG", { style: "currency", currency: "NGN" }) }}
+                </p>
               </div>
+
 
               <!-- Hidden Fields -->
               <input type="hidden" v-model="formData.raffle_cycle_id" />
@@ -81,6 +85,12 @@ export default {
     const raffleData = ref({});
     const vendorDetails = ref(null);
     const isSubmitting = ref(false);
+    const totalTicketCost = computed(() => {
+      return formData.value.tickets > 0 && formData.value.price_of_ticket > 0
+        ? formData.value.tickets * formData.value.price_of_ticket
+        : 0;
+    });
+
 
     const formData = ref({
       phoneNumber: "",
@@ -218,6 +228,7 @@ export default {
       raffleData,
       formattedWinnableAmount,
       isSubmitting,
+      totalTicketCost,
     };
   },
 };
