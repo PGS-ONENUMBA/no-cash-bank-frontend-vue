@@ -63,14 +63,11 @@
                   required
                   min="1"
                 />
-
                 <!-- Total cost preview -->
                 <p class="text-success fw-bold mt-1">
                   You will pay: {{ totalTicketCost.toLocaleString("en-NG", { style: "currency", currency: "NGN" }) }}
                 </p>
               </div>
-
-
 
               <!-- Hidden Fields -->
               <input type="hidden" v-model="formData.raffle_cycle_id" />

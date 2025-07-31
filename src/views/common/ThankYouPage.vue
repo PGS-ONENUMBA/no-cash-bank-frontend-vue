@@ -9,58 +9,52 @@
         <div class="step d-flex align-items-center mb-3">
           <span class="status-icon me-2">{{ paymentVerified ? '✅' : '⏳' }}</span>
           <span class="step-text">Payment Verification</span>
-          <span v-if="stage === 'submitted'" class="ms-2 ellipsis"></span>
         </div>
 
-        <!-- Step 2: Checking Amount -->
+        <!-- Step 2: Amount Confirmation -->
         <div class="step d-flex align-items-center mb-3" :class="{ 'text-muted': !paymentVerified }">
           <span class="status-icon me-2">{{ amountMatched ? '✅' : paymentVerified ? '⏳' : ' ' }}</span>
           <span class="step-text">Confirming Amount</span>
-          <span v-if="stage === 'payment_verified'" class="ms-2 ellipsis"></span>
         </div>
 
-        <!-- Step 3: Crediting Wallet (only if discrepancy) -->
+        <!-- Step 3: Wallet Crediting (if discrepancy) -->
         <div v-if="walletCredited" class="step d-flex align-items-center mb-3">
-          <span class="status-icon me-2">{{ walletCredited ? '✅' : '⏳' }}</span>
+          <span class="status-icon me-2">✅</span>
           <span class="step-text">Crediting Wallet</span>
-          <span v-if="stage === 'amount_mismatch_wallet_updated'" class="ms-2 ellipsis"></span>
         </div>
 
-        <!-- Step 4: Discrepancy Message (if wallet credited) -->
         <div v-if="walletCredited" class="alert alert-warning mt-2 mb-3">
           Sorry, due to a payment discrepancy, you couldn’t join the raffle. Your wallet has been credited—check your balance later!
         </div>
 
-        <!-- Step 5: Running Raffle (only if no discrepancy) -->
+        <!-- Step 4: Raffle Execution -->
         <div v-if="!walletCredited" class="step d-flex align-items-center mb-3" :class="{ 'text-muted': !amountMatched }">
           <span class="status-icon me-2">{{ raffleQueued ? '✅' : amountMatched ? '⏳' : ' ' }}</span>
           <span class="step-text">Running Raffle</span>
-          <span v-if="stage === 'raffle_queued'" class="ms-2 ellipsis"></span>
         </div>
 
-        <!-- Step 6: Win Status (only if raffle ran) -->
+        <!-- Step 5: Win Status -->
         <div v-if="raffleQueued" class="step d-flex align-items-center mb-3" :class="{ 'text-muted': !raffleQueued }">
           <span class="status-icon me-2">{{ winStatusChecked ? '✅' : raffleQueued ? '⏳' : ' ' }}</span>
           <span class="step-text">Win Status</span>
-          <span v-if="stage === 'entry_processed' || stage === 'winner_selected'" class="ms-2">
-            {{ winnerSelected ? '🎉 You Won!' : 'Try again next time!' }}
-          </span>
+          <span v-if="stage === 'winner_selected'" class="ms-2">🎉 You Won!</span>
+          <span v-else-if="stage === 'entry_processed'" class="ms-2">Try again next time!</span>
         </div>
 
-        <!-- Internal States (placeholders) -->
+        <!-- Internal states for future logic -->
         <div v-if="stage === 'moved_to_next_cycle'" class="alert alert-info mt-3">
           Moving to a new raffle cycle... (Internal state)
         </div>
+
         <div v-if="stage === 'cycle_moved'" class="alert alert-info mt-3">
           Raffle cycle completed. (Internal state)
         </div>
 
-        <!-- Failure State -->
+        <!-- Error messaging -->
         <div v-if="stage === 'payment_failed'" class="alert alert-danger mt-3">
           Payment verification failed: {{ message }}
         </div>
 
-        <!-- Error Message -->
         <div v-if="errorMessage" class="alert alert-danger mt-3">{{ errorMessage }}</div>
       </div>
     </div>
@@ -68,114 +62,147 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
-import { io } from "socket.io-client";
 
+/**
+ * Retrieves the value of a browser cookie by name.
+ * @param {string} name - Cookie name to retrieve.
+ * @returns {string|null} Cookie value or null if not found.
+ */
+function getCookie(name) {
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  return match ? decodeURIComponent(match[2]) : null;
+}
+
+/**
+ * Creates or updates a cookie with expiration time.
+ * @param {string} name - Cookie name.
+ * @param {string} value - Cookie value.
+ * @param {number} minutes - Time to expire in minutes.
+ */
+function setCookie(name, value, minutes) {
+  const expires = new Date(Date.now() + minutes * 60000).toUTCString();
+  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/`;
+}
+
+/**
+ * Deletes a browser cookie by name.
+ * @param {string} name - Cookie name to delete.
+ */
+function deleteCookie(name) {
+  document.cookie = `${name}=; Max-Age=0; path=/`;
+}
+
+// Vue route object used to extract query parameters
 const route = useRoute();
-const stage = ref("submitted");
-const message = ref("");
-const errorMessage = ref("");
-const socket = ref(null);
 
+// Reference string either from query param or cookie fallback
+const reference = route.query.reference || getCookie("nocash_last_ref");
+
+// Backend API endpoints
 const apiUrl = import.meta.env.VITE_API_BASE_URL + "/nocash-bank/v1/action";
-const socketUrl = "https://socket.paybychance.com";
-const reference = route.query.reference;
+const lookupUrl = import.meta.env.VITE_API_BASE_URL + "/nocash-bank/v1/check_order_status";
 
-// Derived states for step completion
+// State variables
+const stage = ref("submitted"); // Current processing stage
+const message = ref(""); // Custom message for users
+const errorMessage = ref(""); // Error display binding
+
+// Derived/computed states for UI rendering
 const paymentVerified = computed(() => stage.value !== "submitted" && stage.value !== "payment_failed");
 const amountMatched = computed(() => ["amount_matched", "raffle_queued", "winner_selected", "entry_processed"].includes(stage.value));
 const walletCredited = computed(() => stage.value === "amount_mismatch_wallet_updated");
 const raffleQueued = computed(() => ["raffle_queued", "winner_selected", "entry_processed"].includes(stage.value));
 const winStatusChecked = computed(() => ["winner_selected", "entry_processed"].includes(stage.value));
-const winnerSelected = computed(() => stage.value === "winner_selected");
-
-// Terminal states to freeze updates
-const terminalStages = new Set(["payment_failed", "winner_selected", "entry_processed", "amount_mismatch_wallet_updated"]);
 
 /**
- * Handles real-time status updates from the socket
- * @param {object} data - Incoming message from server
- */
-function handleStatusUpdate(data) {
-  if (!data || !data.status) return;
-  if (terminalStages.has(stage.value)) return; // Freeze on terminal states
-
-  stage.value = data.status;
-  message.value = data.message || "";
-  console.log("🟢 Status updated:", stage.value);
-}
-
-/**
- * Initializes the socket connection and joins the reference room
- */
-function initSocket() {
-  socket.value = io(socketUrl, {
-    transports: ["websocket"],
-    extraHeaders: { "User-Agent": "PayByChanceApp/1.0" },
-  });
-
-  socket.value.on("connect", () => {
-    console.log("✅ Connected to socket");
-    socket.value.emit("join_order", reference);
-  });
-
-  socket.value.on("status_update", handleStatusUpdate);
-
-  socket.value.on("connect_error", (err) => {
-    errorMessage.value = "Socket connection failed: " + err.message;
-  });
-
-  socket.value.on("disconnect", () => {
-    console.log("🔌 Socket disconnected");
-  });
-}
-
-/**
- * Submits the order to the backend API
+ * Submits the order to the backend and handles optimistic update.
+ * Uses cookie to cache reference and retries via fallback if timed out.
  */
 async function submitOrder() {
   if (!reference) {
-    errorMessage.value = "No reference provided in the URL.";
+    errorMessage.value = "No reference provided.";
     return;
   }
 
+  setCookie("nocash_last_ref", reference, 15); // Temporarily store reference for fallback lookup
+
   try {
     const auth = `Basic ${btoa(import.meta.env.VITE_APP_USER_NAME + ":" + import.meta.env.VITE_APP_USER_PASSWORD)}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // Cancel if longer than 10 seconds
+
     const res = await fetch(apiUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: auth,
       },
+      signal: controller.signal,
       body: JSON.stringify({
         reference,
         action_type: "submit_order",
       }),
     });
 
+    clearTimeout(timeoutId);
     const result = await res.json();
+
     if (!result.success) {
-      errorMessage.value = result.message || "Failed to submit order.";
+      errorMessage.value = result.message || "Submission failed.";
+      stage.value = "payment_failed";
+      setTimeout(lookupOrderStatus, 3000); // Wait 3s then poll order status manually
       return;
     }
 
-    console.log("📤 Order submitted, now connecting to socket...");
-    initSocket();
-
-    setTimeout(() => {
-      if (stage.value === "submitted") {
-        errorMessage.value = "Verification timed out. Please try again.";
-        socket.value?.disconnect();
-      }
-    }, 30000);
+    stage.value = result.status || "entry_processed";
+    message.value = result.message || "";
   } catch (err) {
-    errorMessage.value = "API request failed: " + err.message;
+    errorMessage.value = "Submission error: " + (err.message || "Unknown");
+    stage.value = "payment_failed";
+    setTimeout(lookupOrderStatus, 3000); // Fallback check
   }
 }
 
+/**
+ * Fallback order status fetcher if initial POST fails or is aborted.
+ */
+async function lookupOrderStatus() {
+  try {
+    const res = await fetch(`${lookupUrl}?reference=${encodeURIComponent(reference)}`);
+    const data = await res.json();
+
+    if (data.success) {
+      stage.value = data.status || "entry_processed";
+      message.value = "Order status updated via lookup.";
+    } else {
+      errorMessage.value = data.message || "Could not retrieve order status.";
+    }
+  } catch (err) {
+    errorMessage.value = "Status check failed: " + err.message;
+  }
+}
+
+// Kick off order submission logic
 onMounted(submitOrder);
-onBeforeUnmount(() => socket.value?.disconnect());
+
+/**
+ * Watches stage to clear cookie once terminal stage is reached.
+ */
+watch(stage, (newStage) => {
+  const terminalStages = new Set([
+    "winner_selected",
+    "entry_processed",
+    "amount_mismatch_wallet_updated",
+    "payment_failed"
+  ]);
+
+  if (terminalStages.has(newStage)) {
+    deleteCookie("nocash_last_ref");
+    console.log("🧹 Cleared reference cookie after terminal state:", newStage);
+  }
+});
 </script>
 
 <style scoped>
@@ -203,19 +230,6 @@ h2 {
   font-size: 1.2rem;
   width: 24px;
   text-align: center;
-}
-.ellipsis {
-  display: inline-block;
-}
-.ellipsis::after {
-  content: "...";
-  animation: dots 1.5s steps(3, end) infinite;
-}
-@keyframes dots {
-  0% { content: ""; }
-  33% { content: "."; }
-  66% { content: ".."; }
-  100% { content: "..."; }
 }
 .text-muted {
   color: #6c757d;
