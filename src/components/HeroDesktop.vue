@@ -31,7 +31,7 @@
 
 <script>
 import HeroActions from "@/components/HeroActions.vue";
-import heroImage from "@/assets/hero-paybychance.png"; // Import the image explicitly
+import heroImage from "@/assets/hero.png"; // Import the image explicitly
 export default {
   name: "HeroDesktop",
   components: { HeroActions },

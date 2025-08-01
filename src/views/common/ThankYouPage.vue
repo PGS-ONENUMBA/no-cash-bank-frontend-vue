@@ -200,7 +200,7 @@ watch(stage, (newStage) => {
 
   if (terminalStages.has(newStage)) {
     deleteCookie("nocash_last_ref");
-    console.log("🧹 Cleared reference cookie after terminal state:", newStage);
+    console.log("Cleared reference cookie after terminal state:", newStage);
   }
 });
 </script>
