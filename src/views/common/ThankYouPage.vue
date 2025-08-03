@@ -20,7 +20,7 @@
 
       <!-- 📨 Contextual Alert Messages -->
       <div v-if="stage === 'amount_mismatch_wallet_updated'" class="alert alert-warning mt-3">
-        Sorry, due to a payment discrepancy, you couldn’t join the raffle. Your wallet has been credited—check your balance later!
+        Sorry, due to a payment discrepancy, you couldn't join the raffle. Your wallet has been credited—check your balance later!
       </div>
       <div v-if="stage === 'winner_selected'" class="alert alert-success mt-3">
         🎉 Congratulations! You won the raffle!
@@ -79,7 +79,6 @@ const reference = route.query.reference || getCookie("nocash_last_ref");
 
 // 🔗 Backend API base URLs
 const apiUrl = import.meta.env.VITE_API_BASE_URL + "/nocash-bank/v1/action";
-const lookupUrl = import.meta.env.VITE_API_BASE_URL + "/nocash-bank/v1/action";
 
 // 🎛️ App state: tracks process stage, messages, and errors
 const stage = ref("submitted");
@@ -169,11 +168,23 @@ async function submitOrder() {
 
 /**
  * Manual lookup fallback to check the status of the order.
- * Called after failed/aborted submission.
+ * Now uses POST request instead of GET.
  */
 async function lookupOrderStatus() {
   try {
-    const res = await fetch(`${lookupUrl}?action_type=check_order_status&reference=${encodeURIComponent(reference)}`);
+    const auth = `Basic ${btoa(import.meta.env.VITE_APP_USER_NAME + ":" + import.meta.env.VITE_APP_USER_PASSWORD)}`;
+    const res = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: auth,
+      },
+      body: JSON.stringify({
+        reference,
+        action_type: "check_order_status",
+      }),
+    });
+
     const data = await res.json();
 
     if (data.success) {
