@@ -20,7 +20,7 @@
 
       <!-- 📨 Contextual Alert Messages -->
       <div v-if="stage === 'amount_mismatch_wallet_updated'" class="alert alert-warning mt-3">
-        Sorry, due to a payment discrepancy, you couldn't join the raffle. Your wallet has been credited—check your balance later!
+        Sorry, due to a payment discrepancy, you couldn’t join the raffle. Your wallet has been credited—check your balance later!
       </div>
       <div v-if="stage === 'winner_selected'" class="alert alert-success mt-3">
         🎉 Congratulations! You won the raffle!
