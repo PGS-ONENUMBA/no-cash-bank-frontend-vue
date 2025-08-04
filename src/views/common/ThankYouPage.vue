@@ -1,12 +1,21 @@
 <template>
   <div class="container text-center py-5 mt-5">
     <div class="card shadow-sm p-4 mx-auto" style="max-width: 600px;">
-      <h2 class="text-dark">Thank You!</h2>
-      <p class="lead">We’re processing your request—please wait.</p>
+      <h2 class="text-dark">
+        {{ stage === 'verifying' ? 'Thank You!' : resultTitle }}
+      </h2>
+      <p class="lead">
+        {{ stage === 'verifying' ? 'We’re processing your request—please wait.' : resultSubtitle }}
+      </p>
 
       <!-- 🟢 Animated Progress Bar -->
       <transition name="fade" mode="out-in">
-        <div class="progress my-4" style="height: 20px;" :key="stage">
+        <div
+          v-if="stage === 'verifying'"
+          class="progress my-4"
+          style="height: 20px;"
+          :key="stage"
+        >
           <div
             class="progress-bar"
             role="progressbar"
@@ -20,7 +29,7 @@
 
       <!-- 📨 Contextual Alert Messages -->
       <div v-if="stage === 'amount_mismatch_wallet_updated'" class="alert alert-warning mt-3">
-        Sorry, due to a payment discrepancy, you couldn't join the raffle. Your wallet has been credited—check your balance later!
+        Sorry, due to a payment discrepancy, you couldn’t join the raffle. Your wallet has been credited—check your balance later!
       </div>
       <div v-if="stage === 'winner_selected'" class="alert alert-success mt-3">
         🎉 Congratulations! You won the raffle!
@@ -42,52 +51,28 @@
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
 
-/**
- * Retrieves the value of a named cookie from the browser.
- * @param {string} name - The cookie name.
- * @returns {string|null} - The cookie value or null if not found.
- */
 function getCookie(name) {
   const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
   return match ? decodeURIComponent(match[2]) : null;
 }
 
-/**
- * Sets a browser cookie with the specified expiration in minutes.
- * @param {string} name - Cookie name.
- * @param {string} value - Cookie value.
- * @param {number} minutes - Expiration time in minutes.
- */
 function setCookie(name, value, minutes) {
   const expires = new Date(Date.now() + minutes * 60000).toUTCString();
   document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/`;
 }
 
-/**
- * Deletes a cookie by name.
- * @param {string} name - Cookie name to delete.
- */
 function deleteCookie(name) {
   document.cookie = `${name}=; Max-Age=0; path=/`;
 }
 
-// ⛳ Retrieve route object to access query parameters
 const route = useRoute();
-
-// 🧾 Reference ID from query or fallback cookie
 const reference = route.query.reference || getCookie("nocash_last_ref");
-
-// 🔗 Backend API base URLs
 const apiUrl = import.meta.env.VITE_API_BASE_URL + "/nocash-bank/v1/action";
 
-// 🎛️ App state: tracks process stage, messages, and errors
-const stage = ref("submitted");
+const stage = ref("verifying");
 const message = ref("");
 const errorMessage = ref("");
 
-/**
- * Dynamically returns the progress bar color class based on current stage.
- */
 const progressBarClass = computed(() => {
   if (stage.value === "winner_selected") return "bg-success";
   if (["entry_processed", "amount_mismatch_wallet_updated"].includes(stage.value)) return "bg-warning text-dark";
@@ -95,44 +80,50 @@ const progressBarClass = computed(() => {
   return "bg-info progress-bar-striped progress-bar-animated";
 });
 
-/**
- * Provides progress label text depending on the current processing state.
- */
 const progressBarText = computed(() => {
   if (stage.value === "winner_selected") return "You Won!";
   if (stage.value === "entry_processed") return "Raffle Completed";
   if (stage.value === "amount_mismatch_wallet_updated") return "Wallet Credited";
   if (stage.value === "payment_failed") return "Error Processing Payment";
-  return "Processing...";
+  return "Verifying Payment...";
 });
 
-/**
- * Defines progress bar width percentage for animation.
- */
 const progressValue = computed(() => {
   if (stage.value === "winner_selected") return "100%";
   if (stage.value === "entry_processed") return "95%";
   if (stage.value === "amount_mismatch_wallet_updated") return "90%";
   if (stage.value === "payment_failed") return "100%";
-  return "70%"; // initial processing
+  return "70%";
 });
 
-/**
- * Main API trigger to submit order reference to backend.
- * Handles timeout and fallback if initial request fails.
- */
+const resultTitle = computed(() => {
+  if (stage.value === 'winner_selected') return 'Congratulations!';
+  if (stage.value === 'entry_processed') return 'Better Luck Next Time!';
+  if (stage.value === 'amount_mismatch_wallet_updated') return 'Wallet Credited';
+  if (stage.value === 'payment_failed') return 'Payment Failed';
+  return 'Thank You!';
+});
+
+const resultSubtitle = computed(() => {
+  if (stage.value === 'winner_selected') return 'You won the raffle!';
+  if (stage.value === 'entry_processed') return 'Your entry was processed successfully.';
+  if (stage.value === 'amount_mismatch_wallet_updated') return 'We returned your funds.';
+  if (stage.value === 'payment_failed') return message.value || 'Verification failed.';
+  return 'We’re processing your request—please wait.';
+});
+
 async function submitOrder() {
   if (!reference) {
     errorMessage.value = "No reference provided.";
     return;
   }
 
-  setCookie("nocash_last_ref", reference, 15); // save ref for later use
+  setCookie("nocash_last_ref", reference, 15);
 
   try {
     const auth = `Basic ${btoa(import.meta.env.VITE_APP_USER_NAME + ":" + import.meta.env.VITE_APP_USER_PASSWORD)}`;
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
 
     const res = await fetch(apiUrl, {
       method: "POST",
@@ -151,9 +142,12 @@ async function submitOrder() {
     const result = await res.json();
 
     if (!result.success) {
+      if (result.message === 'Duplicate order') {
+        await lookupOrderStatus();
+        return;
+      }
       errorMessage.value = result.message || "Submission failed.";
       stage.value = "payment_failed";
-      setTimeout(lookupOrderStatus, 3000); // fallback retry
       return;
     }
 
@@ -162,14 +156,10 @@ async function submitOrder() {
   } catch (err) {
     errorMessage.value = "Submission error: " + (err.message || "Unknown");
     stage.value = "payment_failed";
-    setTimeout(lookupOrderStatus, 3000); // fallback retry
+    setTimeout(lookupOrderStatus, 3000);
   }
 }
 
-/**
- * Manual lookup fallback to check the status of the order.
- * Now uses POST request instead of GET.
- */
 async function lookupOrderStatus() {
   try {
     const auth = `Basic ${btoa(import.meta.env.VITE_APP_USER_NAME + ":" + import.meta.env.VITE_APP_USER_PASSWORD)}`;
@@ -189,7 +179,7 @@ async function lookupOrderStatus() {
 
     if (data.success) {
       stage.value = data.status || "entry_processed";
-      message.value = "Order status updated via lookup.";
+      message.value = data.message || "";
     } else {
       errorMessage.value = data.message || "Could not retrieve order status.";
     }
@@ -198,12 +188,8 @@ async function lookupOrderStatus() {
   }
 }
 
-// 🚀 Trigger submission when component mounts
 onMounted(submitOrder);
 
-/**
- * 👀 Watch for completion stages and clear saved reference cookie.
- */
 watch(stage, (newStage) => {
   const terminalStages = new Set([
     "winner_selected",
