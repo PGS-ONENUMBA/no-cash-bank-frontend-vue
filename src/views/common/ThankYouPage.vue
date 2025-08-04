@@ -51,6 +51,7 @@
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
 
+// 🔧 Cookie utilities
 function getCookie(name) {
   const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
   return match ? decodeURIComponent(match[2]) : null;
@@ -69,10 +70,12 @@ const route = useRoute();
 const reference = route.query.reference || getCookie("nocash_last_ref");
 const apiUrl = import.meta.env.VITE_API_BASE_URL + "/nocash-bank/v1/action";
 
+// 🚦 State management
 const stage = ref("verifying");
 const message = ref("");
 const errorMessage = ref("");
 
+// 🎨 UI Computed Props
 const progressBarClass = computed(() => {
   if (stage.value === "winner_selected") return "bg-success";
   if (["entry_processed", "amount_mismatch_wallet_updated"].includes(stage.value)) return "bg-warning text-dark";
@@ -112,6 +115,7 @@ const resultSubtitle = computed(() => {
   return 'We’re processing your request—please wait.';
 });
 
+// 📨 Submit initial order to backend
 async function submitOrder() {
   if (!reference) {
     errorMessage.value = "No reference provided.";
@@ -146,8 +150,9 @@ async function submitOrder() {
         await lookupOrderStatus();
         return;
       }
+      stage.value = result.status || "payment_failed";
       errorMessage.value = result.message || "Submission failed.";
-      stage.value = "payment_failed";
+      message.value = result.message || "";
       return;
     }
 
@@ -160,6 +165,7 @@ async function submitOrder() {
   }
 }
 
+// 🔎 Fallback lookup if duplicate or timeout occurs
 async function lookupOrderStatus() {
   try {
     const auth = `Basic ${btoa(import.meta.env.VITE_APP_USER_NAME + ":" + import.meta.env.VITE_APP_USER_PASSWORD)}`;
@@ -181,6 +187,7 @@ async function lookupOrderStatus() {
       stage.value = data.status || "entry_processed";
       message.value = data.message || "";
     } else {
+      stage.value = data.status || "payment_failed";
       errorMessage.value = data.message || "Could not retrieve order status.";
     }
   } catch (err) {
@@ -188,8 +195,10 @@ async function lookupOrderStatus() {
   }
 }
 
+// 🚀 Init
 onMounted(submitOrder);
 
+// 🧹 Cleanup ref cookie on terminal states
 watch(stage, (newStage) => {
   const terminalStages = new Set([
     "winner_selected",
