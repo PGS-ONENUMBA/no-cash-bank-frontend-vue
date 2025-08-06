@@ -72,7 +72,7 @@
               <input type="hidden" v-model="formData.price_of_ticket" />
 
               <button type="submit" class="btn btn-orange custom-width mb-3">
-                <i class="bi bi-cash-coin me-2"></i> Submit Payment Request
+                <i class="bi bi-cash-coin me-2"></i> Pay By Chance
               </button>
             </form>
           </div>
