@@ -77,7 +77,7 @@
               <input type="hidden" v-model="formData.vendor_id" />
 
               <button type="submit" class="btn btn-orange custom-width mt-2" :disabled="isSubmitting">
-                <i class="bi bi-qr-code-scan me-2"></i> Pay with Raffle
+                <i class="bi bi-qr-code-scan me-2"></i> Pay By Chance
               </button>
             </form>
           </div>
