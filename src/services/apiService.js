@@ -1,76 +1,98 @@
 import axios from "axios";
 import { useAuthStore } from "@/stores/authStore"; // Customer Authentication Store
 
-// ✅ Load API Base URL from environment variables
+// Base URL only; DO NOT keep Basic creds in .env anymore.
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-// Load App Credentials from Env
-const APP_USERNAME = import.meta.env.VITE_APP_USER_NAME;
-const APP_PASSWORD = import.meta.env.VITE_APP_USER_PASSWORD;
-
-// Encode Basic Auth credentials
-const encodedCredentials = btoa(`${APP_USERNAME}:${APP_PASSWORD}`);
-
-// ✅ Create Axios instance with Basic Auth
+// One axios instance for everything
 const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-  withCredentials: true,
+  baseURL: API_BASE_URL,           // e.g. http://localhost/.../wp-json
+  withCredentials: true,           // required for HttpOnly cookie + CSRF
+  headers: { "Content-Type": "application/json" },
 });
 
-/**
- * ✅ Returns the correct authentication headers dynamically.
- * - Uses Basic Auth for app authentication.
- * - Uses Bearer Token for customer-authenticated requests.
- */
-const getAuthHeaders = async (useBasicAuth = false) => {
-  const authStore = useAuthStore();
+/* ---------------------------
+   CSRF (Context Proxy)
+---------------------------- */
+let CSRF = null;
 
-  if (useBasicAuth) {
-    // ✅ Use Basic Auth (for app authentication)
-    return {
-      Authorization: `Basic ${encodedCredentials}`,
+async function ensureCsrf() {
+  if (CSRF) return CSRF;
+  // Context Proxy issues cookie + returns csrf
+  const { data } = await apiClient.get("/context-proxy/v1/csrf");
+  if (data && data.ok && data.csrf) CSRF = data.csrf;
+  return CSRF;
+}
+
+// Auto-attach CSRF for proxy calls
+apiClient.interceptors.request.use(async (config) => {
+  try {
+    const url = String(config.url || "");
+    const needsCsrf =
+      url.includes("/context-proxy/v1/"); // all proxy calls require CSRF
+
+    if (!needsCsrf) return config;
+
+    await ensureCsrf();
+    config.headers = {
+      ...(config.headers || {}),
+      "X-CSRF-Token": CSRF || "",
+      "Content-Type": config.headers?.["Content-Type"] || "application/json",
     };
+    config.withCredentials = true;
+  } catch {
+    // no-op; server will reject if CSRF missing
   }
+  return config;
+});
 
+/* ---------------------------
+   Bearer (customer JWT)
+---------------------------- */
+const getAuthHeaders = async () => {
+  const authStore = useAuthStore();
   if (!authStore.token) {
     console.warn("❌ No authentication token found. User may not be logged in.");
     throw new Error("Missing authentication token");
   }
 
-  // ✅ Validate the token before making the request
-  try {
-    const validationResponse = await axios.post(`${API_BASE_URL}/jwt-auth/v1/token/validate`, {}, {
-      headers: { Authorization: `Bearer ${authStore.token}` },
-    });
+  // Optional: validate token server-side before use
+  await axios.post(
+    `${API_BASE_URL}/jwt-auth/v1/token/validate`,
+    {},
+    { headers: { Authorization: `Bearer ${authStore.token}` }, withCredentials: true }
+  );
 
-    if (!validationResponse.data.success) {
-      console.warn("⚠ Token validation failed. User may need to reauthenticate.");
-      throw new Error("Invalid or expired authentication token.");
-    }
-  } catch (error) {
-    console.error("❌ Token validation request failed:", error);
-    throw new Error("Authentication error");
-  }
-
-  return {
-    Authorization: `Bearer ${authStore.token}`,
-  };
+  return { Authorization: `Bearer ${authStore.token}` };
 };
 
-/**
- * ✅ Makes a POST request with the correct authentication method.
- * @param {string} endpoint - The API endpoint.
- * @param {object} data - The request body.
- * @param {boolean} useBasicAuth - Whether to use Basic Auth.
- */
+/* ---------------------------
+   POST wrapper
+   - useBasicAuth === true  -> route via Context Proxy (server does Basic)
+   - else                   -> send Bearer (customer) to the endpoint
+---------------------------- */
 export const post = async (endpoint, data = {}, useBasicAuth = false) => {
   try {
-    const headers = await getAuthHeaders(useBasicAuth);
-    const response = await apiClient.post(endpoint, data, { headers });
-    return response.data;
+    if (useBasicAuth) {
+      // If you’re calling your nocash-bank action endpoint, use the opinionated proxy:
+      if (endpoint.includes("/nocash-bank/v1/action")) {
+        const res = await apiClient.post("/context-proxy/v1/action", data);
+        return res.data;
+      }
+
+      // Otherwise use the generic proxy (must be allowlisted server-side)
+      const res = await apiClient.post("/context-proxy/v1/proxy", {
+        path: endpoint,        // e.g. "/wp-json/your-namespace/v1/whatever"
+        method: "POST",
+        body: data,
+      });
+      return res.data;
+    }
+
+    // Customer-authenticated call (Bearer)
+    const headers = await getAuthHeaders();
+    const res = await apiClient.post(endpoint, data, { headers });
+    return res.data;
   } catch (error) {
     console.error(`❌ POST request failed: ${endpoint}`, error);
     throw error;
@@ -78,3 +100,18 @@ export const post = async (endpoint, data = {}, useBasicAuth = false) => {
 };
 
 export default apiClient;
+
+/* ---------------------------
+   Optional sugar methods
+---------------------------- */
+// Mirrors your old Basic flow for nocash-bank actions:
+export const postAction = async (payload) => {
+  const res = await apiClient.post("/context-proxy/v1/action", payload);
+  return res.data;
+};
+
+// If you need generic proxying to another allowlisted path:
+export const proxyPost = async (path, body) => {
+  const res = await apiClient.post("/context-proxy/v1/proxy", { path, method: "POST", body });
+  return res.data;
+};
