@@ -6,7 +6,21 @@ const authString = btoa(import.meta.env.VITE_APP_USER_NAME.trim() + ":" + import
 
 /**
  *
+ * Validate product pricing for a given raffle cycle ID
+ * This function fetches the raffle cycle details to ensure the pricing is correct.
+ * It returns the data from the API response or null if an error occurs.
  *
+ * @param {string} raffleCycleId - The ID of the raffle cycle to validate.
+ * @returns {Promise<Object|null>} - The raffle cycle data or null on error.
+ * @throws Will log an error if the API request fails.
+ *
+ * @example
+ * const cycleData = await validateProductPricing("12345");
+ * console.log(cycleData);
+ *
+ * @see {@link https://example.com/api-docs} for API documentation.
+ * @see {@link https://example.com/raffle-cycle} for more information on raffle cycles.
+ * @see {@link https://example.com/error-handling} for error handling guidelines.
  **/
 export const validateProductPricing = async (raffleCycleId) => {
   console.log("Validating raffle cycle:", raffleCycleId);
