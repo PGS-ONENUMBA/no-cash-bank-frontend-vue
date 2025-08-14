@@ -1,51 +1,8 @@
 // import apiClient from "./apiService";
 import axios from "axios";
 
+import { initiatePayment, verifyTransaction } from "@/services/squad.service";
 const authString = btoa(import.meta.env.VITE_APP_USER_NAME.trim() + ":" + import.meta.env.VITE_APP_USER_PASSWORD.trim());
-
-/**
-* Create Mock DB This is not required
-*
-**/
-
-// const mockDB = {
-//   raffle_cycles: [
-//     {
-//       raffle_cycle_id: 1,
-//       raffle_type_id: 1, // Get Cash
-//       winnable_amount: 100000,
-//       ticket_price: 50,
-//       created_at: "2021-09-01T00:00:00Z",
-//     },
-//     {
-//       raffle_cycle_id: 2,
-//       raffle_type_id: 2, // Pay4Me
-//       winnable_amount: 5000000,
-//       ticket_price: 5000,
-//       created_at: "2021-09-01T00:00:00Z",
-//     },
-//     {
-//       raffle_cycle_id: 3,
-//       raffle_type_id: 3, // OneTheHouse
-//       winnable_amount: 5000000,
-//       ticket_price: 5000,
-//       created_at: "2021-09-01T00:00:00Z",
-//     },
-//   ],
-//   orders: [
-//     {
-//       order_id: 1,
-//       order_status: "pending",
-//       raffle_cycle_id: 1,
-//       raffle_type_id: 1,
-//       amount: 1000,
-//       number_of_tickets: 1,
-//       email: "ter@gmail.com",
-//       phone_number: "08012345678",
-//     }
-//   ],
-// }
-
 
 /**
  *
@@ -115,77 +72,33 @@ export const createOrder = async (payload) => {
 };
 
 
-/**
- *
- * Call Squad API here to make payment. Pass payload from the form filled by the user
- **/
-export const processPayment = (payload) => {
 
-  console.log("Processing payment:", payload);
+export const processPayment = async (payload) => {
+  const { email, amount, trans_ref } = payload;
 
-  // Destructure the payload to extract necessary data
-  const { email, amount, trans_ref, } = payload;
-
-  console.log(email, amount, trans_ref);
-
-  // Return a Promise to handle async response
-  return new Promise((resolve, reject) => {
-    if (!window.squad) {
-      reject("Squad script not loaded!");
-      return;
-    }
-
-    // Call the Squad API to initiate payment
-    const squadInstance = new squad({
-      onClose: () => {
-        resolve({ status: "closed" }); // ✅ Resolve the response to the calling component
-      },
-      onLoad: () => console.log("Widget loaded successfully"),
-      onSuccess: (response) => {
-        // console.log("Payment Successful:", response);
-        resolve(response); // ✅ Resolve the response to the calling component
-      },
-      key: import.meta.env.VITE_SQUAD_SANDBOX_PK, // Replace with your actual key
-      email: email,
-      amount: amount * 100, // Convert to Kobo
-      transaction_ref: trans_ref,
-      currency_code: "NGN",
-    });
-    squadInstance.setup();
-    squadInstance.open();
+  const res = await initiatePayment({
+    email,
+    amount: Math.round(Number(amount) * 100), // ₦ → kobo
+    currency: "NGN",
+    transaction_ref: trans_ref,
+    payment_channels: ["card", "bank", "ussd", "transfer"],
+    metadata: { order_id: trans_ref },
   });
+
+  const checkout =
+    res && res.data && res.data.data && res.data.data.checkout_url;
+  if (!checkout) throw new Error("No checkout_url from server");
+
+  window.location.href = checkout; // opens Squad hosted modal
+  return { status: "redirected", checkout_url: checkout };
 };
 
-/**
- *
- * Verify payment by passing in the transaction reference from the url
- * THis must be called efore deciding whether to give value to the customer or not
- **/
 export const verifyPayment = async (transRef) => {
-
-  try {
-    // Call the Squad API to verify the payment
-    const response = await axios( {
-      method: "GET",
-      url: `https://sandbox-api-d.squadco.com/transaction/verify/${transRef}`,
-      headers: {
-        "Authorization": `Bearer ${import.meta.env.VITE_SQUAD_SANDBOX_SK}`
-      },
-    });
-
-    console.log("Payment Verification Response:", response);
-    // return response;
-    return response
-  } catch (error) {
-    console.error("❌ Error verifying transaction:", error);
-    return { statusCode: 500, transactionStatus: "failed" };
-
-  }
-
-
-
-  // return { statusCode: data.status, transactionStatus: data.data.transaction_status };
+  const res = await verifyTransaction(transRef);
+  return res; // check res.data.data.transaction_status === "success"
 };
+
+
 
 /**
  *
