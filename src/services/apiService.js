@@ -1,117 +1,127 @@
-import axios from "axios";
-import { useAuthStore } from "@/stores/authStore"; // Customer Authentication Store
+// src/services/apiService.js
 
-// Base URL only; DO NOT keep Basic creds in .env anymore.
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+/**
+ * Central API service.
+ *
+ * - All browser calls that previously hit `/nocash-bank/v1/action` MUST go through
+ *   the server-side Context Proxy: POST `/context-proxy/v1/action` with cookie+CSRF.
+ *   (No Basic credentials in the browser.)
+ *
+ * - JWT-protected endpoints (e.g., /jwt-auth/v1/token/validate, or your user APIs)
+ *   use Bearer tokens from Pinia's `useAuthStore`.
+ *
+ * Prereqs:
+ * - `@/services/http` exports an Axios instance named `api` that:
+ *   • has baseURL = import.meta.env.VITE_API_BASE_URL (https://backend.site/wp-json)
+ *   • sets withCredentials: true
+ *   • request interceptor attaches `x-csrf-token` ONLY for `/context-proxy/v1/*`
+ *     (it should auto-fetch CSRF via `/context-proxy/v1/csrf` when missing)
+ *   • response interceptor retries once on 401 by refreshing CSRF
+ *
+ * Env:
+ *   VITE_API_BASE_URL=https://backend.paybychance.com/wp-json
+ *
+ * ⚠️ Remove any use of VITE_APP_USER_NAME / VITE_APP_USER_PASSWORD in the frontend.
+ */
 
-// One axios instance for everything
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,           // e.g. http://localhost/.../wp-json
-  withCredentials: true,           // required for HttpOnly cookie + CSRF
-  headers: { "Content-Type": "application/json" },
-});
+import { api } from "@/services/http";
+import { useAuthStore } from "@/stores/authStore";
 
-/* ---------------------------
-   CSRF (Context Proxy)
----------------------------- */
-let CSRF = null;
+/** Default timeouts (override per-call if needed) */
+const DEFAULT_TIMEOUT_MS = 8000;
 
-async function ensureCsrf() {
-  if (CSRF) return CSRF;
-  // Context Proxy issues cookie + returns csrf
-  const { data } = await apiClient.get("/context-proxy/v1/csrf");
-  if (data && data.ok && data.csrf) CSRF = data.csrf;
-  return CSRF;
+/**
+ * Call the server-side Context Proxy action endpoint.
+ *
+ * Always **POST** from the browser; the proxy will forward GET/POST upstream
+ * depending on the action (e.g., any `get_*` is forwarded as GET).
+ *
+ * @template T
+ * @param {string} action_type - The upstream action name (e.g., "get_raffle_cycle").
+ * @param {object} [params={}] - Additional parameters for the action.
+ * @param {{timeout?: number}} [opts]
+ * @returns {Promise<T>} - Returns the upstream payload (`res.data.data ?? res.data`).
+ */
+export async function proxyAction(action_type, params = {}, opts = {}) {
+  const timeout = opts.timeout ?? DEFAULT_TIMEOUT_MS;
+  const res = await api.post(
+    "/context-proxy/v1/action",
+    { action_type, ...params },
+    { timeout }
+  );
+  // Proxy shape: { ok, status, data: { ...upstream... } }
+  return res?.data?.data ?? res?.data;
 }
 
-// Auto-attach CSRF for proxy calls
-apiClient.interceptors.request.use(async (config) => {
-  try {
-    const url = String(config.url || "");
-    const needsCsrf =
-      url.includes("/context-proxy/v1/"); // all proxy calls require CSRF
-
-    if (!needsCsrf) return config;
-
-    await ensureCsrf();
-    config.headers = {
-      ...(config.headers || {}),
-      "X-CSRF-Token": CSRF || "",
-      "Content-Type": config.headers?.["Content-Type"] || "application/json",
-    };
-    config.withCredentials = true;
-  } catch {
-    // no-op; server will reject if CSRF missing
-  }
-  return config;
-});
-
-/* ---------------------------
-   Bearer (customer JWT)
----------------------------- */
-const getAuthHeaders = async () => {
-  const authStore = useAuthStore();
-  if (!authStore.token) {
-    console.warn("❌ No authentication token found. User may not be logged in.");
+/**
+ * Build Authorization header for JWT-protected endpoints.
+ * Throws if the user is not authenticated.
+ *
+ * @returns {{ Authorization: string }}
+ */
+function bearerHeader() {
+  const auth = useAuthStore?.();
+  if (!auth?.token) {
     throw new Error("Missing authentication token");
   }
+  return { Authorization: `Bearer ${auth.token}` };
+}
 
-  // Optional: validate token server-side before use
-  await axios.post(
-    `${API_BASE_URL}/jwt-auth/v1/token/validate`,
-    {},
-    { headers: { Authorization: `Bearer ${authStore.token}` }, withCredentials: true }
-  );
+/**
+ * GET helper for JWT-protected endpoints (non-proxy).
+ *
+ * @template T
+ * @param {string} endpoint - e.g., "/wp/v2/users/me" (relative to VITE_API_BASE_URL)
+ * @param {object} [params] - Query params
+ * @param {{timeout?: number}} [opts]
+ * @returns {Promise<T>}
+ */
+export async function jwtGet(endpoint, params = {}, opts = {}) {
+  const timeout = opts.timeout ?? DEFAULT_TIMEOUT_MS;
+  const res = await api.get(endpoint, {
+    params,
+    headers: bearerHeader(),
+    timeout,
+  });
+  return res.data;
+}
 
-  return { Authorization: `Bearer ${authStore.token}` };
-};
+/**
+ * POST helper for JWT-protected endpoints (non-proxy).
+ *
+ * @template T
+ * @param {string} endpoint - e.g., "/my-namespace/v1/secure-op"
+ * @param {any} body
+ * @param {{timeout?: number}} [opts]
+ * @returns {Promise<T>}
+ */
+export async function jwtPost(endpoint, body, opts = {}) {
+  const timeout = opts.timeout ?? DEFAULT_TIMEOUT_MS;
+  const res = await api.post(endpoint, body, {
+    headers: bearerHeader(),
+    timeout,
+  });
+  return res.data;
+}
 
-/* ---------------------------
-   POST wrapper
-   - useBasicAuth === true  -> route via Context Proxy (server does Basic)
-   - else                   -> send Bearer (customer) to the endpoint
----------------------------- */
-export const post = async (endpoint, data = {}, useBasicAuth = false) => {
+/**
+ * Optional: validate the JWT token (cheap check you can call before protected flows).
+ * Mirrors WordPress JWT plugin validation endpoint.
+ *
+ * @returns {Promise<boolean>}
+ */
+export async function validateJwt() {
   try {
-    if (useBasicAuth) {
-      // If you’re calling your nocash-bank action endpoint, use the opinionated proxy:
-      if (endpoint.includes("/nocash-bank/v1/action")) {
-        const res = await apiClient.post("/context-proxy/v1/action", data);
-        return res.data;
-      }
-
-      // Otherwise use the generic proxy (must be allowlisted server-side)
-      const res = await apiClient.post("/context-proxy/v1/proxy", {
-        path: endpoint,        // e.g. "/wp-json/your-namespace/v1/whatever"
-        method: "POST",
-        body: data,
-      });
-      return res.data;
-    }
-
-    // Customer-authenticated call (Bearer)
-    const headers = await getAuthHeaders();
-    const res = await apiClient.post(endpoint, data, { headers });
-    return res.data;
-  } catch (error) {
-    console.error(`❌ POST request failed: ${endpoint}`, error);
-    throw error;
+    const res = await api.post(
+      "/jwt-auth/v1/token/validate",
+      {},
+      { headers: bearerHeader() }
+    );
+    return !!res?.data?.success;
+  } catch {
+    return false;
   }
-};
+}
 
-export default apiClient;
-
-/* ---------------------------
-   Optional sugar methods
----------------------------- */
-// Mirrors your old Basic flow for nocash-bank actions:
-export const postAction = async (payload) => {
-  const res = await apiClient.post("/context-proxy/v1/action", payload);
-  return res.data;
-};
-
-// If you need generic proxying to another allowlisted path:
-export const proxyPost = async (path, body) => {
-  const res = await apiClient.post("/context-proxy/v1/proxy", { path, method: "POST", body });
-  return res.data;
-};
+export { api }; // re-export the configured Axios instance for advanced use
+export default api;
