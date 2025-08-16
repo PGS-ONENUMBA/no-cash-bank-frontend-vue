@@ -12,10 +12,10 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 // Configuration constants
 const CONFIG = {
-  TIMEOUT_MS: 8000,        // Increased timeout
-  MAX_RETRIES: 3,          // Maximum number of retry attempts
-  RETRY_DELAY_MS: 1000,    // Delay between retries
-  PROXY_PATH: "/context-proxy/v1/action", // Context Proxy opinionated route
+  TIMEOUT_MS: 8000,
+  MAX_RETRIES: 3,
+  RETRY_DELAY_MS: 1000,
+  PROXY_PATH: "/context-proxy/v1/action",
 };
 
 /** Sleep utility for retry delay */
@@ -23,19 +23,19 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * Makes API request with retry logic (uses shared axios instance `api`)
- * @param {Object} config - Axios request configuration
- * @param {number} retryCount - Current retry attempt
- * @returns {Promise<Object>} API response
+ * Retries only network/5xx.
+ * @param {import('axios').AxiosRequestConfig} config
+ * @param {number} retryCount
+ * @returns {Promise<import('axios').AxiosResponse>}
  */
 const makeRequestWithRetry = async (config, retryCount = 0) => {
   try {
     return await api.request(config);
   } catch (error) {
-    // 4xx: don’t retry
-    if (error.response?.status >= 400 && error.response?.status < 500) {
-      throw error;
+    const status = error?.response?.status;
+    if (typeof status === "number" && status >= 400 && status < 500) {
+      throw error; // don’t retry 4xx
     }
-    // Retry for network/5xx up to MAX_RETRIES
     if (retryCount < CONFIG.MAX_RETRIES) {
       console.log(`🔄 Retry attempt ${retryCount + 1} of ${CONFIG.MAX_RETRIES}...`);
       await sleep(CONFIG.RETRY_DELAY_MS);
@@ -45,12 +45,19 @@ const makeRequestWithRetry = async (config, retryCount = 0) => {
   }
 };
 
+/** Clear in-memory cache (optional export if you want to force refresh elsewhere) */
+export const clearProductsCache = () => {
+  products.value = [];
+  lastFetchTimestamp.value = null;
+};
+
 /**
  * Fetches products with caching and retry logic
- * @param {boolean} [forceRefresh=false] - Force fresh data fetch
- * @returns {Promise<Array>} Array of products
+ * @param {boolean} [forceRefresh=false]
+ * @param {{signal?: AbortSignal}} [opts]
+ * @returns {Promise<Array>}
  */
-export const fetchProducts = async (forceRefresh = false) => {
+export const fetchProducts = async (forceRefresh = false, opts = {}) => {
   if (
     !forceRefresh &&
     products.value.length > 0 &&
@@ -65,25 +72,21 @@ export const fetchProducts = async (forceRefresh = false) => {
   console.log("🚀 Fetching latest products...");
 
   try {
-    const response = await makeRequestWithRetry({
+    const res = await makeRequestWithRetry({
       method: "POST",
       url: CONFIG.PROXY_PATH,
       timeout: CONFIG.TIMEOUT_MS,
       data: { action_type: "get_raffle_cycle" },
+      signal: opts.signal,
     });
 
-    if (response.data?.ok && Array.isArray(response.data.data?.raffle_cycles)) {
-      products.value = response.data.data.raffle_cycles;
+    // Proxy normalizes to { ok, status, data: { … } }
+    const payload = res.data?.data ?? res.data;
+
+    if (Array.isArray(payload?.raffle_cycles)) {
+      products.value = payload.raffle_cycles;
       lastFetchTimestamp.value = Date.now();
       console.log("✅ Products fetched successfully");
-      return products.value;
-    }
-
-    // Back-compat: some endpoints may return { success: true, raffle_cycles: [...] }
-    if (response.data?.success && Array.isArray(response.data?.raffle_cycles)) {
-      products.value = response.data.raffle_cycles;
-      lastFetchTimestamp.value = Date.now();
-      console.log("✅ Products fetched successfully (legacy shape)");
       return products.value;
     }
 
@@ -109,29 +112,31 @@ export const fetchProducts = async (forceRefresh = false) => {
 
 /**
  * Fetches product details by `raffle_cycle_id`.
- * @param {number} raffleCycleId - The raffle cycle ID
- * @returns {Promise<Object|null>} Product details or null
+ * @param {number|string} raffleCycleId
+ * @param {{signal?: AbortSignal}} [opts]
+ * @returns {Promise<Object|null>}
  */
-export const fetchProductById = async (raffleCycleId) => {
+export const fetchProductById = async (raffleCycleId, opts = {}) => {
   try {
     console.log(`🔍 Fetching product details for Raffle Cycle ID: ${raffleCycleId}`);
 
-    const response = await api.post(
-      CONFIG.PROXY_PATH,
-      { action_type: "get_raffle_cycle_by_id", raffle_cycle_id: raffleCycleId },
-      { timeout: CONFIG.TIMEOUT_MS }
-    );
+    const res = await makeRequestWithRetry({
+      method: "POST",
+      url: CONFIG.PROXY_PATH,
+      timeout: CONFIG.TIMEOUT_MS,
+      data: { action_type: "get_raffle_cycle_by_id", raffle_cycle_id: Number(raffleCycleId) },
+      signal: opts.signal,
+    });
 
-    // Prefer proxy wrapper {ok, data:{...}}, else legacy {success, raffle_cycle}
-    const payload = response.data?.data || response.data;
+    const payload = res.data?.data ?? res.data;
     if (payload?.success && payload?.raffle_cycle) {
       const rc = payload.raffle_cycle;
       return {
         raffle_cycle_id: rc.raffle_cycle_id,
-        winnable_amount: parseFloat(rc.winnable_amount),
-        price_of_ticket: parseFloat(rc.ticket_price),
+        winnable_amount: Number.parseFloat(rc.winnable_amount ?? 0) || 0,
+        price_of_ticket: Number.parseFloat(rc.ticket_price ?? 0) || 0,
         status: rc.raffle_status,
-        associated_types: rc.associated_types,
+        associated_types: Array.isArray(rc.associated_types) ? rc.associated_types : [],
       };
     }
     console.warn("⚠ Product not found in the database.");
@@ -144,35 +149,37 @@ export const fetchProductById = async (raffleCycleId) => {
 
 /**
  * Validates raffle cycle and type
- * @param {number} raffleCycleId - The raffle cycle ID
- * @param {number} raffleTypeId - The raffle type ID
- * @returns {Promise<Object|null>} Validated raffle details or null
+ * @param {number|string} raffleCycleId
+ * @param {number|string} raffleTypeId
+ * @param {{signal?: AbortSignal}} [opts]
+ * @returns {Promise<Object|null>}
  */
-export const validateRaffleCycle = async (raffleCycleId, raffleTypeId) => {
+export const validateRaffleCycle = async (raffleCycleId, raffleTypeId, opts = {}) => {
   try {
     console.log(`🔍 Validating Raffle Cycle: ${raffleCycleId}, Type: ${raffleTypeId}`);
 
-    const response = await api.post(
-      CONFIG.PROXY_PATH,
-      { action_type: "get_raffle_cycle_by_id", raffle_cycle_id: raffleCycleId },
-      { timeout: CONFIG.TIMEOUT_MS }
-    );
+    const res = await makeRequestWithRetry({
+      method: "POST",
+      url: CONFIG.PROXY_PATH,
+      timeout: CONFIG.TIMEOUT_MS,
+      data: { action_type: "get_raffle_cycle_by_id", raffle_cycle_id: Number(raffleCycleId) },
+      signal: opts.signal,
+    });
 
-    const payload = response.data?.data || response.data;
+    const payload = res.data?.data ?? res.data;
     if (payload?.success && payload?.raffle_cycle) {
       const rc = payload.raffle_cycle;
-      const selectedType = Array.isArray(rc.associated_types)
-        ? rc.associated_types.find((t) => Number(t.raffle_type_id) === Number(raffleTypeId))
-        : null;
+      const types = Array.isArray(rc.associated_types) ? rc.associated_types : [];
+      const selected = types.find((t) => Number(t.raffle_type_id) === Number(raffleTypeId));
 
-      if (selectedType) {
+      if (selected) {
         return {
           raffle_cycle_id: rc.raffle_cycle_id,
-          winnable_amount: parseFloat(rc.winnable_amount),
-          price_of_ticket: parseFloat(rc.ticket_price),
+          winnable_amount: Number.parseFloat(rc.winnable_amount ?? 0) || 0,
+          price_of_ticket: Number.parseFloat(rc.ticket_price ?? 0) || 0,
           status: rc.raffle_status,
-          raffle_type_id: selectedType.raffle_type_id,
-          raffle_type: selectedType.raffle_type,
+          raffle_type_id: selected.raffle_type_id,
+          raffle_type: selected.raffle_type,
         };
       }
     }
@@ -186,24 +193,27 @@ export const validateRaffleCycle = async (raffleCycleId, raffleTypeId) => {
 
 /**
  * Fetches vendor details by vendor_id
- * @param {number} vendorId - The vendor ID
- * @returns {Promise<Object|null>} Vendor details or null
+ * @param {number|string} vendorId
+ * @param {{signal?: AbortSignal}} [opts]
+ * @returns {Promise<Object|null>}
  */
-export const fetchVendorDetails = async (vendorId) => {
+export const fetchVendorDetails = async (vendorId, opts = {}) => {
   try {
     console.log(`🔍 Fetching vendor details for Vendor ID: ${vendorId}`);
 
-    const response = await api.post(
-      CONFIG.PROXY_PATH,
-      { action_type: "get_vendor_details", vendor_id: vendorId },
-      { timeout: CONFIG.TIMEOUT_MS }
-    );
+    const res = await makeRequestWithRetry({
+      method: "POST",
+      url: CONFIG.PROXY_PATH,
+      timeout: CONFIG.TIMEOUT_MS,
+      data: { action_type: "get_vendor_details", vendor_id: Number(vendorId) },
+      signal: opts.signal,
+    });
 
-    const payload = response.data?.data || response.data;
+    const payload = res.data?.data ?? res.data;
     if (payload?.success && payload?.vendor) {
       const v = payload.vendor;
       return {
-        vendor_id: v.vendor_id,
+        vendor_id: v.vendor_id ?? v.id ?? v.ID,
         email: v.email,
         display_name: v.display_name,
         phone_number: v.phone_number,

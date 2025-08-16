@@ -1,198 +1,180 @@
 import { defineStore } from "pinia";
-import { loginUser, refreshToken } from "@/services/authService";
-
-import router from '@/router';
-import { logout as logoutAPI } from '@/services/authService';
+import router from "@/router";
+import { loginUser, refreshToken, logout as logoutAPI } from "@/services/authService";
 
 export const useAuthStore = defineStore("auth", {
   state: () => ({
     user: null,
 
     token: localStorage.getItem("auth_token") || null,
+    // Keep this key optional; refresh now relies on HttpOnly cookie server-side.
     refreshToken: localStorage.getItem("refresh_token") || null,
-    tokenExpiry: localStorage.getItem("token_expiry") || null, // ✅ Persist token expiry
+    tokenExpiry: Number(localStorage.getItem("token_expiry")) || null,
 
     inactivityTimeout: null,
     warningTimeout: null,
+    tokenRefreshInterval: null,          // ✅ ensure we can clear it later
     showWarning: false,
   }),
 
   getters: {
-    isAuthenticated: (state) => !!state.token,
-    isTokenExpired: (state) => state.tokenExpiry && Date.now() > state.tokenExpiry,
+    isAuthenticated: (s) => !!s.token,
+    isTokenExpired:  (s) => !!s.tokenExpiry && Date.now() > s.tokenExpiry,
   },
 
   actions: {
     /**
-     * ✅ Logs in the user and initializes session tracking.
+     * Login and initialize session tracking.
      */
     async login(username, password, routerInstance) {
-      if (this.token) return;
+      if (this.token) return; // already logged in
 
-      try {
-        const data = await loginUser(username, password);
-        const tokenExpiryMin = parseInt(import.meta.env.VITE_TOKEN_EXPIRY_MIN) || 20;
+      const data = await loginUser(username, password);
 
-        this.token = data.data.token; // ✅ Ensure correct token path
-        this.refreshToken = data.data.refresh_token;
-        this.tokenExpiry = Date.now() + tokenExpiryMin * 60 * 1000;
-        this.user = data.data;
+      // You may read actual TTL from server if provided; we keep env fallback.
+      const tokenExpiryMin = parseInt(import.meta.env.VITE_TOKEN_EXPIRY_MIN) || 20;
 
-        console.log(`🔑 Token expires in ${tokenExpiryMin} minutes`);
-        this.startInactivityTimer();
+      this.token = data?.data?.token || null;
+      // If server returns refresh_token in body, you may store it; cookie is preferred.
+      this.refreshToken = data?.data?.refresh_token || null;
+      this.tokenExpiry = Date.now() + tokenExpiryMin * 60 * 1000;
+      this.user = data?.data || null;
 
-        if (routerInstance) {
-          console.log("✅ Redirecting from authStore...");
-          setTimeout(() => {
-            routerInstance.push("/dashboard").catch(err =>
-              console.error("❌ Router navigation error:", err)
-            );
-          }, 500);
-        }
-      } catch (error) {
-        console.error("❌ Login failed:", error);
-        throw error;
+      // persist minimal items
+      localStorage.setItem("auth_token", this.token || "");
+      localStorage.setItem("token_expiry", String(this.tokenExpiry));
+      if (this.refreshToken) localStorage.setItem("refresh_token", this.refreshToken);
+
+      this.startInactivityTimer(routerInstance);
+
+      if (routerInstance) {
+        setTimeout(() => {
+          routerInstance.push("/dashboard").catch((err) =>
+            console.error("❌ Router navigation error:", err)
+          );
+        }, 300);
       }
     },
 
-
-
     /**
-     * ✅ Refreshes the Customer's JWT access token using the refresh token.
-     * Prevents logout if refresh is successful.
+     * Refresh JWT using HttpOnly cookie (server-side).
+     * Do not require refresh_token in JS; cookie handles it.
      */
     async refreshTokenIfNeeded() {
-      const bufferTimeMs = (parseInt(import.meta.env.VITE_TOKEN_REFRESH_BUFFER_MIN) || 2) * 60 * 1000;
-
-      if (this.tokenExpiry && Date.now() > this.tokenExpiry - bufferTimeMs) {
-        console.log("🔄 Refreshing token before expiry...");
+      const bufferMs = (parseInt(import.meta.env.VITE_TOKEN_REFRESH_BUFFER_MIN) || 2) * 60 * 1000;
+      if (this.tokenExpiry && Date.now() > this.tokenExpiry - bufferMs) {
         try {
-          const data = await refreshToken();
-          if (data?.token && data?.refresh_token) {
+          const data = await refreshToken();   // may return { token, refresh_token? }
+          if (data?.token) {
             this.token = data.token;
-            this.refreshToken = data.refresh_token;
-            this.tokenExpiry = Date.now() + (parseInt(import.meta.env.VITE_TOKEN_EXPIRY_MIN) || 20) * 60 * 1000;
-            console.log("✅ Token refreshed successfully!");
-            // Do NOT reset inactivity timers or clear the warning flag here.
+            localStorage.setItem("auth_token", this.token);
+
+            const mins = parseInt(import.meta.env.VITE_TOKEN_EXPIRY_MIN) || 20;
+            this.tokenExpiry = Date.now() + mins * 60 * 1000;
+            localStorage.setItem("token_expiry", String(this.tokenExpiry));
+
+            // Optional if server returns it; otherwise rely on cookie
+            if (data.refresh_token) {
+              this.refreshToken = data.refresh_token;
+              localStorage.setItem("refresh_token", data.refresh_token);
+            }
+            console.log("✅ Token refreshed");
           } else {
-            console.warn("⚠ Token refresh failed, logging out...");
+            console.warn("⚠ Token refresh failed, logging out…");
             this.logout();
           }
-        } catch (error) {
-          console.error("❌ Token refresh error:", error);
+        } catch (err) {
+          console.error("❌ Token refresh error:", err);
           this.logout();
         }
       }
     },
-  /**
-   * Logs out the user, clears data, calls the server-side logout endpoint,
-   * and redirects to the login page.
-   */
-  async logout(routerInstance = null) {
-    console.log("🚀 Logging out user...");
-
-    // Clear inactivity timers and reset store state.
-    this.resetTimers();
-    this.$reset(); // Reset Pinia state
-
-    // Clear all relevant persisted keys:
-    localStorage.removeItem("auth");           // The key used by the persist plugin
-    localStorage.removeItem("auth_token");       // Token stored on login
-    localStorage.removeItem("refresh_token");    // Refresh token stored on login
-    localStorage.removeItem("token_expiry");     // Token expiry value
-
-    // Call the server-side logout endpoint to clear the HTTP-only refresh token cookie.
-    try {
-      await logoutAPI();
-    } catch (error) {
-      console.warn("⚠ Logout API call failed, proceeding with local cleanups.", error);
-    }
-
-    // Use the provided router instance or fallback to the globally imported router.
-    const redirectRouter = routerInstance || router;
-    if (redirectRouter) {
-      console.log("🔄 Redirecting to login...");
-      redirectRouter.push("/login").catch((err) =>
-        console.warn("⚠ Router navigation error:", err)
-      );
-    } else {
-      console.warn("⚠ No router instance provided. Cannot redirect.");
-    }
-  },
-
-
-
 
     /**
-     * ✅ Starts inactivity tracking and auto-logout.
+     * Logout, clear state/storage, tell server to clear cookie, redirect to login.
+     */
+    async logout(routerInstance = null) {
+      this.resetTimers();
+
+      // Clear store & localStorage
+      this.$reset();
+      localStorage.removeItem("auth");           // pinia persist key
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("refresh_token");
+      localStorage.removeItem("token_expiry");
+      localStorage.removeItem("user");
+
+      try {
+        await logoutAPI(); // clear HttpOnly refresh cookie on server
+      } catch (err) {
+        console.warn("⚠ Logout API failed (continuing):", err);
+      }
+
+      const r = routerInstance || router;
+      if (r) r.push("/login").catch(() => {});
+    },
+
+    /**
+     * Inactivity + periodic refresh
      */
     startInactivityTimer(routerInstance) {
       this.resetTimers();
 
-      const warningTimeMs = (parseInt(import.meta.env.VITE_INACTIVITY_WARNING_MIN) || 9) * 60 * 1000;
-      const autoLogoutTimeMs = (parseInt(import.meta.env.VITE_AUTO_LOGOUT_MIN) || 10) * 60 * 1000;
-
-      console.log(`🕒 Setting inactivity timers: Warning at ${warningTimeMs / 1000}s, Logout at ${autoLogoutTimeMs / 1000}s`);
+      const warnMs = (parseInt(import.meta.env.VITE_INACTIVITY_WARNING_MIN) || 9) * 60 * 1000;
+      const autoMs = (parseInt(import.meta.env.VITE_AUTO_LOGOUT_MIN) || 10) * 60 * 1000;
 
       this.warningTimeout = setTimeout(() => {
         this.showWarning = true;
-        console.log("⚠ Warning: User will be logged out soon!");
-      }, warningTimeMs);
+      }, warnMs);
 
       this.inactivityTimeout = setTimeout(() => {
-        if (this.showWarning) {
-          console.warn("⏳ Auto-logging out due to inactivity.");
-          this.logout(routerInstance);
-        }
-      }, autoLogoutTimeMs);
+        if (this.showWarning) this.logout(routerInstance);
+      }, autoMs);
 
-      // Periodic token refresh remains independent
       this.tokenRefreshInterval = setInterval(() => {
         this.refreshTokenIfNeeded();
       }, 60 * 1000);
     },
 
-    /**
-     * ✅ Resets inactivity timers and warnings.
-     */
     resetTimers() {
       clearTimeout(this.warningTimeout);
       clearTimeout(this.inactivityTimeout);
-      clearInterval(this.tokenRefreshInterval); // Stop token refresh
+      clearInterval(this.tokenRefreshInterval);
+      this.warningTimeout = null;
+      this.inactivityTimeout = null;
+      this.tokenRefreshInterval = null;
       this.showWarning = false;
     },
 
-    /**
-     * ✅ Cancels logout and resets timers.
-     */
     cancelLogout() {
       this.resetTimers();
       this.startInactivityTimer();
     },
+
     setToken(token) {
       this.token = token;
-      localStorage.setItem("auth_token", token); // Persist token
+      if (token) localStorage.setItem("auth_token", token);
+      else localStorage.removeItem("auth_token");
     },
+
     setUser(userData) {
       this.user = userData;
-      localStorage.setItem("user", JSON.stringify(userData)); // Persist user
+      if (userData) localStorage.setItem("user", JSON.stringify(userData));
+      else localStorage.removeItem("user");
     },
+
     clearAuth() {
-      this.token = null;
-      this.user = null;
-      localStorage.removeItem("auth_token");
-      localStorage.removeItem("user");
-    }
+      this.setToken(null);
+      this.setUser(null);
+      this.tokenExpiry = null;
+      localStorage.removeItem("token_expiry");
+      localStorage.removeItem("refresh_token");
+    },
   },
 
-  // ✅ Enable Pinia Persistence
+  // Pinia persistence (minimal)
   persist: {
     enabled: true,
-    strategies: [
-      {
-        key: "auth",
-        storage: localStorage, // Use sessionStorage if needed
-      },
-    ],
+    strategies: [{ key: "auth", storage: localStorage }],
   },
 });

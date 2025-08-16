@@ -96,7 +96,7 @@ export default {
     const showPassword = ref(false);
 
     /**
-     * ✅ Toggles password visibility
+     * ✅ Toggles password visibilityj
      */
     const togglePasswordVisibility = () => {
       showPassword.value = !showPassword.value;
