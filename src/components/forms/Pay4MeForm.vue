@@ -6,15 +6,16 @@
         <div class="card w-100 shadow-sm">
           <div class="card-body">
             <h3 class="text-muted fs-4">
-              We can pay for you to cover expenses up to {{ formattedWinnableAmount }} at the ticket price of: <span v-if="ticketCurrentPrice > 0">{{ formatCurrency(ticketCurrentPrice) }}</span>
+              We can pay for you to cover expenses up to {{ formattedWinnableAmount }}
+              at the ticket price of:
+              <span v-if="ticketCurrentPrice > 0">{{ formatCurrency(ticketCurrentPrice) }}</span>
             </h3>
             <p class="text-success fs-5">Winnable Amount: {{ formattedWinnableAmount }}</p>
             <h5 class="fw-bold"><i class="bi bi-lightbulb"></i> How It Works</h5>
             <ul class="list-unstyled">
               <li><i class="bi bi-1-circle text-success"></i> Enter your phone number.</li>
-              <li><i class="bi bi-2-circle text-success"></i> Choose if you want to pay a vendor.</li>
-              <li><i class="bi bi-3-circle text-success"></i> Select a vendor and buy tickets.</li>
-              <li><i class="bi bi-4-circle text-success"></i> If you win, we pay the vendor or credit your wallet.</li>
+              <li><i class="bi bi-2-circle text-success"></i> Select a registered vendor and buy tickets.</li>
+              <li><i class="bi bi-3-circle text-success"></i> If you win, we pay the vendor.</li>
             </ul>
           </div>
         </div>
@@ -32,7 +33,7 @@
             </div>
 
             <!-- Step 1: Customer Phone -->
-            <form v-else-if="!showVendorQuestion && !showFullForm" @submit.prevent="showVendorQuestion = true">
+            <form v-else-if="!showFullForm" @submit.prevent="showFullForm = true">
               <div class="mb-3">
                 <label for="customerPhone" class="form-label">
                   <i class="bi bi-telephone me-2"></i> Your Phone Number
@@ -51,70 +52,60 @@
               </button>
             </form>
 
-            <!-- Step 2: Vendor Question -->
-            <div v-else-if="showVendorQuestion && !showFullForm">
-              <p class="mb-3">Do you want to pay a registered vendor?</p>
-              <button class="btn btn-orange custom-width mb-3 me-2" @click="hasVendor = true; showFullForm = true">
-                <i class="bi bi-check-circle me-2"></i> Yes
-              </button>
-              <button class="btn btn-secondary custom-width mb-3" @click="hasVendor = false; showFullForm = true">
-                <i class="bi bi-x-circle me-2"></i> No
-              </button>
-              <button type="button" class="btn btn-link" @click="showVendorQuestion = false">Back</button>
-            </div>
-
-            <!-- Step 3: Full Form -->
-            <form v-else-if="showFullForm" @submit.prevent="handleSubmit">
-              <div v-if="hasVendor">
-                <div class="mb-3 position-relative">
-                  <label for="vendorSearch" class="form-label">
-                    <i class="bi bi-shop me-2"></i> Select Vendor
-                  </label>
-                  <input
-                    type="text"
-                    class="form-control"
-                    id="vendorSearch"
-                    v-model="vendorSearch"
-                    placeholder="Type to search vendors..."
-                    @input="filterVendors"
-                    @focus="showDropdown = true"
-                    @blur="delayHideDropdown"
-                    required
-                  />
-                  <ul
-                    v-if="showDropdown && filteredVendors.length"
-                    class="list-group dropdown-menu w-100 mt-1"
-                    style="max-height: 200px; overflow-y: auto; position: absolute; z-index: 1000;"
+            <!-- Step 3: Full Form (vendor is REQUIRED) -->
+            <form v-else @submit.prevent="handleSubmit">
+              <!-- Required: Registered Vendor -->
+              <div class="mb-3 position-relative">
+                <label for="vendorSearch" class="form-label">
+                  <i class="bi bi-shop me-2"></i> Select Registered Vendor <span class="text-danger">*</span>
+                </label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="vendorSearch"
+                  v-model="vendorSearch"
+                  placeholder="Type to search vendors..."
+                  @input="filterVendors"
+                  @focus="showDropdown = true"
+                  @blur="delayHideDropdown"
+                  required
+                  autocomplete="off"
+                />
+                <ul
+                  v-if="showDropdown && filteredVendors.length"
+                  class="list-group dropdown-menu w-100 mt-1"
+                  style="max-height: 200px; overflow-y: auto; position: absolute; z-index: 1000;"
+                >
+                  <li
+                    v-for="vendor in filteredVendors"
+                    :key="vendor.vendor_id"
+                    class="list-group-item list-group-item-action"
+                    @mousedown="selectVendor(vendor)"
                   >
-                    <li
-                      v-for="vendor in filteredVendors"
-                      :key="vendor.vendor_id"
-                      class="list-group-item list-group-item-action"
-                      @mousedown="selectVendor(vendor)"
-                    >
-                      {{ vendor.vendor_name }}
-                    </li>
-                  </ul>
-                  <small v-if="formData.vendor_id" class="text-success">
-                    Selected: {{ selectedVendorName }}
-                  </small>
-                  <small v-else class="text-muted">Type and select a vendor.</small>
-                </div>
-                <div class="mb-3">
-                  <label for="amountDue" class="form-label">
-                    <i class="bi bi-cash me-2"></i> Amount Due to Vendor
-                  </label>
-                  <input
-                    type="number"
-                    class="form-control"
-                    id="amountDue"
-                    v-model="formData.amountDue"
-                    required
-                    :min="1000"
-                    :max="winnableAmount"
-                  />
-                  <small class="text-muted">Min: ₦1,000 | Max: {{ formattedWinnableAmount }}</small>
-                </div>
+                    {{ vendor.vendor_name }}
+                  </li>
+                </ul>
+                <small v-if="formData.vendor_id" class="text-success">
+                  Selected: {{ selectedVendorName }}
+                </small>
+                <small v-else class="text-muted">Type and select a vendor.</small>
+              </div>
+
+              <!-- Amount Due to Vendor (required) -->
+              <div class="mb-3">
+                <label for="amountDue" class="form-label">
+                  <i class="bi bi-cash me-2"></i> Amount Due to Vendor <span class="text-danger">*</span>
+                </label>
+                <input
+                  type="number"
+                  class="form-control"
+                  id="amountDue"
+                  v-model.number="formData.amountDue"
+                  required
+                  :min="1000"
+                  :max="winnableAmount"
+                />
+                <small class="text-muted">Min: ₦1,000 | Max: {{ formattedWinnableAmount }}</small>
               </div>
 
               <!-- Number of Tickets -->
@@ -123,8 +114,17 @@
                   <i class="bi bi-ticket me-2"></i> How Many Tickets?
                 </label>
                 <span v-if="ticketCurrentPrice > 0">Current Ticket Price: {{ formatCurrency(ticketCurrentPrice) }}</span>
-                <input type="number" class="form-control" id="tickets" v-model="formData.tickets" required min="1" />
-                <p class="text-success fw-bold">You will pay: {{ formatCurrency(totalTicketCost) }}</p>
+                <input
+                  type="number"
+                  class="form-control"
+                  id="tickets"
+                  v-model.number="formData.tickets"
+                  required
+                  min="1"
+                />
+                <p class="text-success fw-bold">
+                  You will pay: {{ formatCurrency(totalTicketCost) }}
+                </p>
               </div>
 
               <!-- Hidden Fields -->
@@ -133,10 +133,19 @@
               <input type="hidden" v-model="formData.winnable_amount" />
               <input type="hidden" v-model="formData.price_of_ticket" />
 
-              <button type="submit" class="btn btn-orange custom-width mb-3">
+              <button
+                type="submit"
+                class="btn btn-orange custom-width mb-3"
+                :disabled="!formData.vendor_id || !formData.amountDue || filteredVendors.length === 0"
+                title="Select a vendor and enter amount due to continue"
+              >
                 <i class="bi bi-cash-coin me-2"></i> Pay By Chance
               </button>
-              <button type="button" class="btn btn-secondary custom-width mb-3 ms-2" @click="showFullForm = false; showVendorQuestion = true">
+              <button
+                type="button"
+                class="btn btn-secondary custom-width mb-3 ms-2"
+                @click="showFullForm = false"
+              >
                 <i class="bi bi-arrow-left-circle me-2"></i> Back
               </button>
             </form>
@@ -163,11 +172,11 @@ export default {
     const raffleData = ref({});
     const raffleCycleId = route.query.raffle_cycle_id;
     const raffleTypeId = route.query.raffle_type_id;
+
     const ticketCurrentPrice = ref(0);
-    const showVendorQuestion = ref(false);
     const showFullForm = ref(false);
-    const hasVendor = ref(false);
     const isLoading = ref(true);
+
     const vendors = ref([]);
     const filteredVendors = ref([]);
     const vendorSearch = ref("");
@@ -183,6 +192,11 @@ export default {
       price_of_ticket: "",
       vendor_id: "",
     });
+
+    // Keep dropdown open long enough for mousedown to select
+    const delayHideDropdown = () => {
+      setTimeout(() => { showDropdown.value = false; }, 150);
+    };
 
     const fetchRaffleDetails = async () => {
       if (!raffleCycleId || !raffleTypeId) {
@@ -243,17 +257,18 @@ export default {
       return selected ? selected.vendor_name : "";
     });
 
-    const winnableAmount = computed(() => raffleData.value.winnable_amount || 0);
-    const formattedWinnableAmount = computed(() => {
-      return winnableAmount.value
+    const winnableAmount = computed(() => Number(raffleData.value.winnable_amount || 0));
+
+    const formattedWinnableAmount = computed(() =>
+      winnableAmount.value
         ? Number(winnableAmount.value).toLocaleString("en-NG", { style: "currency", currency: "NGN" })
-        : "Loading...";
-    });
+        : "Loading..."
+    );
 
     const totalTicketCost = computed(() => {
-      return formData.value.tickets > 0 && ticketCurrentPrice.value > 0
-        ? formData.value.tickets * ticketCurrentPrice.value
-        : 0;
+      const t = Number(formData.value.tickets) || 0;
+      const p = Number(ticketCurrentPrice.value) || 0;
+      return t > 0 && p > 0 ? t * p : 0;
     });
 
     const handleSubmit = async () => {
@@ -261,44 +276,36 @@ export default {
         alert("You are offline. Please check your internet connection and try again.");
         return;
       }
-
       if (isLoading.value || !winnableAmount.value) {
         alert("Please wait for raffle details to load.");
         return;
       }
-
-      if (formData.value.tickets < 1) {
-        alert("Please select at least one ticket.");
+      if (!formData.value.vendor_id) {
+        alert("Please select a registered vendor.");
         return;
       }
-
-      if (hasVendor.value) {
-        if (!formData.value.vendor_id) {
-          alert("Please select a vendor.");
-          return;
-        }
-        if (formData.value.amountDue < 1000) {
-          alert("Amount due must be at least ₦1,000.");
-          return;
-        }
-        if (formData.value.amountDue > winnableAmount.value) {
-          alert("Amount due cannot exceed the winnable amount.");
-          return;
-        }
+      if (Number(formData.value.amountDue) < 1000) {
+        alert("Amount due must be at least ₦1,000.");
+        return;
+      }
+      if (Number(formData.value.amountDue) > winnableAmount.value) {
+        alert("Amount due cannot exceed the winnable amount.");
+        return;
+      }
+      if (Number(formData.value.tickets) < 1) {
+        alert("Please select at least one ticket.");
+        return;
       }
 
       try {
         const orderData = {
           phoneNumber: formData.value.customerPhone,
-          tickets: parseInt(formData.value.tickets, 10),
+          tickets: Number(formData.value.tickets),
           amount: totalTicketCost.value,
-          raffle_cycle_id: parseInt(raffleCycleId, 10),
+          raffle_cycle_id: Number(raffleCycleId),
+          vendor_id: formData.value.vendor_id,
+          amount_due: Number(formData.value.amountDue),
         };
-
-        if (hasVendor.value) {
-          orderData.vendor_id = formData.value.vendor_id;
-          orderData.amount_due = parseFloat(formData.value.amountDue);
-        }
 
         const response = await createOrder(orderData);
 
@@ -333,13 +340,12 @@ export default {
 
     return {
       formData,
-      showVendorQuestion,
       showFullForm,
-      hasVendor,
       isLoading,
       vendorSearch,
       filteredVendors,
       showDropdown,
+      delayHideDropdown,
       handleSubmit,
       raffleData,
       winnableAmount,
@@ -360,5 +366,5 @@ export default {
 .btn-orange { background-color: #ff6f00; color: white; border: none; }
 .btn-orange:hover { background-color: #e65d00; }
 .list-group-item-action:hover { cursor: pointer; background-color: #f8f9fa; }
-.dropdown-menu { display: block; } /* Ensure dropdown stays visible when shown */
+.dropdown-menu { display: block; }
 </style>
