@@ -1,55 +1,37 @@
 import { defineStore } from "pinia";
-import apiClient from "@/services/apiService"; // Axios instance
+import { api } from "@/services/http";            // axios w/ CSRF + withCredentials
+import { proxyAction } from "@/services/apiService"; // helper that posts to /context-proxy/v1/action
 
 export const useAppStore = defineStore("app", {
-  state: () => ({
-    appAuthToken: null, // No need to persist this
-  }),
-
-  getters: {
-    isAppAuthenticated: (state) => !!state.appAuthToken,
-  },
+  state: () => ({}),
 
   actions: {
     /**
-     * ✅ Generates Basic Auth Token for App Authentication.
-     * Uses credentials stored in environment variables.
+     * Call a No-Cash-Bank action through the Context Proxy.
+     * @param {string} action_type
+     * @param {object} [params]
+     * @param {number} [timeout=8000]
+     * @returns {Promise<any>}
      */
-    generateAppAuthToken() {
-      const username = import.meta.env.VITE_APP_USER_NAME;
-      const password = import.meta.env.VITE_APP_USER_PASSWORD;
-
-      if (!username || !password) {
-        console.error("❌ Missing App Credentials in .env");
-        return null;
-      }
-
-      return `Basic ${btoa(`${username}:${password}`)}`;
+    async callAction(action_type, params = {}, timeout = 8000) {
+      return proxyAction(action_type, params, { timeout });
     },
 
     /**
-     * ✅ Makes an API request with dynamic Basic Auth.
-     * @param {String} endpoint - API endpoint.
-     * @param {Object} data - Payload.
-     * @returns {Promise<Object>} - API Response.
+     * Generic allowlisted proxy (if you need to hit a non-action endpoint server-side).
+     * Requires the path to be allowlisted in the Context Proxy plugin.
+     * @param {string} path - e.g. "/wp-json/nocash/v1/squad/initiate"
+     * @param {string} [method="POST"]
+     * @param {object|null} [body=null]
+     * @param {number} [timeout=8000]
      */
-    async makeApiRequest(endpoint, data = {}) {
-      try {
-        const token = this.generateAppAuthToken();
-
-        if (!token) {
-          throw new Error("❌ App authentication token missing.");
-        }
-
-        const response = await apiClient.post(endpoint, data, {
-          headers: { Authorization: token },
-        });
-
-        return response.data;
-      } catch (error) {
-        console.error("❌ Error making API request:", error);
-        return null;
-      }
+    async proxy(path, method = "POST", body = null, timeout = 8000) {
+      const res = await api.post(
+        "/context-proxy/v1/proxy",
+        { path, method, body },
+        { timeout }
+      );
+      return res?.data?.data ?? res?.data;
     },
   },
 });
