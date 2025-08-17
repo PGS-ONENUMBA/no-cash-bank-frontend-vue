@@ -3,9 +3,9 @@ import { api } from "@/services/http";
 
 /** Context Proxy opinionated + dedicated paths */
 const PROXY_ACTION   = "/context-proxy/v1/action";        // forwards to /nocash-bank/v1/action
-const PROXY_SQUAD_INIT = "/context-proxy/v1/squad/initiate"; // forwards to /nocash/v1/squad/initiate
+//const PROXY_SQUAD_INIT = "/context-proxy/v1/squad/initiate"; // forwards to /nocash/v1/squad/initiate
 const PROXY_SQUAD_VERIFY = "/context-proxy/v1/squad/verify"; // forwards to /nocash/v1/squad/verify
-
+const PROXY_SQUAD_INITIATE = "/context-proxy/v1/squad/initiate";
 /**
  * Validates product pricing for a given raffle cycle ID.
  * Browser always POSTs to the Context Proxy; server converts to GET upstream when needed.
@@ -73,28 +73,43 @@ export const createOrder = async (payload) => {
  * @returns {Promise<{status:"redirected", checkout_url:string}>}
  * @throws {Error} If the server did not return a checkout_url.
  */
-export const processPayment = async ({ email, amount, trans_ref }) => {
-  // kobo conversion on the server call
-  const res = await api.post(PROXY_SQUAD_INIT, {
+
+/**
+ * Initiate Squad payment via Context Proxy.
+ * @param {{ email:string, amount:number, trans_ref:string, returnUrl?:string }} arg
+ * @returns {Promise<{status:"redirected", checkout_url:string}>}
+ */
+export const processPayment = async ({ email, amount, trans_ref, returnUrl }) => {
+  const res = await api.post(PROXY_SQUAD_INITIATE, {
     email,
-    amount: Math.round(Number(amount) * 100), // NGN → kobo
+    amount: Math.round(Number(amount) * 100), // ₦ → kobo
     currency: "NGN",
     transaction_ref: trans_ref,
     payment_channels: ["card", "bank", "ussd", "transfer"],
     metadata: { order_id: trans_ref },
+    // 👇 let server map this to Squad's callback_url
+    return_url: returnUrl,
   });
 
-  // Proxy wrapper → upstream result (Squad)
-  // checkout_url might be at data.data.checkout_url or data.checkout_url depending on upstream
+  const d = res?.data;
   const checkout =
-    res?.data?.data?.data?.checkout_url || res?.data?.data?.checkout_url;
+    d?.checkout_url ||
+    d?.data?.checkout_url ||
+    d?.data?.data?.checkout_url ||
+    d?.data?.data?.data?.checkout_url ||
+    null;
 
-  if (!checkout) throw new Error("No checkout_url from server");
+  if (!checkout) {
+    // log full payload if debugging:
+    // console.debug("initiate payload", res?.data);
+    throw new Error("No checkout_url from server");
+  }
 
-  // Redirect to Squad-hosted checkout (modal/hosted page)
+  // Redirect to Squad; DO NOT do any router.push after this
   window.location.href = checkout;
   return { status: "redirected", checkout_url: checkout };
 };
+
 
 /**
  * Verifies a Squad transaction by reference (optional; webhooks are the source of truth).

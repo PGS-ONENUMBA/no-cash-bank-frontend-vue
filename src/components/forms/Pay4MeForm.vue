@@ -39,11 +39,13 @@
                   <i class="bi bi-telephone me-2"></i> Your Phone Number
                 </label>
                 <input
-                  type="text"
+                  type="tel"
                   class="form-control"
                   id="customerPhone"
                   v-model="formData.customerPhone"
                   required
+                  inputmode="numeric"
+                  autocomplete="tel"
                   placeholder="e.g., 09012345678"
                 />
               </div>
@@ -52,7 +54,7 @@
               </button>
             </form>
 
-            <!-- Step 3: Full Form (vendor is REQUIRED) -->
+            <!-- Full Form (registered vendor is REQUIRED) -->
             <form v-else @submit.prevent="handleSubmit">
               <!-- Required: Registered Vendor -->
               <div class="mb-3 position-relative">
@@ -136,7 +138,7 @@
               <button
                 type="submit"
                 class="btn btn-orange custom-width mb-3"
-                :disabled="!formData.vendor_id || !formData.amountDue || filteredVendors.length === 0"
+                :disabled="!formData.vendor_id || !formData.amountDue"
                 title="Select a vendor and enter amount due to continue"
               >
                 <i class="bi bi-cash-coin me-2"></i> Pay By Chance
@@ -157,6 +159,20 @@
 </template>
 
 <script>
+/**
+ * Pay4MeForm.vue
+ *
+ * A guided, two-step flow for “Pay Merchant”:
+ *  - Step 1: capture customer's phone number
+ *  - Step 2: require a registered vendor, amount due, and number of tickets
+ *
+ * Security & Flow notes:
+ *  - Uses backend Context Proxy + CSRF for all API operations.
+ *  - `processPayment` redirects directly to Squad checkout; do NOT navigate
+ *    to `/thank-you` in-app after calling it. Instead we pass a `returnUrl`
+ *    so Squad redirects users back to the app (e.g. /thank-you?reference=...).
+ */
+
 import { ref, computed, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { validateRaffleCycle } from "@/services/productService";
@@ -164,23 +180,34 @@ import { fetchVendors } from "@/services/fetchVendors";
 import formatCurrency from "@/services/currencyFormatter";
 import { createOrder, processPayment } from "@/services/paymentService";
 
+/**
+ * @typedef {Object} Vendor
+ * @property {number|string} vendor_id    - Unique vendor identifier.
+ * @property {string}        vendor_name  - Display name for the vendor.
+ */
+
 export default {
   name: "Pay4MeForm",
   setup() {
     const router = useRouter();
     const route = useRoute();
-    const raffleData = ref({});
+
+    // ---- Route params ----
     const raffleCycleId = route.query.raffle_cycle_id;
-    const raffleTypeId = route.query.raffle_type_id;
+    const raffleTypeId  = route.query.raffle_type_id;
 
+    // ---- State ----
+    const raffleData         = ref({});
     const ticketCurrentPrice = ref(0);
-    const showFullForm = ref(false);
-    const isLoading = ref(true);
+    const showFullForm       = ref(false);
+    const isLoading          = ref(true);
 
-    const vendors = ref([]);
+    /** @type {import('vue').Ref<Vendor[]>} */
+    const vendors         = ref([]);
+    /** @type {import('vue').Ref<Vendor[]>} */
     const filteredVendors = ref([]);
-    const vendorSearch = ref("");
-    const showDropdown = ref(false);
+    const vendorSearch    = ref("");
+    const showDropdown    = ref(false);
 
     const formData = ref({
       customerPhone: "",
@@ -193,11 +220,19 @@ export default {
       vendor_id: "",
     });
 
-    // Keep dropdown open long enough for mousedown to select
+    /**
+     * Close the vendor dropdown slightly after blur so mousedown can select.
+     * @returns {void}
+     */
     const delayHideDropdown = () => {
       setTimeout(() => { showDropdown.value = false; }, 150);
     };
 
+    /**
+     * Fetch and validate raffle details for the given cycle and type.
+     * Populates local state needed for price & limits.
+     * @returns {Promise<void>}
+     */
     const fetchRaffleDetails = async () => {
       if (!raffleCycleId || !raffleTypeId) {
         console.warn("⚠ Missing raffle cycle parameters in URL.");
@@ -209,7 +244,7 @@ export default {
         if (validatedRaffle) {
           raffleData.value = validatedRaffle;
           formData.value.raffle_cycle_id = validatedRaffle.raffle_cycle_id;
-          formData.value.raffle_type_id = validatedRaffle.raffle_type_id;
+          formData.value.raffle_type_id  = validatedRaffle.raffle_type_id;
           formData.value.winnable_amount = validatedRaffle.winnable_amount;
           formData.value.price_of_ticket = validatedRaffle.price_of_ticket;
           ticketCurrentPrice.value = Number(validatedRaffle.price_of_ticket);
@@ -224,6 +259,10 @@ export default {
       }
     };
 
+    /**
+     * Fetch list of registered vendors from the backend.
+     * @returns {Promise<void>}
+     */
     const fetchVendorList = async () => {
       try {
         const vendorData = await fetchVendors();
@@ -234,43 +273,75 @@ export default {
       }
     };
 
+    /**
+     * Filter vendors as the user types.
+     * Resets selection when search is cleared.
+     * @returns {void}
+     */
     const filterVendors = () => {
-      const searchTerm = vendorSearch.value.toLowerCase();
+      const searchTerm = vendorSearch.value.toLowerCase().trim();
       if (!searchTerm) {
         filteredVendors.value = vendors.value;
         formData.value.vendor_id = "";
       } else {
         filteredVendors.value = vendors.value.filter((vendor) =>
-          vendor.vendor_name.toLowerCase().includes(searchTerm)
+          String(vendor.vendor_name || "").toLowerCase().includes(searchTerm)
         );
       }
     };
 
+    /**
+     * Select a vendor from the dropdown suggestions.
+     * @param {Vendor} vendor
+     * @returns {void}
+     */
     const selectVendor = (vendor) => {
       formData.value.vendor_id = vendor.vendor_id;
       vendorSearch.value = vendor.vendor_name;
       showDropdown.value = false;
     };
 
+    /**
+     * Selected vendor display name.
+     * @type {import('vue').ComputedRef<string>}
+     */
     const selectedVendorName = computed(() => {
       const selected = vendors.value.find((v) => v.vendor_id === formData.value.vendor_id);
       return selected ? selected.vendor_name : "";
     });
 
+    /**
+     * Winnable amount for this raffle (numeric).
+     * @type {import('vue').ComputedRef<number>}
+     */
     const winnableAmount = computed(() => Number(raffleData.value.winnable_amount || 0));
 
+    /**
+     * Winnable amount formatted in NGN.
+     * @type {import('vue').ComputedRef<string>}
+     */
     const formattedWinnableAmount = computed(() =>
       winnableAmount.value
         ? Number(winnableAmount.value).toLocaleString("en-NG", { style: "currency", currency: "NGN" })
         : "Loading..."
     );
 
+    /**
+     * Total cost of tickets based on current price and quantity.
+     * @type {import('vue').ComputedRef<number>}
+     */
     const totalTicketCost = computed(() => {
       const t = Number(formData.value.tickets) || 0;
       const p = Number(ticketCurrentPrice.value) || 0;
       return t > 0 && p > 0 ? t * p : 0;
     });
 
+    /**
+     * Submit the form: create an order, then initiate payment via Squad.
+     * IMPORTANT: Do not navigate to /thank-you here; `processPayment` handles
+     * the redirect to Squad, and Squad sends the user back to `returnUrl`.
+     * @returns {Promise<void>}
+     */
     const handleSubmit = async () => {
       if (!navigator.onLine) {
         alert("You are offline. Please check your internet connection and try again.");
@@ -298,6 +369,7 @@ export default {
       }
 
       try {
+        // 1) Create order
         const orderData = {
           phoneNumber: formData.value.customerPhone,
           tickets: Number(formData.value.tickets),
@@ -309,26 +381,35 @@ export default {
 
         const response = await createOrder(orderData);
 
+        // 2) Initiate payment and redirect to Squad
         if (response?.order_id) {
+          const txRef = response.order_id;
+
+          // Build a return URL so Squad sends user back to your app after payment
+          const returnUrl = `${window.location.origin}/thank-you?reference=${encodeURIComponent(txRef)}`;
+
           const paymentResponse = await processPayment({
             email: `${formData.value.customerPhone}@paybychance.com`,
             amount: totalTicketCost.value,
-            trans_ref: response.order_id,
+            trans_ref: txRef,
+            returnUrl, // <-- critical: used on the server to set Squad callback_url
           });
 
-          if (paymentResponse.status === "closed") {
+          // If user closed the widget (some flows), just stop here gracefully
+          if (paymentResponse?.status === "closed") {
             console.log("❌ Payment Cancelled by user");
             return;
           }
 
-          router.push("/thank-you");
+          // Do NOT push here. `processPayment` already redirected to Squad.
+          // After payment, Squad will send the user back to `returnUrl`.
         }
       } catch (error) {
-        console.error("❌ Submission error:", error.message, error);
-        if (error.message === "Network Error") {
+        console.error("❌ Submission error:", error?.message, error);
+        if (error?.message === "Network Error") {
           alert("Network error. Please check your internet connection and try again.");
         } else {
-          alert(`Error: ${error.message || "Failed to submit order. Please try again."}`);
+          alert(`Error: ${error?.message || "Failed to submit order. Please try again."}`);
         }
       }
     };
