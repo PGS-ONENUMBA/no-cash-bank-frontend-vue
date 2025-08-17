@@ -8,26 +8,16 @@
         {{ stage === 'verifying' ? 'We’re processing your request—please wait.' : resultSubtitle }}
       </p>
 
-      <!-- 🟢 Animated Progress Bar -->
+      <!-- Progress -->
       <transition name="fade" mode="out-in">
-        <div
-          v-if="stage === 'verifying'"
-          class="progress my-4"
-          style="height: 20px;"
-          :key="stage"
-        >
-          <div
-            class="progress-bar"
-            role="progressbar"
-            :class="progressBarClass"
-            :style="{ width: progressValue }"
-          >
+        <div v-if="stage === 'verifying'" class="progress my-4" style="height: 20px;" :key="stage">
+          <div class="progress-bar" role="progressbar" :class="progressBarClass" :style="{ width: progressValue }">
             {{ progressBarText }}
           </div>
         </div>
       </transition>
 
-      <!-- 📨 Contextual Alert Messages -->
+      <!-- Contextual messages -->
       <div v-if="stage === 'amount_mismatch_wallet_updated'" class="alert alert-warning mt-3">
         Sorry, due to a payment discrepancy, you couldn’t join the raffle. Your wallet has been credited—check your balance later!
       </div>
@@ -48,11 +38,26 @@
 </template>
 
 <script setup>
+/**
+ * ThankYou.vue
+ *
+ * Securely finalizes a payment after Squad checkout.
+ * - Reads ?reference=... (or fallback cookie)
+ * - Calls server-side verify endpoint: /context-proxy/v1/squad/verify
+ *   (browser always POSTs; server injects X-Plugin-Token and updates the order)
+ * - Expects normalized payload from server { success, status, message }
+ * - Drives final UI state without making any further internal API calls
+ *
+ * Security:
+ * - Uses shared axios `api` (withCredentials + CSRF interceptor).
+ * - No Basic/App secrets in the browser.
+ */
+
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
-import { api } from "@/services/http"; // <-- your axios instance with CSRF interceptor
+import { api } from "@/services/http"; // axios instance with CSRF bootstrap
 
-// Cookie helpers unchanged…
+/** Cookie helpers */
 function getCookie(name) {
   const m = document.cookie.match(new RegExp(`(^| )${name}=([^;]+)`));
   return m ? decodeURIComponent(m[2]) : null;
@@ -68,15 +73,15 @@ function deleteCookie(name) {
 const route = useRoute();
 const reference = route.query.reference || getCookie("nocash_last_ref");
 
-// Proxy constant (always POST from browser)
-const PROXY_ACTION = "/context-proxy/v1/action";
+/** Proxy constants (browser → proxy) */
+const PROXY_SQUAD_VERIFY = "/context-proxy/v1/squad/verify";
 
-// State
-const stage = ref("verifying");
+/** UI state */
+const stage = ref("verifying"); // verifying | winner_selected | entry_processed | amount_mismatch_wallet_updated | payment_failed
 const message = ref("");
 const errorMessage = ref("");
 
-// Progress UI (unchanged) …
+/** UI computed */
 const progressBarClass = computed(() => {
   if (stage.value === "winner_selected") return "bg-success";
   if (["entry_processed", "amount_mismatch_wallet_updated"].includes(stage.value)) return "bg-warning text-dark";
@@ -98,111 +103,107 @@ const progressValue = computed(() => {
   return "70%";
 });
 const resultTitle = computed(() => {
-  if (stage.value === 'winner_selected') return 'Congratulations!';
-  if (stage.value === 'entry_processed') return 'Better Luck Next Time!';
-  if (stage.value === 'amount_mismatch_wallet_updated') return 'Wallet Credited';
-  if (stage.value === 'payment_failed') return 'Payment Failed';
-  return 'Thank You!';
+  if (stage.value === "winner_selected") return "Congratulations!";
+  if (stage.value === "entry_processed") return "Better Luck Next Time!";
+  if (stage.value === "amount_mismatch_wallet_updated") return "Wallet Credited";
+  if (stage.value === "payment_failed") return "Payment Failed";
+  return "Thank You!";
 });
 const resultSubtitle = computed(() => {
-  if (stage.value === 'winner_selected') return 'You won the raffle!';
-  if (stage.value === 'entry_processed') return 'Your entry was processed successfully.';
-  if (stage.value === 'amount_mismatch_wallet_updated') return 'We returned your funds.';
-  if (stage.value === 'payment_failed') return message.value || 'Verification failed.';
-  return 'We’re processing your request—please wait.';
+  if (stage.value === "winner_selected") return "You won the raffle!";
+  if (stage.value === "entry_processed") return "Your entry was processed successfully.";
+  if (stage.value === "amount_mismatch_wallet_updated") return "We returned your funds.";
+  if (stage.value === "payment_failed") return message.value || "Verification failed.";
+  return "We’re processing your request—please wait.";
 });
 
-// Submit to server via proxy (no Basic headers here)
-async function submitOrder() {
+/**
+ * Normalize various server payload shapes into:
+ * { success: boolean, status: string, message?: string }
+ */
+function normalizeVerifyPayload(raw) {
+  const base = raw?.data ?? raw; // unwrap proxy shape {ok,status,data}
+  // If your server already returns normalized fields, prefer them:
+  if (typeof base?.success === "boolean" && typeof base?.status === "string") {
+    return { success: base.success, status: base.status, message: base.message || "" };
+  }
+  // Fallback for raw Squad shapes:
+  const txnStatus = base?.transaction_status || base?.status; // e.g., "success" | "failed"
+  const ok = String(txnStatus || "").toLowerCase() === "success";
+  return {
+    success: ok,
+    status: ok ? "entry_processed" : "payment_failed",
+    message: base?.message || base?.reason || "",
+  };
+}
+
+/**
+ * Verify with server (which also updates the order).
+ * On success, server decides the final business status.
+ */
+async function verifyAndFinalize() {
   if (!reference) {
     errorMessage.value = "No reference provided.";
     stage.value = "payment_failed";
     return;
   }
 
+  // Keep the ref around for refreshes/deep links
   setCookie("nocash_last_ref", reference, 15);
 
   try {
-    const { data } = await api.post(PROXY_ACTION, {
-      action_type: "submit_order",
-      reference
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-    // proxy shape: { ok, status, data: {...upstream...} } OR legacy direct
-    const payload = data?.data ?? data;
+    const res = await api.post(
+      PROXY_SQUAD_VERIFY,
+      { reference },
+      { signal: controller.signal }
+    );
 
-    if (!payload?.success) {
-      if (payload?.message === "Duplicate order") {
-        await lookupOrderStatus();
-        return;
-      }
-      stage.value = payload?.status || "payment_failed";
-      message.value = payload?.message || "";
-      errorMessage.value = payload?.message || "Submission failed.";
-      return;
+    clearTimeout(timeoutId);
+
+    const normalized = normalizeVerifyPayload(res.data);
+    stage.value = normalized.status || (normalized.success ? "entry_processed" : "payment_failed");
+    message.value = normalized.message || "";
+
+    if (!normalized.success && !message.value) {
+      message.value = "Verification failed.";
     }
-
-    stage.value = payload?.status || "entry_processed";
-    message.value = payload?.message || "";
   } catch (err) {
-    errorMessage.value = "Submission error: " + (err.response?.data?.message || err.message || "Unknown");
+    // Try to surface meaningful error detail
+    const msg =
+      err?.response?.data?.message ||
+      err?.response?.data?.error ||
+      err?.message ||
+      "Unknown error";
+    errorMessage.value = `Verification error: ${msg}`;
     stage.value = "payment_failed";
-    // Try status lookup shortly after
-    setTimeout(lookupOrderStatus, 3000);
   }
 }
 
-// Fallback status lookup (also via proxy)
-async function lookupOrderStatus() {
-  try {
-    const { data } = await api.post(PROXY_ACTION, {
-      action_type: "check_order_status",
-      reference
-    });
-    const payload = data?.data ?? data;
-    if (payload?.success) {
-      stage.value = payload?.status || "entry_processed";
-      message.value = payload?.message || "";
-    } else {
-      stage.value = payload?.status || "payment_failed";
-      errorMessage.value = payload?.message || "Could not retrieve order status.";
-    }
-  } catch (err) {
-    errorMessage.value = "Status check failed: " + (err.response?.data?.message || err.message);
-  }
-}
+/** Init */
+onMounted(verifyAndFinalize);
 
-// Init
-onMounted(submitOrder);
-
-// Cleanup cookie after terminal states
+/** Cleanup cookie after terminal states */
 watch(stage, (newStage) => {
-  const terminal = new Set(["winner_selected","entry_processed","amount_mismatch_wallet_updated","payment_failed"]);
-  if (terminal.has(newStage)) deleteCookie("nocash_last_ref");
+  const terminal = new Set([
+    "winner_selected",
+    "entry_processed",
+    "amount_mismatch_wallet_updated",
+    "payment_failed",
+  ]);
+  if (terminal.has(newStage)) {
+    deleteCookie("nocash_last_ref");
+  }
 });
 </script>
 
-
 <style scoped>
-.card {
-  border-radius: 15px;
-  background: #f8f9fa;
-}
-h2 {
-  font-weight: bold;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-.lead {
-  color: #6c757d;
-}
-.progress-bar {
-  font-weight: 600;
-  transition: all 0.8s ease-in-out;
-}
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.4s;
-}
-.fade-enter-from, .fade-leave-to {
-  opacity: 0;
-}
+.card { border-radius: 15px; background: #f8f9fa; }
+h2 { font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,.1); }
+.lead { color: #6c757d; }
+.progress-bar { font-weight: 600; transition: all .8s ease-in-out; }
+.fade-enter-active, .fade-leave-active { transition: opacity .4s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>
