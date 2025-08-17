@@ -48,32 +48,55 @@
 </template>
 
 <script setup>
+/**
+ * ThankYou.vue
+ *
+ * - Called after Squad redirects back to the app with ?reference=<order_id>.
+ * - Submits the order to your backend through Context Proxy (server-side Basic).
+ * - If submission is a duplicate or slow, it polls order status briefly.
+ * - Uses Axios instance `api` which attaches CSRF & cookies automatically.
+ */
+
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
+import { api } from "@/services/http"; // <-- your axios instance with CSRF interceptor
 
-// 🔧 Cookie utilities
+/** Context Proxy opinionated action endpoint */
+const PROXY_ACTION = "/context-proxy/v1/action";
+
+/** Small helper to unwrap proxy/legacy responses */
+function unwrap(res) {
+  // Proxy: { ok, status, data: {...} }
+  // Legacy: { success, ... }
+  return res?.data?.data ?? res?.data ?? {};
+}
+
+// 🔧 Cookie utilities (kept to support reload/redirect loops safely)
 function getCookie(name) {
   const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
   return match ? decodeURIComponent(match[2]) : null;
 }
-
 function setCookie(name, value, minutes) {
   const expires = new Date(Date.now() + minutes * 60000).toUTCString();
   document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/`;
 }
-
 function deleteCookie(name) {
   document.cookie = `${name}=; Max-Age=0; path=/`;
 }
 
 const route = useRoute();
+/** Reference returned by Squad (order_id you used as transaction_ref) */
 const reference = route.query.reference || getCookie("nocash_last_ref");
-const apiUrl = import.meta.env.VITE_API_BASE_URL + "/nocash-bank/v1/action";
 
 // 🚦 State management
-const stage = ref("verifying");
+const stage = ref("verifying");  // verifying | entry_processed | winner_selected | amount_mismatch_wallet_updated | payment_failed
 const message = ref("");
 const errorMessage = ref("");
+
+// Poll settings (for slow webhook/DB)
+const MAX_POLLS = 5;
+const POLL_INTERVAL_MS = 2000;
+let pollCount = 0;
 
 // 🎨 UI Computed Props
 const progressBarClass = computed(() => {
@@ -82,7 +105,6 @@ const progressBarClass = computed(() => {
   if (stage.value === "payment_failed") return "bg-danger";
   return "bg-info progress-bar-striped progress-bar-animated";
 });
-
 const progressBarText = computed(() => {
   if (stage.value === "winner_selected") return "You Won!";
   if (stage.value === "entry_processed") return "Raffle Completed";
@@ -90,7 +112,6 @@ const progressBarText = computed(() => {
   if (stage.value === "payment_failed") return "Error Processing Payment";
   return "Verifying Payment...";
 });
-
 const progressValue = computed(() => {
   if (stage.value === "winner_selected") return "100%";
   if (stage.value === "entry_processed") return "95%";
@@ -98,7 +119,6 @@ const progressValue = computed(() => {
   if (stage.value === "payment_failed") return "100%";
   return "70%";
 });
-
 const resultTitle = computed(() => {
   if (stage.value === 'winner_selected') return 'Congratulations!';
   if (stage.value === 'entry_processed') return 'Better Luck Next Time!';
@@ -106,7 +126,6 @@ const resultTitle = computed(() => {
   if (stage.value === 'payment_failed') return 'Payment Failed';
   return 'Thank You!';
 });
-
 const resultSubtitle = computed(() => {
   if (stage.value === 'winner_selected') return 'You won the raffle!';
   if (stage.value === 'entry_processed') return 'Your entry was processed successfully.';
@@ -115,83 +134,96 @@ const resultSubtitle = computed(() => {
   return 'We’re processing your request—please wait.';
 });
 
-// 📨 Submit initial order to backend
+/**
+ * Submit the order to the backend via Context Proxy.
+ * Handles “Duplicate order” by jumping into status polling.
+ */
 async function submitOrder() {
   if (!reference) {
     errorMessage.value = "No reference provided.";
+    stage.value = "payment_failed";
     return;
   }
 
+  // Keep reference for refresh/retry edge-cases
   setCookie("nocash_last_ref", reference, 15);
 
   try {
-    const auth = `Basic ${btoa(import.meta.env.VITE_APP_USER_NAME + ":" + import.meta.env.VITE_APP_USER_PASSWORD)}`;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const res = await api.post(
+      PROXY_ACTION,
+      { action_type: "submit_order", reference },
+      { timeout: 10000 }
+    );
+    const data = unwrap(res);
 
-    const res = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: auth,
-      },
-      signal: controller.signal,
-      body: JSON.stringify({
-        reference,
-        action_type: "submit_order",
-      }),
-    });
-
-    clearTimeout(timeoutId);
-    const result = await res.json();
-
-    if (!result.success) {
-      if (result.message === 'Duplicate order') {
-        await lookupOrderStatus();
+    if (!data.success) {
+      // If upstream says duplicate, we just look it up
+      if (data.message === "Duplicate order") {
+        await lookupOrderStatus(true);
         return;
       }
-      stage.value = result.status || "payment_failed";
-      errorMessage.value = result.message || "Submission failed.";
-      message.value = result.message || "";
+      stage.value = data.status || "payment_failed";
+      errorMessage.value = data.message || "Submission failed.";
+      message.value = data.message || "";
+      // Try a quick lookup anyway, it may have raced
+      setTimeout(() => lookupOrderStatus(true), 1500);
       return;
     }
 
-    stage.value = result.status || "entry_processed";
-    message.value = result.message || "";
+    // Successful submit returns a terminal or near-terminal status
+    stage.value = data.status || "entry_processed";
+    message.value = data.message || "";
   } catch (err) {
-    errorMessage.value = "Submission error: " + (err.message || "Unknown");
-    stage.value = "payment_failed";
-    setTimeout(lookupOrderStatus, 3000);
+    // Network/timeouts: switch to polling, webhooks may complete shortly
+    errorMessage.value = "Submission error: " + (err?.message || "Unknown");
+    stage.value = "verifying";
+    pollCount = 0;
+    setTimeout(() => lookupOrderStatus(true), POLL_INTERVAL_MS);
   }
 }
 
-// 🔎 Fallback lookup if duplicate or timeout occurs
-async function lookupOrderStatus() {
+/**
+ * Lookup order status (polls a few times if needed).
+ * @param {boolean} canPoll whether we allow polling next
+ */
+async function lookupOrderStatus(canPoll = false) {
   try {
-    const auth = `Basic ${btoa(import.meta.env.VITE_APP_USER_NAME + ":" + import.meta.env.VITE_APP_USER_PASSWORD)}`;
-    const res = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: auth,
-      },
-      body: JSON.stringify({
-        reference,
-        action_type: "check_order_status",
-      }),
-    });
-
-    const data = await res.json();
+    const res = await api.post(
+      PROXY_ACTION,
+      { action_type: "check_order_status", reference },
+      { timeout: 10000 }
+    );
+    const data = unwrap(res);
 
     if (data.success) {
       stage.value = data.status || "entry_processed";
       message.value = data.message || "";
+
+      // If still processing and we can poll more, keep polling briefly
+      const nonTerminal = new Set(["verifying", "processing", "pending", "pending_verification"]);
+      if (canPoll && nonTerminal.has(String(stage.value))) {
+        if (pollCount < MAX_POLLS) {
+          pollCount += 1;
+          setTimeout(() => lookupOrderStatus(true), POLL_INTERVAL_MS);
+        } else {
+          // Give user a decent message after max retries
+          stage.value = "entry_processed";
+          message.value = "Your payment is being finalized. Check back shortly.";
+        }
+      }
     } else {
       stage.value = data.status || "payment_failed";
       errorMessage.value = data.message || "Could not retrieve order status.";
     }
   } catch (err) {
-    errorMessage.value = "Status check failed: " + err.message;
+    // On lookup failure, try a limited poll if allowed
+    if (canPoll && pollCount < MAX_POLLS) {
+      pollCount += 1;
+      setTimeout(() => lookupOrderStatus(true), POLL_INTERVAL_MS);
+    } else {
+      errorMessage.value = "Status check failed: " + (err?.message || "Unknown");
+      stage.value = "payment_failed";
+    }
   }
 }
 
@@ -204,12 +236,11 @@ watch(stage, (newStage) => {
     "winner_selected",
     "entry_processed",
     "amount_mismatch_wallet_updated",
-    "payment_failed"
+    "payment_failed",
   ]);
-
   if (terminalStages.has(newStage)) {
     deleteCookie("nocash_last_ref");
-    console.log("Cleared reference cookie after terminal state:", newStage);
+    // console.log("Cleared reference cookie after terminal state:", newStage);
   }
 });
 </script>
