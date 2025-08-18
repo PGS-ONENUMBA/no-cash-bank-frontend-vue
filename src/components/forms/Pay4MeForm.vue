@@ -11,11 +11,12 @@
               <span v-if="ticketCurrentPrice > 0">{{ formatCurrency(ticketCurrentPrice) }}</span>
             </h3>
             <p class="text-success fs-5">Winnable Amount: {{ formattedWinnableAmount }}</p>
+
             <h5 class="fw-bold"><i class="bi bi-lightbulb"></i> How It Works</h5>
             <ul class="list-unstyled">
               <li><i class="bi bi-1-circle text-success"></i> Enter your phone number.</li>
               <li><i class="bi bi-2-circle text-success"></i> Select a registered vendor and buy tickets.</li>
-              <li><i class="bi bi-3-circle text-success"></i> If you win, we pay the vendor.</li>
+              <li><i class="bi bi-3-circle text-success"></i> If you win, your win is locked to that vendor—spend it there.</li>
             </ul>
           </div>
         </div>
@@ -93,29 +94,14 @@
                 <small v-else class="text-muted">Type and select a vendor.</small>
               </div>
 
-              <!-- Amount Due to Vendor (required) -->
-              <div class="mb-3">
-                <label for="amountDue" class="form-label">
-                  <i class="bi bi-cash me-2"></i> Amount Due to Vendor <span class="text-danger">*</span>
-                </label>
-                <input
-                  type="number"
-                  class="form-control"
-                  id="amountDue"
-                  v-model.number="formData.amountDue"
-                  required
-                  :min="1000"
-                  :max="winnableAmount"
-                />
-                <small class="text-muted">Min: ₦1,000 | Max: {{ formattedWinnableAmount }}</small>
-              </div>
-
               <!-- Number of Tickets -->
               <div class="mb-3">
                 <label for="tickets" class="form-label">
                   <i class="bi bi-ticket me-2"></i> How Many Tickets?
                 </label>
-                <span v-if="ticketCurrentPrice > 0">Current Ticket Price: {{ formatCurrency(ticketCurrentPrice) }}</span>
+                <div class="mb-1" v-if="ticketCurrentPrice > 0">
+                  Current Ticket Price: {{ formatCurrency(ticketCurrentPrice) }}
+                </div>
                 <input
                   type="number"
                   class="form-control"
@@ -138,8 +124,8 @@
               <button
                 type="submit"
                 class="btn btn-orange custom-width mb-3"
-                :disabled="!formData.vendor_id || !formData.amountDue"
-                title="Select a vendor and enter amount due to continue"
+                :disabled="!formData.vendor_id || !formData.tickets || ticketCurrentPrice <= 0"
+                title="Select a vendor to continue"
               >
                 <i class="bi bi-cash-coin me-2"></i> Pay By Chance
               </button>
@@ -163,14 +149,13 @@
  * Pay4MeForm.vue
  *
  * A guided, two-step flow for “Pay Merchant”:
- *  - Step 1: capture customer's phone number
- *  - Step 2: require a registered vendor, amount due, and number of tickets
+ *  - Step 1: capture customer's phone number.
+ *  - Step 2: require a registered vendor + number of tickets (no vendor amount field).
  *
  * Security & Flow notes:
  *  - Uses backend Context Proxy + CSRF for all API operations.
- *  - `processPayment` redirects directly to Squad checkout; do NOT navigate
- *    to `/thank-you` in-app after calling it. Instead we pass a `returnUrl`
- *    so Squad redirects users back to the app (e.g. /thank-you?reference=...).
+ *  - `processPayment` redirects to Squad; we pass `returnUrl` so Squad returns the user
+ *    to `/thank-you?reference=...` which then verifies server-side.
  */
 
 import { ref, computed, onMounted } from "vue";
@@ -182,15 +167,15 @@ import { createOrder, processPayment } from "@/services/paymentService";
 
 /**
  * @typedef {Object} Vendor
- * @property {number|string} vendor_id    - Unique vendor identifier.
- * @property {string}        vendor_name  - Display name for the vendor.
+ * @property {number|string} vendor_id   Unique vendor identifier.
+ * @property {string}        vendor_name Display name for the vendor.
  */
 
 export default {
   name: "Pay4MeForm",
   setup() {
     const router = useRouter();
-    const route = useRoute();
+    const route  = useRoute();
 
     // ---- Route params ----
     const raffleCycleId = route.query.raffle_cycle_id;
@@ -211,7 +196,6 @@ export default {
 
     const formData = ref({
       customerPhone: "",
-      amountDue: "",
       tickets: 1,
       raffle_cycle_id: raffleCycleId,
       raffle_type_id: raffleTypeId,
@@ -242,12 +226,12 @@ export default {
       try {
         const validatedRaffle = await validateRaffleCycle(raffleCycleId, raffleTypeId);
         if (validatedRaffle) {
-          raffleData.value = validatedRaffle;
-          formData.value.raffle_cycle_id = validatedRaffle.raffle_cycle_id;
-          formData.value.raffle_type_id  = validatedRaffle.raffle_type_id;
-          formData.value.winnable_amount = validatedRaffle.winnable_amount;
-          formData.value.price_of_ticket = validatedRaffle.price_of_ticket;
-          ticketCurrentPrice.value = Number(validatedRaffle.price_of_ticket);
+          raffleData.value                 = validatedRaffle;
+          formData.value.raffle_cycle_id   = validatedRaffle.raffle_cycle_id;
+          formData.value.raffle_type_id    = validatedRaffle.raffle_type_id;
+          formData.value.winnable_amount   = validatedRaffle.winnable_amount;
+          formData.value.price_of_ticket   = validatedRaffle.price_of_ticket;
+          ticketCurrentPrice.value         = Number(validatedRaffle.price_of_ticket);
         } else {
           console.error("❌ Raffle validation failed. Redirecting...");
           router.push("/404");
@@ -301,35 +285,23 @@ export default {
       showDropdown.value = false;
     };
 
-    /**
-     * Selected vendor display name.
-     * @type {import('vue').ComputedRef<string>}
-     */
+    /** Selected vendor name for display. */
     const selectedVendorName = computed(() => {
       const selected = vendors.value.find((v) => v.vendor_id === formData.value.vendor_id);
       return selected ? selected.vendor_name : "";
     });
 
-    /**
-     * Winnable amount for this raffle (numeric).
-     * @type {import('vue').ComputedRef<number>}
-     */
+    /** Numeric winnable amount for this raffle. */
     const winnableAmount = computed(() => Number(raffleData.value.winnable_amount || 0));
 
-    /**
-     * Winnable amount formatted in NGN.
-     * @type {import('vue').ComputedRef<string>}
-     */
+    /** Winnable amount formatted in NGN. */
     const formattedWinnableAmount = computed(() =>
       winnableAmount.value
         ? Number(winnableAmount.value).toLocaleString("en-NG", { style: "currency", currency: "NGN" })
         : "Loading..."
     );
 
-    /**
-     * Total cost of tickets based on current price and quantity.
-     * @type {import('vue').ComputedRef<number>}
-     */
+    /** Total ticket cost based on current price and quantity. */
     const totalTicketCost = computed(() => {
       const t = Number(formData.value.tickets) || 0;
       const p = Number(ticketCurrentPrice.value) || 0;
@@ -338,8 +310,8 @@ export default {
 
     /**
      * Submit the form: create an order, then initiate payment via Squad.
-     * IMPORTANT: Do not navigate to /thank-you here; `processPayment` handles
-     * the redirect to Squad, and Squad sends the user back to `returnUrl`.
+     * IMPORTANT: Do not navigate to /thank-you here; `processPayment` redirects to Squad,
+     * and Squad returns the user to the provided `returnUrl`.
      * @returns {Promise<void>}
      */
     const handleSubmit = async () => {
@@ -355,28 +327,23 @@ export default {
         alert("Please select a registered vendor.");
         return;
       }
-      if (Number(formData.value.amountDue) < 1000) {
-        alert("Amount due must be at least ₦1,000.");
-        return;
-      }
-      if (Number(formData.value.amountDue) > winnableAmount.value) {
-        alert("Amount due cannot exceed the winnable amount.");
-        return;
-      }
       if (Number(formData.value.tickets) < 1) {
         alert("Please select at least one ticket.");
         return;
       }
+      if (ticketCurrentPrice.value <= 0) {
+        alert("Ticket price is unavailable at the moment. Please try again shortly.");
+        return;
+      }
 
       try {
-        // 1) Create order
+        // 1) Create order (no amount_due here; wins are vendor-locked)
         const orderData = {
           phoneNumber: formData.value.customerPhone,
           tickets: Number(formData.value.tickets),
           amount: totalTicketCost.value,
           raffle_cycle_id: Number(raffleCycleId),
           vendor_id: formData.value.vendor_id,
-          amount_due: Number(formData.value.amountDue),
         };
 
         const response = await createOrder(orderData);
@@ -384,25 +351,20 @@ export default {
         // 2) Initiate payment and redirect to Squad
         if (response?.order_id) {
           const txRef = response.order_id;
-
-          // Build a return URL so Squad sends user back to your app after payment
           const returnUrl = `${window.location.origin}/thank-you?reference=${encodeURIComponent(txRef)}`;
 
           const paymentResponse = await processPayment({
             email: `${formData.value.customerPhone}@paybychance.com`,
             amount: totalTicketCost.value,
             trans_ref: txRef,
-            returnUrl, // <-- critical: used on the server to set Squad callback_url
+            returnUrl, // server uses this to set Squad callback_url
           });
 
-          // If user closed the widget (some flows), just stop here gracefully
           if (paymentResponse?.status === "closed") {
             console.log("❌ Payment Cancelled by user");
             return;
           }
-
-          // Do NOT push here. `processPayment` already redirected to Squad.
-          // After payment, Squad will send the user back to `returnUrl`.
+          // No router.push here—Squad handles redirect to returnUrl.
         }
       } catch (error) {
         console.error("❌ Submission error:", error?.message, error);
