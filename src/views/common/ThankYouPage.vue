@@ -42,7 +42,7 @@
  * ThankYou.vue
  *
  * Securely finalizes a payment after Squad checkout.
- * - Reads ?reference=... (or fallback cookie)
+ * - Reads ?reference=... (or fallback cookie) and normalizes duplicate query keys
  * - Calls server-side verify endpoint: /context-proxy/v1/squad/verify
  *   (browser always POSTs; server injects X-Plugin-Token and updates the order)
  * - Expects normalized payload from server { success, status, message }
@@ -54,40 +54,96 @@
  */
 
 import { ref, computed, onMounted, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { api } from "@/services/http"; // axios instance with CSRF bootstrap
 
+/** @typedef {'verifying'|'winner_selected'|'entry_processed'|'amount_mismatch_wallet_updated'|'payment_failed'} ThankYouStage */
+
+/**
+ * Normalized UI payload the page expects.
+ * @typedef {Object} VerifyUiPayload
+ * @property {boolean} success             - True when payment verified and processed.
+ * @property {ThankYouStage|string} status - One of the UI stages.
+ * @property {string} [message]            - Optional human message for display.
+ * @property {string} [order_id]           - Optional order/reference for logs.
+ */
+
 /** Cookie helpers */
+
+/**
+ * Read a cookie value by name.
+ * @param {string} name
+ * @returns {string|null}
+ */
 function getCookie(name) {
   const m = document.cookie.match(new RegExp(`(^| )${name}=([^;]+)`));
   return m ? decodeURIComponent(m[2]) : null;
 }
+
+/**
+ * Set a cookie with minute-based expiry.
+ * @param {string} name
+ * @param {string} value
+ * @param {number} minutes
+ * @returns {void}
+ */
 function setCookie(name, value, minutes) {
   const expires = new Date(Date.now() + minutes * 60000).toUTCString();
   document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/`;
 }
+
+/**
+ * Delete a cookie by name.
+ * @param {string} name
+ * @returns {void}
+ */
 function deleteCookie(name) {
   document.cookie = `${name}=; Max-Age=0; path=/`;
 }
 
 const route = useRoute();
-const reference = route.query.reference || getCookie("nocash_last_ref");
+const router = useRouter();
+
+/**
+ * Extract a single `reference` from route (de-duping arrays) or cookie.
+ * Also normalizes the URL if duplicate `reference` keys exist.
+ * @returns {string|undefined}
+ */
+function getNormalizedReference() {
+  /** @type {string|string[]|undefined} */
+  const raw = route.query.reference;
+
+  // If duplicated like ?reference=abc&reference=abc, Vue makes it an array
+  if (Array.isArray(raw)) {
+    const first = raw.find(Boolean) || "";
+    // Replace URL with a single reference param (no page reload)
+    router.replace({ path: route.path, query: { ...route.query, reference: first } }).catch(() => {});
+    return first;
+  }
+
+  return raw || getCookie("nocash_last_ref") || undefined;
+}
 
 /** Proxy constants (browser → proxy) */
 const PROXY_SQUAD_VERIFY = "/context-proxy/v1/squad/verify";
 
 /** UI state */
-const stage = ref("verifying"); // verifying | winner_selected | entry_processed | amount_mismatch_wallet_updated | payment_failed
+
+/** @type {import('vue').Ref<ThankYouStage>} */
+const stage = ref("verifying");
 const message = ref("");
 const errorMessage = ref("");
 
 /** UI computed */
+
 const progressBarClass = computed(() => {
   if (stage.value === "winner_selected") return "bg-success";
   if (["entry_processed", "amount_mismatch_wallet_updated"].includes(stage.value)) return "bg-warning text-dark";
   if (stage.value === "payment_failed") return "bg-danger";
   return "bg-info progress-bar-striped progress-bar-animated";
 });
+
+/** @returns {string} */
 const progressBarText = computed(() => {
   if (stage.value === "winner_selected") return "You Won!";
   if (stage.value === "entry_processed") return "Raffle Completed";
@@ -95,6 +151,8 @@ const progressBarText = computed(() => {
   if (stage.value === "payment_failed") return "Error Processing Payment";
   return "Verifying Payment...";
 });
+
+/** @returns {string} */
 const progressValue = computed(() => {
   if (stage.value === "winner_selected") return "100%";
   if (stage.value === "entry_processed") return "95%";
@@ -102,6 +160,8 @@ const progressValue = computed(() => {
   if (stage.value === "payment_failed") return "100%";
   return "70%";
 });
+
+/** @returns {string} */
 const resultTitle = computed(() => {
   if (stage.value === "winner_selected") return "Congratulations!";
   if (stage.value === "entry_processed") return "Better Luck Next Time!";
@@ -109,6 +169,8 @@ const resultTitle = computed(() => {
   if (stage.value === "payment_failed") return "Payment Failed";
   return "Thank You!";
 });
+
+/** @returns {string} */
 const resultSubtitle = computed(() => {
   if (stage.value === "winner_selected") return "You won the raffle!";
   if (stage.value === "entry_processed") return "Your entry was processed successfully.";
@@ -118,30 +180,47 @@ const resultSubtitle = computed(() => {
 });
 
 /**
- * Normalize various server payload shapes into:
- * { success: boolean, status: string, message?: string }
+ * Normalize various server/proxy payload shapes into the UI payload.
+ * Accepts either:
+ *  - Proxy envelope: { ok, status, data: { success, status, message, ... } }
+ *  - Already-normalized: { success, status, message }
+ *  - Raw gateway-ish:    { transaction_status: 'success'|'failed', message? }
+ *
+ * @param {any} raw
+ * @returns {VerifyUiPayload}
  */
 function normalizeVerifyPayload(raw) {
   const base = raw?.data ?? raw; // unwrap proxy shape {ok,status,data}
-  // If your server already returns normalized fields, prefer them:
+
+  // Prefer already-normalized structures from the server
   if (typeof base?.success === "boolean" && typeof base?.status === "string") {
-    return { success: base.success, status: base.status, message: base.message || "" };
+    return {
+      success: base.success,
+      status: /** @type {ThankYouStage|string} */ (base.status),
+      message: base.message || "",
+      order_id: base.order_id || "",
+    };
   }
-  // Fallback for raw Squad shapes:
-  const txnStatus = base?.transaction_status || base?.status; // e.g., "success" | "failed"
-  const ok = String(txnStatus || "").toLowerCase() === "success";
+
+  // Fallback: interpret a gateway-like object
+  const txnStatus = (base?.transaction_status || base?.status || "").toString().toLowerCase();
+  const ok = txnStatus === "success";
   return {
     success: ok,
     status: ok ? "entry_processed" : "payment_failed",
     message: base?.message || base?.reason || "",
+    order_id: base?.transaction_ref || "",
   };
 }
 
 /**
  * Verify with server (which also updates the order).
- * On success, server decides the final business status.
+ * On success, the server decides the final business status.
+ * @returns {Promise<void>}
  */
 async function verifyAndFinalize() {
+  const reference = getNormalizedReference();
+
   if (!reference) {
     errorMessage.value = "No reference provided.";
     stage.value = "payment_failed";
@@ -164,14 +243,11 @@ async function verifyAndFinalize() {
     clearTimeout(timeoutId);
 
     const normalized = normalizeVerifyPayload(res.data);
-    stage.value = normalized.status || (normalized.success ? "entry_processed" : "payment_failed");
-    message.value = normalized.message || "";
-
-    if (!normalized.success && !message.value) {
-      message.value = "Verification failed.";
-    }
+    stage.value = /** @type {ThankYouStage} */ (
+      normalized.status || (normalized.success ? "entry_processed" : "payment_failed")
+    );
+    message.value = normalized.message || (normalized.success ? "" : "Verification failed.");
   } catch (err) {
-    // Try to surface meaningful error detail
     const msg =
       err?.response?.data?.message ||
       err?.response?.data?.error ||
@@ -185,7 +261,9 @@ async function verifyAndFinalize() {
 /** Init */
 onMounted(verifyAndFinalize);
 
-/** Cleanup cookie after terminal states */
+/**
+ * Cleanup cookie after terminal states so we don't keep stale references.
+ */
 watch(stage, (newStage) => {
   const terminal = new Set([
     "winner_selected",
@@ -199,11 +277,27 @@ watch(stage, (newStage) => {
 });
 </script>
 
+
 <style scoped>
-.card { border-radius: 15px; background: #f8f9fa; }
-h2 { font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,.1); }
-.lead { color: #6c757d; }
-.progress-bar { font-weight: 600; transition: all .8s ease-in-out; }
-.fade-enter-active, .fade-leave-active { transition: opacity .4s; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
+  .card {
+    border-radius: 15px;
+    background: #f8f9fa;
+  }
+  h2 {
+    font-weight: bold;
+    text-shadow: 0 2px 4px rgba(0,0,0,.1);
+  }
+  .lead {
+    color: #6c757d;
+  }
+  .progress-bar {
+    font-weight: 600;
+    transition: all .8s ease-in-out;
+  }
+  .fade-enter-active, .fade-leave-active {
+    transition: opacity .4s;
+  }
+  .fade-enter-from, .fade-leave-to {
+    opacity: 0;
+  }
 </style>
