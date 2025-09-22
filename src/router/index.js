@@ -77,6 +77,7 @@ const routes = [
       { path: "reports", name: "DashboardReports", component: Reports, meta: { title: "Reports", role: ["customer", "vendor"] } },
       { path: "profile", name: "DashboardProfile", component: Profile, meta: { title: "Profile Page", role: ["customer", "vendor"] } },
       { path: 'spend', name: 'SpendAtMerchant', component: SpendAtMerchant, meta: { title: "Spend at merchant", role: ["customer"] } },
+
     ],
   },
 
