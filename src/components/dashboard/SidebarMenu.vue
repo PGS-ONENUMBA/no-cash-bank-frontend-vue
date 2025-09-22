@@ -23,7 +23,7 @@
 
         <!-- 🟢 @TODO Dynamically Render Product Menu Items. not working as it should -->
         <template v-if="authStore?.user.user_role === 'customer'">
-          <li 
+          <li
           v-for="product in availableProducts"
           :key="`${product.raffle_cycle_id}-${product.raffle_type_id}`"
           class="nav-item"
@@ -43,7 +43,16 @@
           </router-link>
         </li>
         </template>
-      
+
+        <li class="nav-item">
+          <router-link
+            class="nav-link"
+            :class="{ active: isActive('/dashboard/spend') }"
+            to="/dashboard/spend"
+          >
+            <i class="bi bi-bag-check sidebar-icon"></i> Spend at Merchant
+          </router-link>
+        </li>
 
         <li class="nav-item">
           <router-link class="nav-link" :class="{ active: isActive('/dashboard/transfer') }" to="/dashboard/transfer">
@@ -93,7 +102,7 @@ export default {
      */
     const transformProducts = (raffles) => {
       const transformed = [];
-      
+
       raffles.forEach(raffle => {
         raffle.associated_types.forEach(type => {
           transformed.push({

@@ -49,19 +49,33 @@
                   <span class="visually-hidden">Loading...</span>
                 </div>
               </li>
-              <li v-else-if="availableProducts.length > 0" v-for="product in availableProducts" :key="`${product.raffle_cycle_id}-${product.raffle_type_id}`">
-                <router-link class="dropdown-item" :to="{
-                  path: product.route,
-                  query: {
-                    raffle_cycle_id: product.raffle_cycle_id,
-                    raffle_type_id: product.raffle_type_id
-                  }
-                }">
+              <li
+                v-else-if="availableProducts.length > 0"
+                v-for="product in availableProducts"
+                :key="`${product.raffle_cycle_id}-${product.raffle_type_id}`"
+              >
+                <router-link
+                  class="dropdown-item"
+                  :to="{
+                    path: product.route,
+                    query: {
+                      raffle_cycle_id: product.raffle_cycle_id,
+                      raffle_type_id: product.raffle_type_id
+                    }
+                  }"
+                >
                   <i :class="product.icon"></i> {{ product.raffle_type }}
                 </router-link>
               </li>
               <li v-else class="dropdown-item text-danger">No products available</li>
             </ul>
+          </li>
+
+          <!-- ✅ Pay at Merchant (top nav, only if logged in) -->
+          <li v-if="isAuthenticated" class="nav-item mx-2">
+            <router-link class="nav-link" to="/dashboard/spend">
+              <i class="bi bi-bag-check bi-green"></i> Pay at Merchant
+            </router-link>
           </li>
         </ul>
 
@@ -90,6 +104,14 @@
               <li class="dropdown-item" v-if="userPhoneNumber">
                 <strong><i class="bi bi-phone"></i> Phone:</strong> {{ userPhoneNumber }}
               </li>
+
+              <!-- ✅ Quick link inside user menu -->
+              <li>
+                <router-link class="dropdown-item" to="/dashboard/spend">
+                  <i class="bi bi-bag-check"></i> Pay at Merchant
+                </router-link>
+              </li>
+
               <li><hr class="dropdown-divider" /></li>
               <li>
                 <router-link class="dropdown-item" to="/dashboard/profile">
@@ -114,6 +136,7 @@
     </div>
   </nav>
 </template>
+
 
 <script>
 /**

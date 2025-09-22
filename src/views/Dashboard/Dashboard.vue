@@ -18,7 +18,7 @@
         <div
           class="d-flex flex-column align-items-center justify-content-center"
         >
-    
+
           <p  class="fw-bold" style="cursor: pointer;" >
             {{ getFormattedDate() }}
           </p>
@@ -73,11 +73,16 @@
               </div> -->
             </div>
           </div>
+          <div class ="col card shadow-sm border-0">
+            <router-link to="/dashboard/spend" class="btn btn-outline-primary">
+              <i class="bi bi-bag-check me-1"></i> Spend at Merchant
+            </router-link>
+          </div>
           <div class="col card shadow-sm border-0">
             <div @click="downloadQrCode(user)" style="cursor:pointer" class="card-body" title="Customers can scan this QR code to make payments">
               <h5 class="fw-bold text-center">Download QR Code</h5>
 
-          
+
               <div class="d-flex justify-content-center">
                 <img
                   :src="user.vendor_details.qr_code"
