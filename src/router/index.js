@@ -34,7 +34,7 @@ import DashboardOnTheHouse from "@/views/Dashboard/OnTheHouse.vue";
 import Transfer from "@/views/Dashboard/Transfer.vue";
 import Reports from "@/views/Dashboard/Reports.vue";
 import Profile from "@/views/Dashboard/Profile.vue";
-
+import VendorLogs from '@/views/VendorLogs.vue';
 /**
  * Route Definitions
  */
@@ -77,6 +77,7 @@ const routes = [
       { path: "reports", name: "DashboardReports", component: Reports, meta: { title: "Reports", role: ["customer", "vendor"] } },
       { path: "profile", name: "DashboardProfile", component: Profile, meta: { title: "Profile Page", role: ["customer", "vendor"] } },
       { path: 'spend', name: 'SpendAtMerchant', component: SpendAtMerchant, meta: { title: "Spend at merchant", role: ["customer"] } },
+      { path: 'vendor/logs', name: 'VendorLogs',component: VendorLogs, meta: { title: "Vendor Logs", role: ["vendor"] } }, // Placeholder for vendor logs
 
     ],
   },

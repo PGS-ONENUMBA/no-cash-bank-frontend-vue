@@ -3,8 +3,9 @@
     <div class="container">
       <!-- Logo -->
       <router-link class="navbar-brand" to="/">
-        <img :src="logoPath" :alt="siteName" height="30" />
+        <img :src="logoPath" :alt="siteName" class="navbar-logo img-fluid" />
       </router-link>
+
 
       <!-- Toggler for Mobile -->
       <button
@@ -154,7 +155,7 @@ import { computed, ref, onMounted } from "vue";
 import { useAuthStore } from "@/stores/authStore";
 import { useRouter } from "vue-router";
 import { fetchProducts, isLoading, getIcon, getRoute } from "@/services/productService";
-
+import logoImg from '@/assets/logo.png';  // or .jpeg whatever file name and extension is
 
 export default {
   name: "FrontEndAppNavbar",
@@ -166,7 +167,12 @@ export default {
     const loadingProducts = isLoading();
 
     const siteName = import.meta.env.VITE_SITE_NAME || "OneNnumba";
-    const logoPath = "/assets/logo.jpeg";
+
+
+// ...
+
+const logoPath = logoImg;
+
 
     /**
      * Transform raw raffle data into displayable product format
@@ -238,4 +244,18 @@ export default {
 
 <style scoped>
 /* Add any component-specific styles here */
+.navbar-logo {
+  max-height: 50px;  /* adjust this to suit your navbar height */
+  height: auto;
+  width: auto;        /* let width adjust according to aspect ratio */
+  object-fit: contain;
+}
+
+/* Optional media queries for smaller screens */
+@media (max-width: 768px) {
+  .navbar-logo {
+    max-height: 40px;   /* smaller logo on mobile */
+  }
+}
+
 </style>

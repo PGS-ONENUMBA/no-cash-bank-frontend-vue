@@ -2,7 +2,8 @@
 <html lang="">
   <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="/favicon.ico">
+    <link rel="icon" href="/icon.png" type="image/png" />
+
     <link rel="preload" href="/src/assets/hero-paybychance.png" as="image" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title id="site-title">Loading...</title>
@@ -11,7 +12,7 @@
     <div id="app"></div>
     <script type="module">
       // Dynamically set the site title using environment variables
-      document.getElementById("site-title").innerText = import.meta.env.VITE_SITE_NAME || "Vite App";
+      document.getElementById("site-title").innerText = import.meta.env.VITE_SITE_NAME || "Pay by Chance";
     </script>
     <script type="module" src="/src/main.js"></script>
 
