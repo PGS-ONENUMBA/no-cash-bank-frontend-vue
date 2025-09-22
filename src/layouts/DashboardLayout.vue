@@ -64,9 +64,8 @@ import { computed, onMounted, onUnmounted } from "vue";
 import { debounce } from "lodash";
 import { useRouter } from "vue-router";
 
-/* ✅ Import assets the Vite way so URLs are rewritten in prod */
+/* Keep logo import (it's in src/assets, so import is correct) */
 import logoPng from "@/assets/logo.png";
-import iconPng from "@/assets/icon.png";
 
 export default {
   name: "DashboardLayout",
@@ -80,7 +79,9 @@ export default {
     const siteName = import.meta.env.VITE_SITE_NAME || "OneNUMBA";
 
     const logoUrl = logoPng;
-    const iconUrl  = iconPng;
+
+    // icon.png is in /public, so reference by URL (no import)
+    const iconUrl = `${import.meta.env.BASE_URL}icon.png`;
 
     const trackActivity = debounce(() => {
       if (authStore.isAuthenticated) {
@@ -125,25 +126,22 @@ export default {
 </script>
 
 <style scoped>
-/* 879×172 logo: keep aspect and cap the height so it fits the bar */
 .brand-logo {
-  max-height: 44px;           /* tweak to your navbar padding */
+  max-height: 44px;
   height: auto;
   width: auto;
-  aspect-ratio: 879 / 172;    /* reserve space & prevent CLS */
+  aspect-ratio: 879 / 172;
   object-fit: contain;
 }
 
-/* Desktop icon beside username */
 .app-icon {
   width: 28px;
   height: 28px;
   aspect-ratio: 1 / 1;
   object-fit: cover;
-  border-radius: 6px;         /* or 50% for a circle */
+  border-radius: 6px;
 }
 
-/* Mobile-only centered mini icon */
 .app-icon-mobile {
   width: 24px;
   height: 24px;
@@ -152,7 +150,6 @@ export default {
   border-radius: 6px;
 }
 
-/* Optional: hide text name on very narrow screens to keep header tidy */
 @media (max-width: 380px) {
   .site-name { display: none; }
 }
