@@ -16,28 +16,34 @@
             <label class="form-label">Merchant Phone</label>
             <input
               v-model.trim="merchantPhone"
-              @blur="normalizePhone"
               class="form-control"
               placeholder="090xxxxxxxx"
               inputmode="numeric"
+              autocomplete="off"
             />
-            <div class="form-text">We’ll normalize to 11 digits.</div>
+            <div class="form-text">
+              We’ll normalize to 11 digits. Once it’s valid, we’ll auto-find the merchant.
+            </div>
           </div>
 
-          <!-- Merchant (select + find) -->
+          <!-- Merchant (select + auto-find) -->
           <div class="col-md-6">
             <label class="form-label">Merchant</label>
             <div class="input-group">
               <select v-model="selectedVendorId" class="form-select">
                 <option value="" disabled>Select merchant</option>
-                <option v-for="m in merchantCandidates" :key="m.vendor_id" :value="m.vendor_id">
-                  {{ m.display_name }} ({{ m.vendor_id }})
+                <option
+                  v-for="m in merchantCandidates"
+                  :key="m.vendor_id"
+                  :value="m.vendor_id"
+                >
+                  {{ optionLabel(m) }}
                 </option>
               </select>
               <button
                 type="button"
                 class="btn btn-outline-secondary"
-                @click="lookupMerchant"
+                @click="manualLookup"
                 :disabled="lookingUp"
               >
                 <span
@@ -49,17 +55,31 @@
                 {{ lookingUp ? 'Finding…' : 'Find' }}
               </button>
             </div>
-            <div class="form-text">Enter phone then click Find.</div>
+            <div class="form-text">
+              Spendable here:
+              <strong v-if="selectedVendorId">
+                {{ naira(selectedVendorBalance) }}
+              </strong>
+              <span v-else class="text-muted">—</span>
+            </div>
           </div>
 
           <!-- Amount -->
           <div class="col-md-6">
-            <label class="form-label">Amount (NGN)</label>
+            <label class="form-label">Amount (₦)</label>
             <input
               v-model.number="amount"
               class="form-control"
-              type="number" min="100" step="50" placeholder="e.g. 5000"
+              type="number"
+              :min="100"
+              :step="50"
+              :max="selectedVendorBalance || null"
+              placeholder="e.g. 5000"
+              @input="clampToBalance"
             />
+            <div class="form-text">
+              Max: <strong>{{ naira(selectedVendorBalance) }}</strong>
+            </div>
           </div>
 
           <!-- Note -->
@@ -114,75 +134,126 @@
 
 <script setup>
 /**
- * Spend at Merchant (Bootstrap)
- * -------------------------------------------
- * - Pure Bootstrap 5 (no Tailwind).
- * - Balances UI removed to avoid duplicate implementations and accidental calls.
- * - Uses dedicated proxy endpoints:
- *    • /context-proxy/v1/merchant/resolve  (merchant lookup by phone)
- *    • /context-proxy/v1/merchant/redeem   (spend/redeem with vendor_id or phone)
- * - Robust unwrapping of proxy envelopes { ok, status, data }.
+ * Spend at Merchant (Bootstrap, balance-aware)
+ * ----------------------------------------------------------------
+ * Enhancements:
+ *  • Uses wallet balances (per vendor) to show spendable funds in the
+ *    <select> options and below the selector.
+ *  • Auto-resolves merchant as soon as phone reaches a valid 11-digit
+ *    normalized format (no need to press “Find”).
+ *  • Amount entry is capped to the current vendor balance (both UI max and runtime checks).
+ *  • All amounts shown with ₦ sign, thousands separators, 2 decimal places; zeros as ₦0.00.
+ *  • Uses Context Proxy endpoints:
+ *      - POST /context-proxy/v1/action           { action_type: 'get_wallet_balances' }
+ *      - POST /context-proxy/v1/merchant/resolve { phone }
+ *      - POST /context-proxy/v1/merchant/redeem  { vendor_id | phone, amount, note }
  */
-import { ref } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { api } from '@/services/http';
 import ReauthModal from '@/components/ReauthModal.vue';
 import { normalizePhoneLocal } from '@/utils/phone';
 
-/* ------------------------------------------------------------
+/* ----------------------------------------------------------------
  * Reactive State
- * ------------------------------------------------------------ */
-/** @type {import('vue').Ref<string>} Merchant phone (raw user input). */
+ * ---------------------------------------------------------------- */
+/** Merchant phone (user input). */
 const merchantPhone = ref('');
 
-/** @type {import('vue').Ref<Array<{vendor_id:number,display_name:string}>>} Candidates returned by the lookup. */
+/** Merchant candidates returned by lookup. */
 const merchantCandidates = ref([]);
 
-/** @type {import('vue').Ref<string|number>} Selected vendor id from candidates (string for select binding). */
+/** Selected vendor id (string for binding; convert to number when needed). */
 const selectedVendorId = ref('');
 
-/** @type {import('vue').Ref<boolean>} UI flag while the lookup runs. */
+/** Lookup spinner flag. */
 const lookingUp = ref(false);
 
-/** @type {import('vue').Ref<number|null>} Spend amount in NGN. */
+/** Spend amount (in NGN). */
 const amount = ref(null);
 
-/** @type {import('vue').Ref<string>} Optional note text. */
+/** Optional note. */
 const note = ref('');
 
-/** @type {import('vue').Ref<boolean>} Submission in-flight flag. */
+/** Submission flag. */
 const submitting = ref(false);
 
-/** @type {import('vue').Ref<string>} Error message for alert. */
+/** Alerts. */
 const errorMsg = ref('');
-
-/** @type {import('vue').Ref<string>} Success message for alert. */
 const successMsg = ref('');
 
 // Re-auth modal controls
-/** @type {import('vue').Ref<boolean>} Controls the Reauth modal visibility. */
 const showConfirm = ref(false);
-/** @type {import('vue').Ref<boolean>} Toggle if password is required instead of PIN. */
 const requirePassword = ref(false);
-/** @type {string} Captured secret (PIN/password) passed from modal. */
 let pendingSecret = '';
 
-/* ------------------------------------------------------------
- * Utilities
- * ------------------------------------------------------------ */
+/* ----------------------------------------------------------------
+ * Balance store (from /action:get_wallet_balances)
+ * ---------------------------------------------------------------- */
 /**
- * Normalize phone to local 11-digit MSISDN (e.g., 090xxxxxxxx).
- * Mutates `merchantPhone` in-place.
+ * Raw buckets as returned by backend.
+ * Expected bucket shape:
+ *  {
+ *    key: 'vendor:123' | 'vendor:0',
+ *    type: 'vendor_wallet' | 'general_wallet',
+ *    vendor_id: number|null,
+ *    vendor_name: string,
+ *    available: number,
+ *    locked: number,
+ *    currency: 'NGN'
+ *  }
  */
-function normalizePhone() {
-  merchantPhone.value = normalizePhoneLocal(merchantPhone.value);
+const balanceBuckets = ref([]);
+
+/** Quick lookup map: vendor_id -> available. 0 represents “General Wallet”. */
+const balancesByVendorId = computed(() => {
+  const map = new Map();
+  for (const b of balanceBuckets.value) {
+    const vid = Number(b.vendor_id ?? 0);
+    map.set(vid, Number(b.available || 0));
+  }
+  return map;
+});
+
+/** Currently selected vendor balance (number). */
+const selectedVendorBalance = computed(() => {
+  const vid = Number(selectedVendorId.value || 0);
+  return balancesByVendorId.value.get(vid) || 0;
+});
+
+/* ----------------------------------------------------------------
+ * Formatting helpers
+ * ---------------------------------------------------------------- */
+/**
+ * Formats a number as ₦ with thousand separators and 2 d.p.
+ * Ensures 0 => “₦0.00”.
+ * @param {number} n
+ * @returns {string}
+ */
+function naira(n) {
+  const v = Number.isFinite(n) ? n : 0;
+  return '₦' + new Intl.NumberFormat('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
 }
 
 /**
- * Unwraps a backend envelope into its inner `data` payload.
- * Handles both:
- *   - { data: {...} } and
- *   - { ok:true/false, status:200, data:{...} }
- * If no envelope is present, returns the original value.
+ * Builds the option label: "Name — ₦x,xxx.xx"
+ * Falls back to “General Wallet” for vendor_id=0 if ever used.
+ * @param {{vendor_id:number, display_name:string}} m
+ */
+function optionLabel(m) {
+  const vid = Number(m.vendor_id || 0);
+  const name = vid > 0 ? m.display_name : 'General Wallet';
+  const bal = balancesByVendorId.value.get(vid) || 0;
+  return `${name} — ${naira(bal)}`;
+}
+
+/* ----------------------------------------------------------------
+ * API envelopes
+ * ---------------------------------------------------------------- */
+/**
+ * Unwraps envelope shapes:
+ *  - { data: {...} }
+ *  - { ok: true, status: 200, data: {...} }
+ *  - passthrough otherwise
  * @template T
  * @param {any} payload
  * @returns {T}
@@ -197,40 +268,85 @@ function unwrap(payload) {
   return payload;
 }
 
-/* ------------------------------------------------------------
- * Actions
- * ------------------------------------------------------------ */
+/* ----------------------------------------------------------------
+ * Data loading
+ * ---------------------------------------------------------------- */
 /**
- * Look up merchant candidates by phone via Context Proxy.
- * Endpoint: POST /context-proxy/v1/merchant/resolve
- * Request: { phone: string }
- * Response (unwrapped expected shapes):
- *   - Array<{ vendor_id:number, display_name:string, ... }>
- *   - Or { merchants: Array<...> }
+ * Loads wallet balances and updates local bucket/map state.
+ * Balances are used to:
+ *  - show vendor spendable in the select & hint,
+ *  - cap the amount.
  */
-async function lookupMerchant() {
-  normalizePhone();
+async function loadBalances() {
+  try {
+    const { data } = await api.post('/context-proxy/v1/action', { action_type: 'get_wallet_balances' });
+    const unwrapped = unwrap(data);
+    balanceBuckets.value = Array.isArray(unwrapped) ? unwrapped : (unwrapped?.balances || []);
+  } catch (e) {
+    // Non-fatal for the form; just zero everything if it fails
+    balanceBuckets.value = [];
+  }
+}
+
+/**
+ * Manual lookup click handler (still available as a backup).
+ */
+function manualLookup() {
+  // Force a lookup right away using current normalized phone
+  void lookupMerchant(true);
+}
+
+/**
+ * Auto-lookup by phone:
+ * - As the user types, we normalize.
+ * - Once it reaches a valid 11-digit form, schedule a debounced lookup.
+ */
+let lookupTimer = null;
+watch(merchantPhone, (val, prev) => {
+  // Normalize but avoid infinite loops
+  const normalized = normalizePhoneLocal(val || '');
+  if (normalized !== val) {
+    merchantPhone.value = normalized;
+    return; // next tick will handle further logic
+  }
+
+  // If not valid length, clear selection/candidates
+  if (!normalized || normalized.length < 11) {
+    if (lookupTimer) clearTimeout(lookupTimer);
+    merchantCandidates.value = [];
+    selectedVendorId.value = '';
+    return;
+  }
+
+  // Debounce auto-lookup
+  if (lookupTimer) clearTimeout(lookupTimer);
+  lookupTimer = setTimeout(() => lookupMerchant(false), 250);
+});
+
+/**
+ * Lookup merchant candidates by phone via Context Proxy.
+ * @param {boolean} fromClick Whether this was triggered by the "Find" button
+ */
+async function lookupMerchant(fromClick) {
+  lookingUp.value = true;
   errorMsg.value = '';
   successMsg.value = '';
   merchantCandidates.value = [];
   selectedVendorId.value = '';
 
-  if (!merchantPhone.value || merchantPhone.value.length < 11) {
-    errorMsg.value = 'Enter a valid merchant phone.';
-    return;
-  }
-
-  lookingUp.value = true;
   try {
     const resp = await api.post('/context-proxy/v1/merchant/resolve', {
       phone: merchantPhone.value,
     });
     const unwrapped = unwrap(resp.data);
-    const rows =
-      Array.isArray(unwrapped) ? unwrapped : (unwrapped?.merchants || unwrapped?.data || []);
+    const rows = Array.isArray(unwrapped) ? unwrapped : (unwrapped?.merchants || unwrapped?.data || []);
     merchantCandidates.value = rows;
-    if (rows.length === 1) selectedVendorId.value = String(rows[0].vendor_id);
-    if (!rows.length) errorMsg.value = 'No merchant found for that phone.';
+
+    if (rows.length === 1) {
+      selectedVendorId.value = String(rows[0].vendor_id);
+    } else if (!rows.length && fromClick) {
+      errorMsg.value = 'No merchant found for that phone.';
+    }
   } catch (e) {
     errorMsg.value = e?.response?.data?.data?.error || e?.message || 'Lookup failed.';
   } finally {
@@ -238,9 +354,22 @@ async function lookupMerchant() {
   }
 }
 
+/* ----------------------------------------------------------------
+ * UX logic
+ * ---------------------------------------------------------------- */
 /**
- * Lightweight client-side validation, then opens the re-auth modal.
- * Ensures a merchant is selected and amount > 0.
+ * Clamp the amount field to the current selected vendor balance.
+ * Called on <input>.
+ */
+function clampToBalance() {
+  const max = Number(selectedVendorBalance.value.valueOf() || 0);
+  if (amount.value == null) return;
+  if (amount.value < 0) amount.value = 0;
+  if (max > 0 && amount.value > max) amount.value = max;
+}
+
+/**
+ * Basic validation then open re-auth modal.
  */
 function precheckAndOpenConfirm() {
   errorMsg.value = '';
@@ -250,23 +379,29 @@ function precheckAndOpenConfirm() {
     errorMsg.value = 'Please select a merchant.';
     return;
   }
-  if (!amount.value || Number(amount.value) <= 0) {
+
+  const max = Number(selectedVendorBalance.value.valueOf() || 0);
+  const amt = Number(amount.value || 0);
+
+  if (!amt || amt <= 0) {
     errorMsg.value = 'Enter a valid amount.';
     return;
   }
+  if (amt > max) {
+    errorMsg.value = `Amount exceeds your spendable balance at this merchant (${naira(max)}).`;
+    return;
+  }
+  if (max <= 0) {
+    errorMsg.value = 'Insufficient balance at this merchant.';
+    return;
+  }
+
   showConfirm.value = true;
 }
 
 /**
- * Finalize spend at merchant via Context Proxy.
- * Endpoint: POST /context-proxy/v1/merchant/redeem
- * Request:
- *  - If vendor selected: { vendor_id:number, amount:number, note?:string }
- *  - Else (fallback):   { phone:string,     amount:number, note?:string }
- * Success signal:
- *  - Either outer envelope { ok:true } or payload { success:true }.
- * The function handles both.
- * @param {string} secret PIN or password emitted by the Reauth modal.
+ * Finalize spend via Context Proxy, with a server-side guard as well.
+ * @param {string} secret PIN or password emitted by Reauth modal.
  */
 async function finalizeSpend(secret) {
   pendingSecret = secret || '';
@@ -274,24 +409,35 @@ async function finalizeSpend(secret) {
   errorMsg.value = '';
   successMsg.value = '';
 
+  // One more client-side guard (defense in depth)
+  const max = Number(selectedVendorBalance.value.valueOf() || 0);
+  const amt = Number(amount.value || 0);
+  if (amt > max) {
+    submitting.value = false;
+    errorMsg.value = `Amount exceeds your spendable balance at this merchant (${naira(max)}).`;
+    return;
+  }
+
   try {
     const payload = {
       vendor_id: Number(selectedVendorId.value) || undefined,
-      phone: selectedVendorId.value ? undefined : merchantPhone.value,
-      amount: Number(amount.value),
+      // Backend accepts vendor_id OR phone; we send vendor_id once resolved.
+      amount: amt,
       note: note.value || '',
-      // Secret is captured but not sent unless your backend requires it here.
-      // Add `confirm_pin` / `confirm_password` if policy mandates.
+      // If policy requires, include confirm_pin/confirm_password here:
+      // confirm_pin: requirePassword.value ? undefined : pendingSecret,
+      // confirm_password: requirePassword.value ? pendingSecret : undefined,
     };
 
     const resp = await api.post('/context-proxy/v1/merchant/redeem', payload);
     const envelope = resp.data;
     const res = unwrap(envelope);
-
     const isOk = (envelope && envelope.ok === true) || (res && res.success === true);
 
     if (isOk) {
       successMsg.value = res?.message || 'Payment successful.';
+      // Refresh balances so select labels + caps update
+      await loadBalances();
       resetForm(false);
     } else {
       errorMsg.value = res?.message || res?.error || 'Payment failed.';
@@ -305,8 +451,8 @@ async function finalizeSpend(secret) {
 }
 
 /**
- * Resets the form to an initial state.
- * @param {boolean} clearPhone If true, also clears the merchant phone.
+ * Reset form state.
+ * @param {boolean} clearPhone Also clear phone field if true.
  */
 function resetForm(clearPhone = false) {
   if (clearPhone) merchantPhone.value = '';
@@ -314,8 +460,13 @@ function resetForm(clearPhone = false) {
   selectedVendorId.value = '';
   amount.value = null;
   note.value = '';
-  // Keep alerts visible; caller can clear if desired.
+  // Keep alerts; caller may clear if desired.
 }
+
+/* ----------------------------------------------------------------
+ * Init
+ * ---------------------------------------------------------------- */
+void loadBalances();
 </script>
 
 <style scoped>
