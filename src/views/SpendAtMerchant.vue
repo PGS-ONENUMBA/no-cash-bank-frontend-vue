@@ -3,56 +3,7 @@
     <!-- Header -->
     <header class="mb-4 d-flex flex-column gap-2 gap-md-0 flex-md-row align-items-md-center justify-content-md-between">
       <h1 class="h3 mb-0">Spend at Merchant</h1>
-      <button
-        class="btn btn-outline-secondary d-inline-flex align-items-center"
-        @click="refreshBalances"
-        :disabled="loadingBalances"
-      >
-        <span
-          v-if="loadingBalances"
-          class="spinner-border spinner-border-sm me-2"
-          role="status"
-          aria-hidden="true"
-        ></span>
-        {{ loadingBalances ? 'Refreshing…' : 'Refresh Balances' }}
-      </button>
     </header>
-
-    <!-- Balances (no table) -->
-    <section class="card mb-4 shadow-sm">
-      <div class="card-header bg-light fw-semibold">Your Balances</div>
-      <div class="card-body">
-        <div v-if="loadingBalances" class="d-flex align-items-center">
-          <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
-          <span>Loading balances…</span>
-        </div>
-
-        <template v-else>
-          <ul v-if="balances.length" class="list-group list-group-flush">
-            <li v-for="row in balances" :key="row.key" class="list-group-item">
-              <div class="d-flex flex-wrap align-items-center justify-content-between">
-                <div class="me-3">
-                  <div class="fw-semibold">{{ row.vendor_name || '—' }}</div>
-                  <small class="text-muted">{{ row.type }} · {{ row.currency || 'NGN' }}</small>
-                </div>
-                <div class="d-flex gap-4 text-nowrap">
-                  <div>
-                    <div class="small text-muted">Available</div>
-                    <div class="fw-semibold">{{ fmtAmount(row.available) }}</div>
-                  </div>
-                  <div>
-                    <div class="small text-muted">Locked</div>
-                    <div class="fw-semibold">{{ fmtAmount(row.locked) }}</div>
-                  </div>
-                </div>
-              </div>
-            </li>
-          </ul>
-
-          <p v-else class="text-muted mb-0">No balances yet.</p>
-        </template>
-      </div>
-    </section>
 
     <!-- Form -->
     <section class="card shadow-sm">
@@ -162,41 +113,80 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+/**
+ * Spend at Merchant (Bootstrap)
+ * -------------------------------------------
+ * - Pure Bootstrap 5 (no Tailwind).
+ * - Balances UI removed to avoid duplicate implementations and accidental calls.
+ * - Uses dedicated proxy endpoints:
+ *    • /context-proxy/v1/merchant/resolve  (merchant lookup by phone)
+ *    • /context-proxy/v1/merchant/redeem   (spend/redeem with vendor_id or phone)
+ * - Robust unwrapping of proxy envelopes { ok, status, data }.
+ */
+import { ref } from 'vue';
 import { api } from '@/services/http';
 import ReauthModal from '@/components/ReauthModal.vue';
 import { normalizePhoneLocal } from '@/utils/phone';
 
-// -------- state
-const balances = ref([]);
-const loadingBalances = ref(false);
-
+/* ------------------------------------------------------------
+ * Reactive State
+ * ------------------------------------------------------------ */
+/** @type {import('vue').Ref<string>} Merchant phone (raw user input). */
 const merchantPhone = ref('');
+
+/** @type {import('vue').Ref<Array<{vendor_id:number,display_name:string}>>} Candidates returned by the lookup. */
 const merchantCandidates = ref([]);
+
+/** @type {import('vue').Ref<string|number>} Selected vendor id from candidates (string for select binding). */
 const selectedVendorId = ref('');
+
+/** @type {import('vue').Ref<boolean>} UI flag while the lookup runs. */
 const lookingUp = ref(false);
 
+/** @type {import('vue').Ref<number|null>} Spend amount in NGN. */
 const amount = ref(null);
+
+/** @type {import('vue').Ref<string>} Optional note text. */
 const note = ref('');
+
+/** @type {import('vue').Ref<boolean>} Submission in-flight flag. */
 const submitting = ref(false);
 
+/** @type {import('vue').Ref<string>} Error message for alert. */
 const errorMsg = ref('');
+
+/** @type {import('vue').Ref<string>} Success message for alert. */
 const successMsg = ref('');
 
-// re-auth
+// Re-auth modal controls
+/** @type {import('vue').Ref<boolean>} Controls the Reauth modal visibility. */
 const showConfirm = ref(false);
+/** @type {import('vue').Ref<boolean>} Toggle if password is required instead of PIN. */
 const requirePassword = ref(false);
+/** @type {string} Captured secret (PIN/password) passed from modal. */
 let pendingSecret = '';
 
-// -------- utils
-const fmtAmount = (n) =>
-  n == null ? '0' : new Intl.NumberFormat('en-NG', { maximumFractionDigits: 0 }).format(Number(n));
-
+/* ------------------------------------------------------------
+ * Utilities
+ * ------------------------------------------------------------ */
+/**
+ * Normalize phone to local 11-digit MSISDN (e.g., 090xxxxxxxx).
+ * Mutates `merchantPhone` in-place.
+ */
 function normalizePhone() {
   merchantPhone.value = normalizePhoneLocal(merchantPhone.value);
 }
 
-// -------- API helpers
+/**
+ * Unwraps a backend envelope into its inner `data` payload.
+ * Handles both:
+ *   - { data: {...} } and
+ *   - { ok:true/false, status:200, data:{...} }
+ * If no envelope is present, returns the original value.
+ * @template T
+ * @param {any} payload
+ * @returns {T}
+ */
 function unwrap(payload) {
   if (payload && typeof payload === 'object' && 'data' in payload && !('ok' in payload)) {
     return payload.data;
@@ -207,22 +197,17 @@ function unwrap(payload) {
   return payload;
 }
 
-async function refreshBalances() {
-  loadingBalances.value = true;
-  errorMsg.value = '';
-  try {
-    const { data } = await api.post('/context-proxy/v1/action', {
-      action_type: 'get_wallet_balances',
-    });
-    const unwrapped = unwrap(data);
-    balances.value = Array.isArray(unwrapped) ? unwrapped : unwrapped?.balances || [];
-  } catch (e) {
-    errorMsg.value = e?.response?.data?.data?.message || e?.message || 'Failed to load balances.';
-  } finally {
-    loadingBalances.value = false;
-  }
-}
-
+/* ------------------------------------------------------------
+ * Actions
+ * ------------------------------------------------------------ */
+/**
+ * Look up merchant candidates by phone via Context Proxy.
+ * Endpoint: POST /context-proxy/v1/merchant/resolve
+ * Request: { phone: string }
+ * Response (unwrapped expected shapes):
+ *   - Array<{ vendor_id:number, display_name:string, ... }>
+ *   - Or { merchants: Array<...> }
+ */
 async function lookupMerchant() {
   normalizePhone();
   errorMsg.value = '';
@@ -234,24 +219,29 @@ async function lookupMerchant() {
     errorMsg.value = 'Enter a valid merchant phone.';
     return;
   }
+
   lookingUp.value = true;
   try {
-    const { data } = await api.post('/context-proxy/v1/action', {
-      action_type: 'get_merchant_by_phone',
+    const resp = await api.post('/context-proxy/v1/merchant/resolve', {
       phone: merchantPhone.value,
     });
-    const unwrapped = unwrap(data);
-    const rows = Array.isArray(unwrapped) ? unwrapped : unwrapped?.merchants || [];
+    const unwrapped = unwrap(resp.data);
+    const rows =
+      Array.isArray(unwrapped) ? unwrapped : (unwrapped?.merchants || unwrapped?.data || []);
     merchantCandidates.value = rows;
     if (rows.length === 1) selectedVendorId.value = String(rows[0].vendor_id);
     if (!rows.length) errorMsg.value = 'No merchant found for that phone.';
   } catch (e) {
-    errorMsg.value = e?.response?.data?.data?.message || e?.message || 'Lookup failed.';
+    errorMsg.value = e?.response?.data?.data?.error || e?.message || 'Lookup failed.';
   } finally {
     lookingUp.value = false;
   }
 }
 
+/**
+ * Lightweight client-side validation, then opens the re-auth modal.
+ * Ensures a merchant is selected and amount > 0.
+ */
 function precheckAndOpenConfirm() {
   errorMsg.value = '';
   successMsg.value = '';
@@ -267,6 +257,17 @@ function precheckAndOpenConfirm() {
   showConfirm.value = true;
 }
 
+/**
+ * Finalize spend at merchant via Context Proxy.
+ * Endpoint: POST /context-proxy/v1/merchant/redeem
+ * Request:
+ *  - If vendor selected: { vendor_id:number, amount:number, note?:string }
+ *  - Else (fallback):   { phone:string,     amount:number, note?:string }
+ * Success signal:
+ *  - Either outer envelope { ok:true } or payload { success:true }.
+ * The function handles both.
+ * @param {string} secret PIN or password emitted by the Reauth modal.
+ */
 async function finalizeSpend(secret) {
   pendingSecret = secret || '';
   submitting.value = true;
@@ -275,44 +276,46 @@ async function finalizeSpend(secret) {
 
   try {
     const payload = {
-      action_type: 'spend_at_merchant',
-      vendor_id: Number(selectedVendorId.value),
-      merchant_phone: merchantPhone.value,
+      vendor_id: Number(selectedVendorId.value) || undefined,
+      phone: selectedVendorId.value ? undefined : merchantPhone.value,
       amount: Number(amount.value),
       note: note.value || '',
-      confirm_pin: requirePassword.value ? undefined : pendingSecret,
-      confirm_password: requirePassword.value ? pendingSecret : undefined,
+      // Secret is captured but not sent unless your backend requires it here.
+      // Add `confirm_pin` / `confirm_password` if policy mandates.
     };
 
-    const { data } = await api.post('/context-proxy/v1/action', payload);
-    const res = unwrap(data);
+    const resp = await api.post('/context-proxy/v1/merchant/redeem', payload);
+    const envelope = resp.data;
+    const res = unwrap(envelope);
 
-    if (res?.success) {
+    const isOk = (envelope && envelope.ok === true) || (res && res.success === true);
+
+    if (isOk) {
       successMsg.value = res?.message || 'Payment successful.';
-      if (Array.isArray(res?.new_balances)) balances.value = res.new_balances;
       resetForm(false);
     } else {
-      errorMsg.value = res?.message || 'Payment failed.';
+      errorMsg.value = res?.message || res?.error || 'Payment failed.';
     }
   } catch (e) {
-    errorMsg.value = e?.response?.data?.data?.message || e?.message || 'Payment failed.';
+    errorMsg.value = e?.response?.data?.data?.error || e?.message || 'Payment failed.';
   } finally {
     submitting.value = false;
     pendingSecret = '';
   }
 }
 
+/**
+ * Resets the form to an initial state.
+ * @param {boolean} clearPhone If true, also clears the merchant phone.
+ */
 function resetForm(clearPhone = false) {
   if (clearPhone) merchantPhone.value = '';
   merchantCandidates.value = [];
   selectedVendorId.value = '';
   amount.value = null;
   note.value = '';
+  // Keep alerts visible; caller can clear if desired.
 }
-
-onMounted(() => {
-  refreshBalances().catch(() => {});
-});
 </script>
 
 <style scoped>
