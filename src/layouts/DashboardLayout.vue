@@ -5,7 +5,7 @@
       <!-- Left: Logo + Site Name -->
       <a class="navbar-brand d-flex align-items-center gap-2 col-md-3 col-lg-2"
          href="#" @click="goToDashboard">
-        <img :src="logoUrl" alt="{{ siteName }}" class="brand-logo img-fluid" />
+        <img :src="logoUrl" :alt="siteName" class="brand-logo img-fluid" />
         <!-- <span class="site-name d-none d-sm-inline">{{ siteName }}</span> -->
       </a>
 
@@ -76,7 +76,7 @@ export default {
 
     const userDisplayName = computed(() => authStore.user?.nicename || "User");
     const showWarning = computed(() => authStore.showWarning);
-    const siteName = import.meta.env.VITE_SITE_NAME || "OneNUMBA";
+    const siteName = import.meta.env.VITE_SITE_NAME || "PayByChance";
 
     const logoUrl = logoPng;
 
