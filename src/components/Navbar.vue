@@ -245,7 +245,7 @@ const logoPath = logoImg;
 <style scoped>
 /* Add any component-specific styles here */
 .navbar-logo {
-  max-height: 50px;  /* adjust this to suit your navbar height */
+  max-height: 25px;  /* adjust this to suit your navbar height */
   height: auto;
   width: auto;        /* let width adjust according to aspect ratio */
   object-fit: contain;
