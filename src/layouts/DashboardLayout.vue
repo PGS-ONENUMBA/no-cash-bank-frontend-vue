@@ -6,7 +6,7 @@
       <a class="navbar-brand d-flex align-items-center gap-2 col-md-3 col-lg-2"
          href="#" @click="goToDashboard">
         <img :src="logoUrl" alt="Logo" class="brand-logo img-fluid" />
-        <span class="site-name d-none d-sm-inline">{{ siteName }}</span>
+        <!-- <span class="site-name d-none d-sm-inline">{{ siteName }}</span> -->
       </a>
 
       <!-- Center (mobile-only): small icon badge -->
