@@ -1,6 +1,5 @@
 <template>
   <div class="container py-4">
-
     <!-- Header -->
     <header class="mb-4 d-flex flex-column gap-2 gap-md-0 flex-md-row align-items-md-center justify-content-md-between">
       <h1 class="h3 mb-0">Spend at Merchant</h1>
@@ -19,52 +18,39 @@
       </button>
     </header>
 
-    <!-- Balances -->
+    <!-- Balances (no table) -->
     <section class="card mb-4 shadow-sm">
       <div class="card-header bg-light fw-semibold">Your Balances</div>
-
-      <div class="card-body p-0">
-        <div class="table-responsive">
-          <table class="table table-sm table-hover align-middle mb-0">
-            <thead class="table-light">
-              <tr class="text-nowrap">
-                <th>Source</th>
-                <th>Vendor</th>
-                <th>Available</th>
-                <th>Locked</th>
-                <th>Currency</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in balances" :key="row.key" class="text-nowrap">
-                <td>
-                  <span class="badge bg-secondary rounded-pill">{{ row.type }}</span>
-                </td>
-                <td>{{ row.vendor_name || '—' }}</td>
-                <td>
-                  <span class="badge bg-success">{{ fmtAmount(row.available) }}</span>
-                </td>
-                <td>
-                  <span class="badge bg-warning text-dark">{{ fmtAmount(row.locked) }}</span>
-                </td>
-                <td>{{ row.currency || 'NGN' }}</td>
-              </tr>
-
-              <tr v-if="!balances.length && !loadingBalances">
-                <td colspan="5" class="py-3 text-center text-muted">No balances yet.</td>
-              </tr>
-            </tbody>
-          </table>
+      <div class="card-body">
+        <div v-if="loadingBalances" class="d-flex align-items-center">
+          <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
+          <span>Loading balances…</span>
         </div>
 
-        <!-- Loading placeholder -->
-        <div v-if="loadingBalances" class="p-3">
-          <div class="placeholder-glow">
-            <span class="placeholder col-6"></span>
-            <span class="placeholder col-7"></span>
-            <span class="placeholder col-5"></span>
-          </div>
-        </div>
+        <template v-else>
+          <ul v-if="balances.length" class="list-group list-group-flush">
+            <li v-for="row in balances" :key="row.key" class="list-group-item">
+              <div class="d-flex flex-wrap align-items-center justify-content-between">
+                <div class="me-3">
+                  <div class="fw-semibold">{{ row.vendor_name || '—' }}</div>
+                  <small class="text-muted">{{ row.type }} · {{ row.currency || 'NGN' }}</small>
+                </div>
+                <div class="d-flex gap-4 text-nowrap">
+                  <div>
+                    <div class="small text-muted">Available</div>
+                    <div class="fw-semibold">{{ fmtAmount(row.available) }}</div>
+                  </div>
+                  <div>
+                    <div class="small text-muted">Locked</div>
+                    <div class="fw-semibold">{{ fmtAmount(row.locked) }}</div>
+                  </div>
+                </div>
+              </div>
+            </li>
+          </ul>
+
+          <p v-else class="text-muted mb-0">No balances yet.</p>
+        </template>
       </div>
     </section>
 
@@ -199,8 +185,8 @@ const successMsg = ref('');
 
 // re-auth
 const showConfirm = ref(false);
-const requirePassword = ref(false); // flip to true if your policy requires password instead of PIN
-let pendingSecret = ''; // pin or password captured from modal
+const requirePassword = ref(false);
+let pendingSecret = '';
 
 // -------- utils
 const fmtAmount = (n) =>
@@ -212,7 +198,6 @@ function normalizePhone() {
 
 // -------- API helpers
 function unwrap(payload) {
-  // backend envelopes: { ok, status, data } or raw
   if (payload && typeof payload === 'object' && 'data' in payload && !('ok' in payload)) {
     return payload.data;
   }
@@ -230,7 +215,6 @@ async function refreshBalances() {
       action_type: 'get_wallet_balances',
     });
     const unwrapped = unwrap(data);
-    // expect: [{ key, type, vendor_id?, vendor_name?, available, locked, currency }]
     balances.value = Array.isArray(unwrapped) ? unwrapped : unwrapped?.balances || [];
   } catch (e) {
     errorMsg.value = e?.response?.data?.data?.message || e?.message || 'Failed to load balances.';
@@ -280,7 +264,7 @@ function precheckAndOpenConfirm() {
     errorMsg.value = 'Enter a valid amount.';
     return;
   }
-  showConfirm.value = true; // opens modal to capture PIN/password
+  showConfirm.value = true;
 }
 
 async function finalizeSpend(secret) {
@@ -296,7 +280,6 @@ async function finalizeSpend(secret) {
       merchant_phone: merchantPhone.value,
       amount: Number(amount.value),
       note: note.value || '',
-      // backend should accept either (based on policy)
       confirm_pin: requirePassword.value ? undefined : pendingSecret,
       confirm_password: requirePassword.value ? pendingSecret : undefined,
     };
@@ -304,7 +287,6 @@ async function finalizeSpend(secret) {
     const { data } = await api.post('/context-proxy/v1/action', payload);
     const res = unwrap(data);
 
-    // Expect backend: { success, message, txn_id?, new_balances? }
     if (res?.success) {
       successMsg.value = res?.message || 'Payment successful.';
       if (Array.isArray(res?.new_balances)) balances.value = res.new_balances;
@@ -334,5 +316,5 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* no custom CSS required; uses Bootstrap utilities/components */
+/* Pure Bootstrap; no custom styles needed */
 </style>
