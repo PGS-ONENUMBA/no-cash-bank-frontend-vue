@@ -22,6 +22,7 @@ import NotFound from "@/views/404.vue";
 import PublicScan2Pay4Me from "@/views/Public/Scan2Pay4Me.vue";
 import ComingSoon from "@/views/ComingSoon.vue"; // Import ComingSoon component
 
+import SpendAtMerchant from '@/views/SpendAtMerchant.vue';
 // Test
 import Test from "@/views/Public/Test.vue";
 
@@ -75,6 +76,7 @@ const routes = [
       { path: "transfer", name: "DashboardTransfer", component: Transfer, meta: { title: "Transfer", role:["customer"] } },
       { path: "reports", name: "DashboardReports", component: Reports, meta: { title: "Reports", role: ["customer", "vendor"] } },
       { path: "profile", name: "DashboardProfile", component: Profile, meta: { title: "Profile Page", role: ["customer", "vendor"] } },
+      { path: '/spend', name: 'SpendAtMerchant', component: SpendAtMerchant, meta: { requiresAuth: true } },
     ],
   },
 
