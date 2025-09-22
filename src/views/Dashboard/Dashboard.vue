@@ -141,7 +141,7 @@
         />
           <div class ="col card shadow-sm border-0">
             <router-link to="/dashboard/spend" class="btn btn-outline-primary">
-              <i class="bi bi-bag-check me-1"></i> Spend at Merchant
+              <i class="bi bi-bag-check me-1"></i> Spend
             </router-link>
           </div>
         <FeatureCard

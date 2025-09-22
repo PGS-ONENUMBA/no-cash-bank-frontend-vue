@@ -74,7 +74,7 @@
           <!-- ✅ Pay at Merchant (top nav, only if logged in) -->
           <li v-if="isAuthenticated" class="nav-item mx-2">
             <router-link class="nav-link" to="/dashboard/spend">
-              <i class="bi bi-bag-check bi-green"></i> Pay at Merchant
+              <i class="bi bi-bag-check bi-green"></i> Spend
             </router-link>
           </li>
         </ul>
@@ -108,7 +108,7 @@
               <!-- ✅ Quick link inside user menu -->
               <li>
                 <router-link class="dropdown-item" to="/dashboard/spend">
-                  <i class="bi bi-bag-check"></i> Pay at Merchant
+                  <i class="bi bi-bag-check"></i> Spend
                 </router-link>
               </li>
 

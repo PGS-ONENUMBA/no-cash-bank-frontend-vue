@@ -42,17 +42,18 @@
             <i :class="product.icon" class="sidebar-icon"></i> {{ product.raffle_type }}
           </router-link>
         </li>
-        </template>
-
         <li class="nav-item">
           <router-link
             class="nav-link"
             :class="{ active: isActive('/dashboard/spend') }"
             to="/dashboard/spend"
           >
-            <i class="bi bi-bag-check sidebar-icon"></i> Spend at Merchant
+            <i class="bi bi-bag-check sidebar-icon"></i> Spend
           </router-link>
         </li>
+        </template>
+
+
 
         <li class="nav-item">
           <router-link class="nav-link" :class="{ active: isActive('/dashboard/transfer') }" to="/dashboard/transfer">
