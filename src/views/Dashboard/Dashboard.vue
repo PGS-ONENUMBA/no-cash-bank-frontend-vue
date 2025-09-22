@@ -132,18 +132,20 @@
       </div>
 
       <!-- Static Features -->
-      <div class="row row-cols-1 row-cols-md-2 g-4 mt-3">
+      <div class="row row-cols-1 row-cols-md-3 g-4 mt-3">
         <FeatureCard
           title="Transfer Funds"
           icon="bi bi-arrow-up-right-circle"
           description="Easily send money to others."
           link="/dashboard/transfer"
         />
-          <div class ="col card shadow-sm border-0">
-            <router-link to="/dashboard/spend" class="btn btn-outline-primary">
-              <i class="bi bi-bag-check me-1"></i> Spend
-            </router-link>
-          </div>
+        <!--@todo Add Spend FeatureCard -->
+        <FeatureCard
+          title="Spend at Merchant"
+          icon="bi bi-bag-check"
+          description="Make payments at partnered merchants."
+          link="/dashboard/spend"
+        />
         <FeatureCard
           title="Transaction Reports"
           icon="bi bi-clock-history"
