@@ -143,7 +143,7 @@
         <FeatureCard
           title="Spend at Merchant"
           icon="bi bi-bag-check"
-          description="Make payments at partnered merchants."
+          description="Pay from your Wallet Balances."
           link="/dashboard/spend"
         />
         <FeatureCard
