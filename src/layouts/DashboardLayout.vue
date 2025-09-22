@@ -2,13 +2,22 @@
   <div>
     <!-- Dashboard Header -->
     <header class="navbar navbar-light sticky-top bg-white shadow px-3">
-      <a class="navbar-brand col-md-3 col-lg-2" href="#" @click="goToDashboard">
-        {{ siteName }}
+      <!-- Left: Logo + Site Name -->
+      <a class="navbar-brand d-flex align-items-center gap-2 col-md-3 col-lg-2"
+         href="#" @click="goToDashboard">
+        <img :src="logoUrl" alt="Logo" class="brand-logo img-fluid" />
+        <span class="site-name d-none d-sm-inline">{{ siteName }}</span>
       </a>
 
-      <!-- Right Side of Navbar -->
-      <div class="navbar-nav d-flex align-items-center">
-        <div class="nav-item dropdown me-3">
+      <!-- Center (mobile-only): small icon badge -->
+      <div class="d-sm-none mx-auto">
+        <img :src="iconUrl" alt="App Icon" class="app-icon-mobile" />
+      </div>
+
+      <!-- Right: User block (+ icon on desktop) -->
+      <div class="navbar-nav d-flex align-items-center ms-auto">
+        <div class="nav-item dropdown me-3 d-flex align-items-center gap-2">
+          <img :src="iconUrl" alt="App Icon" class="app-icon d-none d-md-inline" />
           <span>
             <i class="bi bi-person-circle me-2"></i> {{ userDisplayName }}
           </span>
@@ -32,9 +41,7 @@
     <div v-if="showWarning" class="modal fade show d-block" tabindex="-1">
       <div class="modal-dialog">
         <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Session Expiring</h5>
-          </div>
+          <div class="modal-header"><h5 class="modal-title">Session Expiring</h5></div>
           <div class="modal-body">
             <p>You have been inactive. You will be logged out soon.</p>
             <p>Do you want to stay logged in?</p>
@@ -46,7 +53,6 @@
         </div>
       </div>
     </div>
-
     <div v-if="showWarning" class="modal-backdrop fade show"></div>
   </div>
 </template>
@@ -58,47 +64,45 @@ import { computed, onMounted, onUnmounted } from "vue";
 import { debounce } from "lodash";
 import { useRouter } from "vue-router";
 
+/* Keep logo import (it's in src/assets, so import is correct) */
+import logoPng from "@/assets/logo.png";
+
 export default {
   name: "DashboardLayout",
-  components: {
-    SidebarMenu,
-  },
+  components: { SidebarMenu },
   setup() {
     const authStore = useAuthStore();
     const router = useRouter();
 
     const userDisplayName = computed(() => authStore.user?.nicename || "User");
     const showWarning = computed(() => authStore.showWarning);
-     // ✅ Define `siteName` properly
-     const siteName = import.meta.env.VITE_SITE_NAME || "OneNUMBA"; 
+    const siteName = import.meta.env.VITE_SITE_NAME || "OneNUMBA";
+
+    const logoUrl = logoPng;
+
+    // icon.png is in /public, so reference by URL (no import)
+    const iconUrl = `${import.meta.env.BASE_URL}icon.png`;
 
     const trackActivity = debounce(() => {
       if (authStore.isAuthenticated) {
         authStore.resetTimers();
-        authStore.startInactivityTimer(router); // ✅ Pass router instance
+        authStore.startInactivityTimer(router);
       }
     }, 500);
 
     const handleLogout = () => {
-      console.log("Logout button clicked."); // Debugging log
-      authStore.logout(router); // Call the logout function from Pinia
-      router.push("/login"); // Ensure redirection happens
+      authStore.logout(router);
+      router.push("/login");
     };
 
-    const cancelLogout = () => {
-      authStore.cancelLogout();
-    };
-
-    const goToDashboard = () => {
-      router.push("/dashboard");
-    };
+    const cancelLogout = () => authStore.cancelLogout();
+    const goToDashboard = () => router.push("/dashboard");
 
     onMounted(() => {
       window.addEventListener("mousemove", trackActivity);
       window.addEventListener("keydown", trackActivity);
       window.addEventListener("click", trackActivity);
-
-      authStore.startInactivityTimer(router); // ✅ Pass router instance on mount
+      authStore.startInactivityTimer(router);
     });
 
     onUnmounted(() => {
@@ -108,24 +112,45 @@ export default {
     });
 
     return {
-      siteName, // ✅ Ensure this is returned
+      siteName,
       userDisplayName,
       showWarning,
       handleLogout,
       cancelLogout,
       goToDashboard,
+      logoUrl,
+      iconUrl,
     };
   },
 };
 </script>
 
 <style scoped>
-.modal {
-  display: block;
-  background: rgba(0, 0, 0, 0.5);
+.brand-logo {
+  max-height: 44px;
+  height: auto;
+  width: auto;
+  aspect-ratio: 879 / 172;
+  object-fit: contain;
 }
 
-.modal-content {
-  border-radius: 10px;
+.app-icon {
+  width: 28px;
+  height: 28px;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.app-icon-mobile {
+  width: 24px;
+  height: 24px;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+@media (max-width: 380px) {
+  .site-name { display: none; }
 }
 </style>
