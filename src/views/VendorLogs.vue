@@ -1,7 +1,10 @@
 <template>
   <div class="container py-4">
     <header class="d-flex flex-column flex-md-row align-items-md-center justify-content-md-between mb-3">
-      <h1 class="h4 mb-2 mb-md-0">Vendor Wallet</h1>
+      <h1 class="h4 mb-2 mb-md-0">Wallet logs</h1>
+      <small class="text-muted d-block mb-2">
+        All payments from customers can be found here
+      </small>
       <div class="text-muted">
         Available: <strong>{{ naira(balance?.available) }}</strong>
         <span class="ms-3">Pending: <strong>{{ naira(balance?.pending) }}</strong></span>
