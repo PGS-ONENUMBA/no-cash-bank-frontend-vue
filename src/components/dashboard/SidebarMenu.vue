@@ -52,9 +52,16 @@
           </router-link>
         </li>
         </template>
-
-
-
+        <li class="nav-item">
+          <RouterLink v-if="isVendor" :to="{ name: 'VendorLogs' }" custom v-slot="{ navigate, href, isActive }">
+            <a :href="href" @click.prevent="navigate" class="nav-link d-flex align-items-center"
+              :class="{ active: isActive }">
+              <!-- optional icon if you use Bootstrap Icons -->
+              <!-- <i class="bi bi-wallet2 me-2"></i> -->
+              <span>Vendor Wallet</span>
+            </a>
+          </RouterLink>
+        </li>
         <li class="nav-item">
           <router-link class="nav-link" :class="{ active: isActive('/dashboard/transfer') }" to="/dashboard/transfer">
             <i class="bi bi-arrow-up-right-circle sidebar-icon"></i> Transfer
