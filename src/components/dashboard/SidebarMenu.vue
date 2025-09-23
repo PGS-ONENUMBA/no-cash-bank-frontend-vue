@@ -1,72 +1,86 @@
 <template>
   <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar">
     <div class="position-sticky pt-3">
-      <!-- Show Preloader While Loading -->
-      <div v-if="loadingProducts" class="text-center py-3">
-        <div class="spinner-border text-success" role="status">
-          <span class="visually-hidden">Loading products...</span>
-        </div>
-      </div>
-
-      <!-- Debugging Log -->
-      <p v-if="!loadingProducts && availableProducts.length === 0" class="text-center text-danger">
-        No products available.
-      </p>
 
       <!-- Navigation Links -->
-      <ul v-if="availableProducts.length > 0" class="nav flex-column">
+      <ul class="nav flex-column">
+
+        <!-- Dashboard -->
         <li class="nav-item">
           <router-link class="nav-link" :class="{ active: isActive('/dashboard') }" to="/dashboard">
             <i class="bi bi-house-door sidebar-icon"></i> Dashboard
           </router-link>
         </li>
 
-        <!-- 🟢 @TODO Dynamically Render Product Menu Items. not working as it should -->
-        <template v-if="authStore?.user.user_role === 'customer'">
+        <!-- CUSTOMER: products + Spend -->
+        <template v-if="userRole === 'customer'">
+          <!-- Loader (customer only) -->
+          <li class="nav-item" v-if="loadingProducts">
+            <div class="text-center py-3">
+              <div class="spinner-border text-success" role="status">
+                <span class="visually-hidden">Loading products...</span>
+              </div>
+            </div>
+          </li>
+
+          <!-- Empty state (customer only) -->
+          <li class="nav-item" v-else-if="availableProducts.length === 0">
+            <p class="text-center text-danger mb-0">No products available.</p>
+          </li>
+
+          <!-- Dynamic product menu -->
           <li
-          v-for="product in availableProducts"
-          :key="`${product.raffle_cycle_id}-${product.raffle_type_id}`"
-          class="nav-item"
-        >
-          <router-link
-            class="nav-link"
-            :class="{ active: isActive(product.route) }"
-            :to="{
-              path: product.route,
-              query: {
-                raffle_cycle_id: product.raffle_cycle_id,
-                raffle_type_id: product.raffle_type_id,
-              },
-            }"
+            v-for="product in availableProducts"
+            :key="`${product.raffle_cycle_id}-${product.raffle_type_id}`"
+            class="nav-item"
           >
-            <i :class="product.icon" class="sidebar-icon"></i> {{ product.raffle_type }}
-          </router-link>
-        </li>
-        <li class="nav-item">
-          <router-link
-            class="nav-link"
-            :class="{ active: isActive('/dashboard/spend') }"
-            to="/dashboard/spend"
-          >
-            <i class="bi bi-bag-check sidebar-icon"></i> Spend
-          </router-link>
-        </li>
+            <router-link
+              class="nav-link"
+              :class="{ active: isActive(product.route) }"
+              :to="{
+                path: product.route,
+                query: {
+                  raffle_cycle_id: product.raffle_cycle_id,
+                  raffle_type_id: product.raffle_type_id,
+                },
+              }"
+            >
+              <i :class="product.icon" class="sidebar-icon"></i> {{ product.raffle_type }}
+            </router-link>
+          </li>
+
+          <!-- Spend -->
+          <li class="nav-item">
+            <router-link
+              class="nav-link"
+              :class="{ active: isActive('/dashboard/spend') }"
+              to="/dashboard/spend"
+            >
+              <i class="bi bi-bag-check sidebar-icon"></i> Spend
+            </router-link>
+          </li>
         </template>
-        <li class="nav-item">
-          <RouterLink v-if="authStore?.user.user_role === 'vendor'" :to="{ name: 'VendorLogs' }" custom v-slot="{ navigate, href, isActive }">
-            <a :href="href" @click.prevent="navigate" class="nav-link d-flex align-items-center"
-              :class="{ active: isActive }">
-              <!-- optional icon if you use Bootstrap Icons -->
-              <!-- <i class="bi bi-wallet2 me-2"></i> -->
-              <span>Vendor Wallet</span>
-            </a>
-          </RouterLink>
+
+        <!-- VENDOR: Vendor Wallet -->
+        <li class="nav-item" v-if="isVendor">
+          <router-link
+            class="nav-link d-flex align-items-center"
+            :class="{ active: isActive('/vendor/logs') }"
+            :to="{ name: 'VendorLogs' }"
+          >
+            <i class="bi bi-wallet2 sidebar-icon"></i>
+            <span>Vendor Wallet</span>
+          </router-link>
         </li>
+
+        <!-- Transfer (still global) -->
         <li class="nav-item">
           <router-link class="nav-link" :class="{ active: isActive('/dashboard/transfer') }" to="/dashboard/transfer">
             <i class="bi bi-arrow-up-right-circle sidebar-icon"></i> Transfer
           </router-link>
         </li>
+
+        <!-- Reports (still global) -->
         <li class="nav-item">
           <router-link class="nav-link" :class="{ active: isActive('/dashboard/reports') }" to="/dashboard/reports">
             <i class="bi bi-clock-history sidebar-icon"></i> Reports
@@ -92,78 +106,82 @@
 </template>
 
 <script>
-import { ref, onMounted } from "vue";
-import { useRouter } from "vue-router";
-import { fetchProducts, isLoading, getIcon, getRoute } from "@/services/productService";
-import { useAuthStore } from "@/stores/authStore";
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { fetchProducts, isLoading, getIcon, getRoute } from '@/services/productService'
+import { useAuthStore } from '@/stores/authStore'
 
 export default {
-  name: "SidebarMenu",
+  name: 'SidebarMenu',
   setup() {
-    const authStore = useAuthStore();
-    const router = useRouter();
-    const availableProducts = ref([]);
-    const loadingProducts = isLoading();
+    const authStore = useAuthStore()
+    const router = useRouter()
 
-    /**
-     * Transform raw raffle data into menu items
-     */
+    const availableProducts = ref([])
+    const loadingProducts = isLoading()
+
+    const userRole = computed(() => authStore.user?.user_role || 'guest')
+    const isVendor = computed(() => {
+      // support either a single string role or an array of roles
+      const roles = authStore.user?.roles || authStore.user?.user_role || []
+      return Array.isArray(roles) ? roles.includes('vendor') : roles === 'vendor'
+    })
+
+    /** Transform raw raffle data into menu items */
     const transformProducts = (raffles) => {
-      const transformed = [];
-
-      raffles.forEach(raffle => {
-        raffle.associated_types.forEach(type => {
-          transformed.push({
+      const out = []
+      raffles.forEach((raffle) => {
+        (raffle.associated_types || []).forEach((type) => {
+          out.push({
             raffle_cycle_id: raffle.raffle_cycle_id,
             raffle_type_id: type.raffle_type_id,
             raffle_type: type.raffle_type,
             winnable_amount: raffle.winnable_amount,
             icon: `${getIcon(type.raffle_type_id)} sidebar-icon`,
-            route: getRoute(type.raffle_type_id)
-          });
-        });
-      });
+            route: getRoute(type.raffle_type_id),
+          })
+        })
+      })
+      return out
+    }
 
-      return transformed;
-    };
-
-    /**
-     * Load and transform products using cached service
-     */
+    /** Load and transform products using cached service */
     const loadProducts = async () => {
       try {
-        const rawProducts = await fetchProducts();
-        availableProducts.value = transformProducts(rawProducts);
-      } catch (error) {
-        console.error("❌ Error loading products:", error);
-        availableProducts.value = [];
+        const raw = await fetchProducts()
+        availableProducts.value = transformProducts(raw || [])
+      } catch (err) {
+        console.error('❌ Error loading products:', err)
+        availableProducts.value = []
       }
-    };
+    }
 
-    /**
-     * Check if route is active
-     */
-    const isActive = (route) => router.currentRoute.value.path === route;
+    /** Check if route is active */
+    const isActive = (route) => router.currentRoute.value.path === route
 
-    /**
-     * Handle user logout
-     */
+    /** Handle user logout */
     const handleLogout = async () => {
-      await authStore.logout();
-      router.push("/login");
-    };
+      await authStore.logout()
+      router.push('/login')
+    }
 
-    onMounted(loadProducts);
+    onMounted(() => {
+      if (userRole.value === 'customer') {
+        loadProducts()
+      }
+    })
 
     return {
       authStore,
+      userRole,
+      isVendor,
       isActive,
       handleLogout,
       availableProducts,
       loadingProducts,
-    };
+    }
   },
-};
+}
 </script>
 
 <style scoped>
@@ -180,9 +198,9 @@ export default {
   margin-right: 8px;
 }
 
-/* ✅ Change text color on hover */
+/* ✅ Hover */
 .sidebar .nav-link:hover {
-  color: #555; /* Lighter black */
+  color: #555;
 }
 
 /* ✅ Active state remains green */
@@ -190,7 +208,7 @@ export default {
   color: #09b850;
 }
 
-/* Adjustments for sidebar spacing */
+/* Adjust spacing */
 .nav.flex-column {
   padding-left: 10px;
 }
