@@ -69,7 +69,7 @@
             :to="{ name: 'VendorLogs' }"
           >
             <i class="bi bi-wallet2 sidebar-icon"></i>
-            <span>Vendor Wallet</span>
+            <span>Wallet Logs</span>
           </router-link>
         </li>
 

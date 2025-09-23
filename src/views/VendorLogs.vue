@@ -1,7 +1,10 @@
 <template>
   <div class="container py-4">
     <header class="d-flex flex-column flex-md-row align-items-md-center justify-content-md-between mb-3">
-      <h1 class="h4 mb-2 mb-md-0">Vendor Wallet</h1>
+      <h1 class="h4 mb-2 mb-md-0">Wallet logs</h1>
+      <small class="text-muted d-block mb-2">
+        All payments from customers can be found here
+      </small>
       <div class="text-muted">
         Available: <strong>{{ naira(balance?.available) }}</strong>
         <span class="ms-3">Pending: <strong>{{ naira(balance?.pending) }}</strong></span>
@@ -73,7 +76,6 @@
                   <td><span class="badge bg-secondary text-uppercase">{{ r.status }}</span></td>
                   <td><code>{{ r.trans_ref }}</code></td>
                   <td class="text-end">
-                    <!-- future: view detail / receipt -->
                     <button class="btn btn-outline-secondary btn-sm" disabled>View</button>
                   </td>
                 </tr>
@@ -114,6 +116,7 @@ const filters = ref({ status: '', from: '', to: '', search: '' });
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / perPage.value)));
 
+/** Format NGN as ₦x,xxx.xx */
 function naira(n) {
   const v = Number(n || 0);
   return '₦' + new Intl.NumberFormat('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
@@ -123,28 +126,71 @@ function fmtDate(s) {
   const d = new Date(s.replace(' ', 'T'));
   return d.toLocaleString();
 }
-
-async function loadBalance() {
-  try {
-    const { data } = await api.get('/context-proxy/v1/vendor/balance');
-    balance.value = data?.data || { available: 0, pending: 0 };
-  } catch { /* noop */ }
+/** Unwrap { ok, status, data } envelopes (or pass-through). */
+function unwrap(p) {
+  if (p && typeof p === 'object' && 'data' in p && 'ok' in p) return p.data;
+  if (p && typeof p === 'object' && 'data' in p) return p.data;
+  return p;
 }
 
+/**
+ * Primary→fallback fetch helper.
+ * Tries a primary POST endpoint; if 404/405, falls back to /context-proxy/v1/action.
+ */
+async function postWithFallback(primaryPath, primaryBody, fallbackActionType, map = x => x) {
+  try {
+    const r = await api.post(primaryPath, primaryBody);
+    return map(unwrap(r.data));
+  } catch (e) {
+    const code = e?.response?.status;
+    if (code !== 404 && code !== 405) throw e;
+    const r2 = await api.post('/context-proxy/v1/action', { action_type: fallbackActionType, ...primaryBody });
+    return map(unwrap(r2.data));
+  }
+}
+
+/** Load vendor balance: POST /context-proxy/v1/vendor/balance → fallback action vendor_wallet_summary */
+async function loadBalance() {
+  try {
+    const payload = await postWithFallback(
+      '/context-proxy/v1/vendor/balance',
+      {},
+      'vendor_wallet_summary',
+      (u) => u?.balance || u || { available: 0, pending: 0 }
+    );
+    balance.value = payload;
+  } catch (e) {
+    // keep zeros but surface error on ledger pane, not here
+    console.error(e);
+  }
+}
+
+/** Load ledger: POST /context-proxy/v1/vendor/ledger → fallback action vendor_wallet_ledger */
 async function loadLedger() {
-  const params = {
+  const body = {
     page: page.value,
     per_page: perPage.value,
     status: filters.value.status || undefined,
     from: filters.value.from || undefined,
     to: filters.value.to || undefined,
-    search: filters.value.search || undefined,
+    q: filters.value.search || undefined,
   };
+
   try {
-    const { data } = await api.get('/context-proxy/v1/vendor/ledger', { params });
-    const payload = data?.data || {};
-    items.value = payload.items || [];
-    total.value = payload.total || 0;
+    const payload = await postWithFallback(
+      '/context-proxy/v1/vendor/ledger',
+      body,
+      'vendor_wallet_ledger',
+      (u) => {
+        // Accept shapes: { items,total } OR { rows,total } OR { data:{...} }
+        return {
+          items: u?.items || u?.rows || [],
+          total: Number(u?.total ?? u?.total_rows ?? 0),
+        };
+      }
+    );
+    items.value = payload.items;
+    total.value = payload.total;
   } catch (e) {
     error.value = e?.response?.data?.data?.error || e?.message || 'Failed to load ledger.';
   }
