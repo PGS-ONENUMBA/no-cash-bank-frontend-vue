@@ -53,7 +53,7 @@
         </li>
         </template>
         <li class="nav-item">
-          <RouterLink v-if="isVendor" :to="{ name: 'VendorLogs' }" custom v-slot="{ navigate, href, isActive }">
+          <RouterLink v-if="authStore?.user.user_role === 'vendor'" :to="{ name: 'VendorLogs' }" custom v-slot="{ navigate, href, isActive }">
             <a :href="href" @click.prevent="navigate" class="nav-link d-flex align-items-center"
               :class="{ active: isActive }">
               <!-- optional icon if you use Bootstrap Icons -->
