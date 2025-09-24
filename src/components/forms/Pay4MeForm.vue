@@ -338,13 +338,36 @@ export default {
 
       try {
         // 1) Create order (no amount_due here; wins are vendor-locked)
+        // const orderData = {
+        //   phoneNumber: formData.value.customerPhone,
+        //   tickets: Number(formData.value.tickets),
+        //   amount: totalTicketCost.value,
+        //   raffle_cycle_id: Number(raffleCycleId),
+        //   vendor_id: formData.value.vendor_id,
+        // };
+        // const orderData = {
+        //   phoneNumber: formData.value.customerPhone,
+        //   tickets: Number(formData.value.tickets),
+        //   amount: totalTicketCost.value,
+        //   raffle_cycle_id: Number(formData.value.raffle_cycle_id), // use validated value
+        //   raffle_type_id: Number(formData.value.raffle_type_id),   // ✅ include this
+        //   vendor_id: formData.value.vendor_id
+        // };
+        // inside handleSubmit before calling createOrder
         const orderData = {
-          phoneNumber: formData.value.customerPhone,
-          tickets: Number(formData.value.tickets),
-          amount: totalTicketCost.value,
-          raffle_cycle_id: Number(raffleCycleId),
-          vendor_id: formData.value.vendor_id,
+          customer_phone: formData.value.customerPhone,             // ✅ exact key
+          ticket_quantity: Number(formData.value.tickets),          // ✅ exact key
+          order_amount: totalTicketCost.value,                      // ✅ exact key
+          raffle_cycle_id: Number(formData.value.raffle_cycle_id),  // from validatedRaffle
+          raffle_type_id: Number(formData.value.raffle_type_id),    // ✅ include this (2 for Pay Vendor)
+          vendor_id: formData.value.vendor_id,                      // required for vendor flow
+          purchase_platform: 'web',                                 // ✅ required by backend validation
+          payment_method_used: 'card'                               // optional, but explicit
         };
+
+const response = await createOrder(orderData);
+
+
 
         const response = await createOrder(orderData);
 
