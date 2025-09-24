@@ -365,9 +365,6 @@ export default {
           payment_method_used: 'card'                               // optional, but explicit
         };
 
-const response = await createOrder(orderData);
-
-
 
         const response = await createOrder(orderData);
 
