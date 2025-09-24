@@ -43,12 +43,13 @@
                   type="tel"
                   class="form-control"
                   id="customerPhone"
-                  v-model="formData.customerPhone"
+                  v-model.trim="formData.customerPhone"
                   required
                   inputmode="numeric"
                   autocomplete="tel"
                   placeholder="e.g., 09012345678"
                 />
+                <small class="text-muted">Use your active mobile number.</small>
               </div>
               <button type="submit" class="btn btn-orange custom-width mb-3">
                 <i class="bi bi-arrow-right-circle me-2"></i> Next
@@ -115,7 +116,7 @@
                 </p>
               </div>
 
-              <!-- Hidden Fields -->
+              <!-- Hidden Fields (bound to validated raffle data) -->
               <input type="hidden" v-model="formData.raffle_cycle_id" />
               <input type="hidden" v-model="formData.raffle_type_id" />
               <input type="hidden" v-model="formData.winnable_amount" />
@@ -124,8 +125,8 @@
               <button
                 type="submit"
                 class="btn btn-orange custom-width mb-3"
-                :disabled="!formData.vendor_id || !formData.tickets || ticketCurrentPrice <= 0"
-                title="Select a vendor to continue"
+                :disabled="!canSubmit"
+                :title="!canSubmit ? 'Enter phone, select vendor, set tickets, and wait for price' : ''"
               >
                 <i class="bi bi-cash-coin me-2"></i> Pay By Chance
               </button>
@@ -148,14 +149,13 @@
 /**
  * Pay4MeForm.vue
  *
- * A guided, two-step flow for “Pay Merchant”:
- *  - Step 1: capture customer's phone number.
- *  - Step 2: require a registered vendor + number of tickets (no vendor amount field).
+ * Two-step “Pay Merchant” (Pay Vendor) entry flow.
  *
  * Security & Flow notes:
- *  - Uses backend Context Proxy + CSRF for all API operations.
- *  - `processPayment` redirects to Squad; we pass `returnUrl` so Squad returns the user
- *    to `/thank-you?reference=...` which then verifies server-side.
+ * - We retrieve raffle details (server-validated) and display authoritative ticket_price.
+ * - We call the Context Proxy with canonical keys for "create_order".
+ * - For robustness during rollout, we also include a `params` block with legacy aliases.
+ * - `processPayment` sends the user to Squad and returns to /thank-you?reference=...
  */
 
 import { ref, computed, onMounted } from "vue";
@@ -167,8 +167,8 @@ import { createOrder, processPayment } from "@/services/paymentService";
 
 /**
  * @typedef {Object} Vendor
- * @property {number|string} vendor_id   Unique vendor identifier.
- * @property {string}        vendor_name Display name for the vendor.
+ * @property {number|string} vendor_id
+ * @property {string} vendor_name
  */
 
 export default {
@@ -177,9 +177,9 @@ export default {
     const router = useRouter();
     const route  = useRoute();
 
-    // ---- Route params ----
-    const raffleCycleId = route.query.raffle_cycle_id;
-    const raffleTypeId  = route.query.raffle_type_id;
+    // ---- Route params (stringy from query) ----
+    const raffleCycleId = Number(route.query.raffle_cycle_id || 0);
+    const raffleTypeId  = Number(route.query.raffle_type_id || 0); // may be missing
 
     // ---- State ----
     const raffleData         = ref({});
@@ -194,41 +194,40 @@ export default {
     const vendorSearch    = ref("");
     const showDropdown    = ref(false);
 
+    // Form model
     const formData = ref({
       customerPhone: "",
       tickets: 1,
-      raffle_cycle_id: raffleCycleId,
-      raffle_type_id: raffleTypeId,
+      raffle_cycle_id: raffleCycleId || null, // will be overwritten after server validation
+      raffle_type_id: raffleTypeId || null,   // may be null; we infer below if vendor selected
       winnable_amount: "",
       price_of_ticket: "",
-      vendor_id: "",
+      vendor_id: "", // numeric string or number from list
     });
 
-    /**
-     * Close the vendor dropdown slightly after blur so mousedown can select.
-     * @returns {void}
-     */
+    /** Disable dropdown hiding until click completes. */
     const delayHideDropdown = () => {
       setTimeout(() => { showDropdown.value = false; }, 150);
     };
 
     /**
      * Fetch and validate raffle details for the given cycle and type.
-     * Populates local state needed for price & limits.
-     * @returns {Promise<void>}
+     * We always trust server-provided IDs and prices.
      */
     const fetchRaffleDetails = async () => {
-      if (!raffleCycleId || !raffleTypeId) {
-        console.warn("⚠ Missing raffle cycle parameters in URL.");
+      if (!raffleCycleId) {
+        console.warn("⚠ Missing raffle_cycle_id in URL.");
         isLoading.value = false;
         return;
       }
       try {
-        const validatedRaffle = await validateRaffleCycle(raffleCycleId, raffleTypeId);
+        // fallback: if no raffleTypeId in URL, send 2 for Pay Vendor (this page)
+        const typeForCheck = raffleTypeId || 2;
+        const validatedRaffle = await validateRaffleCycle(raffleCycleId, typeForCheck);
         if (validatedRaffle) {
           raffleData.value                 = validatedRaffle;
-          formData.value.raffle_cycle_id   = validatedRaffle.raffle_cycle_id;
-          formData.value.raffle_type_id    = validatedRaffle.raffle_type_id;
+          formData.value.raffle_cycle_id   = Number(validatedRaffle.raffle_cycle_id);
+          formData.value.raffle_type_id    = Number(validatedRaffle.raffle_type_id || typeForCheck);
           formData.value.winnable_amount   = validatedRaffle.winnable_amount;
           formData.value.price_of_ticket   = validatedRaffle.price_of_ticket;
           ticketCurrentPrice.value         = Number(validatedRaffle.price_of_ticket);
@@ -243,10 +242,7 @@ export default {
       }
     };
 
-    /**
-     * Fetch list of registered vendors from the backend.
-     * @returns {Promise<void>}
-     */
+    /** Populate registered vendors for selection. */
     const fetchVendorList = async () => {
       try {
         const vendorData = await fetchVendors();
@@ -257,11 +253,7 @@ export default {
       }
     };
 
-    /**
-     * Filter vendors as the user types.
-     * Resets selection when search is cleared.
-     * @returns {void}
-     */
+    /** Live filter vendors by name. */
     const filterVendors = () => {
       const searchTerm = vendorSearch.value.toLowerCase().trim();
       if (!searchTerm) {
@@ -274,24 +266,26 @@ export default {
       }
     };
 
-    /**
-     * Select a vendor from the dropdown suggestions.
-     * @param {Vendor} vendor
-     * @returns {void}
-     */
+    /** Select a vendor; coerce ID to number for safety. */
     const selectVendor = (vendor) => {
-      formData.value.vendor_id = vendor.vendor_id;
+      formData.value.vendor_id = Number(vendor.vendor_id);
       vendorSearch.value = vendor.vendor_name;
       showDropdown.value = false;
+
+      // If type wasn't set (URL missing), infer Pay Vendor (2) when a vendor is chosen.
+      if (!formData.value.raffle_type_id) {
+        formData.value.raffle_type_id = 2;
+      }
     };
 
     /** Selected vendor name for display. */
     const selectedVendorName = computed(() => {
-      const selected = vendors.value.find((v) => v.vendor_id === formData.value.vendor_id);
+      const vid = Number(formData.value.vendor_id || 0);
+      const selected = vendors.value.find((v) => Number(v.vendor_id) === vid);
       return selected ? selected.vendor_name : "";
     });
 
-    /** Numeric winnable amount for this raffle. */
+    /** Numeric winnable amount (from server). */
     const winnableAmount = computed(() => Number(raffleData.value.winnable_amount || 0));
 
     /** Winnable amount formatted in NGN. */
@@ -308,65 +302,67 @@ export default {
       return t > 0 && p > 0 ? t * p : 0;
     });
 
+    /** Final raffle_type_id to send (explicit or inferred from vendor selection). */
+    const resolvedRaffleTypeId = computed(() => {
+      const explicit = Number(formData.value.raffle_type_id || 0);
+      if (explicit > 0) return explicit;
+      return Number(formData.value.vendor_id) > 0 ? 2 : 1;
+    });
+
+    /** Form can submit only when all critical parts are present. */
+    const canSubmit = computed(() => {
+      return !!formData.value.customerPhone
+        && Number(formData.value.vendor_id) > 0
+        && Number(formData.value.tickets) >= 1
+        && Number(ticketCurrentPrice.value) > 0
+        && Number(formData.value.raffle_cycle_id) > 0;
+    });
+
     /**
      * Submit the form: create an order, then initiate payment via Squad.
-     * IMPORTANT: Do not navigate to /thank-you here; `processPayment` redirects to Squad,
-     * and Squad returns the user to the provided `returnUrl`.
-     * @returns {Promise<void>}
+     * Squad will redirect back to /thank-you?reference=...
      */
     const handleSubmit = async () => {
       if (!navigator.onLine) {
         alert("You are offline. Please check your internet connection and try again.");
         return;
       }
-      if (isLoading.value || !winnableAmount.value) {
-        alert("Please wait for raffle details to load.");
-        return;
-      }
-      if (!formData.value.vendor_id) {
-        alert("Please select a registered vendor.");
-        return;
-      }
-      if (Number(formData.value.tickets) < 1) {
-        alert("Please select at least one ticket.");
-        return;
-      }
-      if (ticketCurrentPrice.value <= 0) {
-        alert("Ticket price is unavailable at the moment. Please try again shortly.");
+      if (!canSubmit.value) {
+        alert("Please complete all required fields.");
         return;
       }
 
       try {
-        // 1) Create order (no amount_due here; wins are vendor-locked)
-        // const orderData = {
-        //   phoneNumber: formData.value.customerPhone,
-        //   tickets: Number(formData.value.tickets),
-        //   amount: totalTicketCost.value,
-        //   raffle_cycle_id: Number(raffleCycleId),
-        //   vendor_id: formData.value.vendor_id,
-        // };
-        // const orderData = {
-        //   phoneNumber: formData.value.customerPhone,
-        //   tickets: Number(formData.value.tickets),
-        //   amount: totalTicketCost.value,
-        //   raffle_cycle_id: Number(formData.value.raffle_cycle_id), // use validated value
-        //   raffle_type_id: Number(formData.value.raffle_type_id),   // ✅ include this
-        //   vendor_id: formData.value.vendor_id
-        // };
-        // inside handleSubmit before calling createOrder
-        const orderData = {
-          customer_phone: formData.value.customerPhone,             // ✅ exact key
-          ticket_quantity: Number(formData.value.tickets),          // ✅ exact key
-          order_amount: totalTicketCost.value,                      // ✅ exact key
-          raffle_cycle_id: Number(formData.value.raffle_cycle_id),  // from validatedRaffle
-          raffle_type_id: Number(formData.value.raffle_type_id),    // ✅ include this (2 for Pay Vendor)
-          vendor_id: formData.value.vendor_id,                      // required for vendor flow
-          purchase_platform: 'web',                                 // ✅ required by backend validation
-          payment_method_used: 'card'                               // optional, but explicit
+        // Build canonical payload (what backend expects).
+        const canonical = {
+          action_type: 'create_order',                        // harmless if service already sets this
+          customer_phone: String(formData.value.customerPhone),
+          ticket_quantity: Number(formData.value.tickets),
+          order_amount: Number(totalTicketCost.value),
+          raffle_cycle_id: Number(formData.value.raffle_cycle_id),
+          raffle_type_id: Number(resolvedRaffleTypeId.value), // ensure 2 for Pay Vendor flow
+          vendor_id: Number(formData.value.vendor_id),
+          purchase_platform: 'web',
+          payment_method_used: 'card'
         };
 
+        // For robustness during rollout: include legacy aliases under params.
+        // Safe to delete later when you’re confident end-to-end.
+        const body = {
+          ...canonical,
+          params: {
+            ...canonical,
+            phoneNumber: canonical.customer_phone,   // legacy
+            tickets: canonical.ticket_quantity,      // legacy
+            amount: canonical.order_amount,          // legacy
+            platform: canonical.purchase_platform,   // legacy
+            paymentMethod: canonical.payment_method_used // legacy
+          }
+        };
 
-        const response = await createOrder(orderData);
+        console.debug("▶ createOrder payload (component)", body);
+
+        const response = await createOrder(body);
 
         // 2) Initiate payment and redirect to Squad
         if (response?.order_id) {
@@ -375,7 +371,7 @@ export default {
 
           const paymentResponse = await processPayment({
             email: `${formData.value.customerPhone}@paybychance.com`,
-            amount: totalTicketCost.value,
+            amount: Number(totalTicketCost.value),
             trans_ref: txRef,
             returnUrl, // server uses this to set Squad callback_url
           });
@@ -387,12 +383,9 @@ export default {
           // No router.push here—Squad handles redirect to returnUrl.
         }
       } catch (error) {
-        console.error("❌ Submission error:", error?.message, error);
-        if (error?.message === "Network Error") {
-          alert("Network error. Please check your internet connection and try again.");
-        } else {
-          alert(`Error: ${error?.message || "Failed to submit order. Please try again."}`);
-        }
+        console.error("❌ Submission error:", error);
+        const serverMsg = error?.response?.data?.message || error?.message || "Failed to submit order. Please try again.";
+        alert(`Error: ${serverMsg}`);
       }
     };
 
@@ -419,6 +412,8 @@ export default {
       filterVendors,
       selectVendor,
       selectedVendorName,
+      canSubmit,
+      resolvedRaffleTypeId,
     };
   },
 };
