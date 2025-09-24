@@ -1,17 +1,17 @@
 // src/services/paymentService.js
 import { api } from "@/services/http";
 
-/** Context Proxy opinionated + dedicated paths */
-const PROXY_ACTION   = "/context-proxy/v1/action";        // forwards to /nocash-bank/v1/action
-//const PROXY_SQUAD_INIT = "/context-proxy/v1/squad/initiate"; // forwards to /nocash/v1/squad/initiate
-const PROXY_SQUAD_VERIFY = "/context-proxy/v1/squad/verify"; // forwards to /nocash/v1/squad/verify
-const PROXY_SQUAD_INITIATE = "/context-proxy/v1/squad/initiate";
+/** Context Proxy endpoints */
+const PROXY_ACTION = "/context-proxy/v1/action";                 // → /wp-json/nocash-bank/v1/action
+const PROXY_SQUAD_VERIFY = "/context-proxy/v1/squad/verify";     // → /wp-json/nocash/v1/squad/verify
+const PROXY_SQUAD_INITIATE = "/context-proxy/v1/squad/initiate"; // → /wp-json/nocash/v1/squad/initiate"
+
 /**
- * Validates product pricing for a given raffle cycle ID.
- * Browser always POSTs to the Context Proxy; server converts to GET upstream when needed.
+ * Fetch authoritative pricing for a raffle cycle.
+ * Proxy returns { ok, status, data }; we unwrap to data.
  *
- * @param {number|string} raffleCycleId - Raffle cycle ID to fetch.
- * @returns {Promise<Object|null>} The upstream payload (e.g., {success, raffle_cycle}) or null on error.
+ * @param {number|string} raffleCycleId
+ * @returns {Promise<any|null>}
  */
 export const validateProductPricing = async (raffleCycleId) => {
   try {
@@ -19,7 +19,6 @@ export const validateProductPricing = async (raffleCycleId) => {
       action_type: "get_raffle_cycle_by_id",
       raffle_cycle_id: Number(raffleCycleId),
     });
-    // Proxy wrapper format: { ok, status, data: <upstream payload> }
     return res.data?.data ?? res.data;
   } catch (err) {
     console.error("❌ Error fetching product by ID:", err);
@@ -28,32 +27,121 @@ export const validateProductPricing = async (raffleCycleId) => {
 };
 
 /**
- * Creates an order in your backend and returns the upstream payload.
+ * @typedef {Object} CreateOrderArgs
+ * @property {string}  [customer_email]       Optional email.
+ * @property {string}  [phoneNumber]          LEGACY alias for customer_phone.
+ * @property {number}  [tickets]              LEGACY alias for ticket_quantity.
+ * @property {number}  [amount]               LEGACY alias for order_amount.
+ * @property {string}  [platform]             LEGACY alias for purchase_platform.
+ * @property {string}  [paymentMethod]        LEGACY alias for payment_method_used.
  *
- * @param {Object} payload
- * @param {string}  [payload.email]            - Customer email (optional).
- * @param {string}  payload.phoneNumber        - Customer phone number.
- * @param {number}  payload.tickets            - Number of tickets.
- * @param {number}  payload.amount             - Total ticket cost (NGN).
- * @param {number}  payload.raffle_cycle_id    - Raffle cycle ID.
- * @param {string|number} [payload.vendor_id]  - Selected vendor ID (optional).
- * @param {number} [payload.amount_due]        - Payment to vendor (optional).
- * @returns {Promise<Object|null>} Upstream payload (e.g., {success, order_id, ...}) or null on error.
+ * @property {string}  [customer_phone]       Canonical customer phone.
+ * @property {number}  [ticket_quantity]      Canonical ticket count.
+ * @property {number}  [order_amount]         Canonical amount (NGN).
+ * @property {number}  raffle_cycle_id        Canonical raffle cycle id (required).
+ * @property {number}  raffle_type_id         Canonical raffle type id (required; dynamic per form).
+ * @property {number}  [vendor_id]            Only include if the selected type needs it.
+ * @property {number}  [amount_due]           Optional vendor payout (if ever used).
+ * @property {string}  [purchase_platform]    Defaults to "web".
+ * @property {string}  [payment_method_used]  Defaults to "card".
+ */
+
+/**
+ * Create an order with **dynamic raffle type**.
+ *
+ * IMPORTANT:
+ * - `raffle_type_id` is **required** and comes from the form (don’t infer).
+ * - If the chosen raffle type requires a vendor (e.g. type 2), pass `vendor_id`.
+ * - We still accept legacy input names, but always POST canonical keys.
+ *
+ * @param {CreateOrderArgs} payload
+ * @returns {Promise<any|null>} Upstream payload (proxy-unwrapped) or null on error
  */
 export const createOrder = async (payload) => {
   try {
-    const res = await api.post(PROXY_ACTION, {
+    // ---- Read inputs (support canonical and legacy field names) ----
+    const customer_phone = String(
+      payload.customer_phone ?? payload.phoneNumber ?? ""
+    );
+    const ticket_quantity = Number(
+      payload.ticket_quantity ?? payload.tickets ?? 0
+    );
+    const order_amount = Number(
+      payload.order_amount ?? payload.amount ?? 0
+    );
+    const raffle_cycle_id = Number(payload.raffle_cycle_id ?? 0);
+
+    // Dynamic & required
+    const hasType =
+      payload.raffle_type_id !== undefined && payload.raffle_type_id !== null;
+    const raffle_type_id = hasType ? Number(payload.raffle_type_id) : NaN;
+
+    const vendor_id =
+      payload.vendor_id === undefined ||
+      payload.vendor_id === null ||
+      payload.vendor_id === ""
+        ? undefined
+        : Number(payload.vendor_id);
+
+    const purchase_platform = String(
+      payload.purchase_platform ?? payload.platform ?? "web"
+    );
+    const payment_method_used = String(
+      payload.payment_method_used ?? payload.paymentMethod ?? "card"
+    );
+
+    // ---- Minimal client-side validation (avoid sending obviously-bad bodies) ----
+    if (!Number.isFinite(raffle_type_id)) {
+      // Keep this strict so forms must supply the type explicitly
+      throw new Error("raffle_type_id is required");
+    }
+    if (!customer_phone) throw new Error("customer_phone is required");
+    if (!(ticket_quantity > 0)) throw new Error("ticket_quantity must be > 0");
+    if (!(order_amount > 0)) throw new Error("order_amount must be > 0");
+    if (!(raffle_cycle_id > 0)) throw new Error("raffle_cycle_id must be > 0");
+
+    // Optional: enforce vendor for a known vendor type (backend already enforces this)
+    // if (raffle_type_id === 2 && !vendor_id) {
+    //   throw new Error("vendor_id is required for this raffle type");
+    // }
+
+    // ---- Canonical body (what the backend expects) ----
+    /** @type {Record<string, any>} */
+    const body = {
       action_type: "create_order",
-      customer_email: payload.email || "",
-      amount_due: payload.amount_due ?? "",            // vendor payout, optional
-      vendor_id: payload.vendor_id ?? "",
-      customer_phone: payload.phoneNumber,
-      ticket_quantity: Number(payload.tickets),
-      order_amount: Number(payload.amount),            // total ticket cost
-      raffle_cycle_id: Number(payload.raffle_cycle_id),
-      purchase_platform: "web",
-      payment_method_used: "card",
-    });
+      customer_phone,
+      ticket_quantity,
+      order_amount,
+      raffle_cycle_id,
+      raffle_type_id,     // 🔑 dynamic
+      purchase_platform,
+      payment_method_used,
+    };
+    if (vendor_id !== undefined) body.vendor_id = vendor_id;
+    if (payload.customer_email !== undefined)
+      body.customer_email = String(payload.customer_email || "");
+    if (
+      payload.amount_due !== undefined &&
+      payload.amount_due !== null &&
+      payload.amount_due !== ""
+    ) {
+      body.amount_due = Number(payload.amount_due);
+    }
+
+    // ---- Legacy alias block (safe to keep during rollout; remove later) ----
+    body.params = {
+      phoneNumber: customer_phone,
+      tickets: ticket_quantity,
+      amount: order_amount,
+      platform: purchase_platform,
+      paymentMethod: payment_method_used,
+    };
+
+    // Debug breadcrumb (keep while stabilizing)
+
+    console.debug("▶ createOrder payload (service)", body);
+
+    const res = await api.post(PROXY_ACTION, body);
     return res.data?.data ?? res.data;
   } catch (err) {
     console.error("❌ Error creating order:", err);
@@ -62,21 +150,9 @@ export const createOrder = async (payload) => {
 };
 
 /**
- * Calls the server to initiate a Squad payment and redirects to the hosted checkout.
+ * Initiate Squad payment via the Context Proxy (server adds X-Plugin-Token).
  *
- * SECURITY: no Squad secrets in the browser. The Context Proxy forwards with X-Plugin-Token.
- *
- * @param {Object} args
- * @param {string} args.email       - Customer email (used by Squad).
- * @param {number} args.amount      - Amount in NGN (will be converted to kobo).
- * @param {string} args.trans_ref   - Unique transaction reference (your order_id).
- * @returns {Promise<{status:"redirected", checkout_url:string}>}
- * @throws {Error} If the server did not return a checkout_url.
- */
-
-/**
- * Initiate Squad payment via Context Proxy.
- * @param {{ email:string, amount:number, trans_ref:string, returnUrl?:string }} arg
+ * @param {{ email:string, amount:number, trans_ref:string, returnUrl?:string }} args
  * @returns {Promise<{status:"redirected", checkout_url:string}>}
  */
 export const processPayment = async ({ email, amount, trans_ref, returnUrl }) => {
@@ -87,8 +163,7 @@ export const processPayment = async ({ email, amount, trans_ref, returnUrl }) =>
     transaction_ref: trans_ref,
     payment_channels: ["card", "bank", "ussd", "transfer"],
     metadata: { order_id: trans_ref },
-    // 👇 let server map this to Squad's callback_url
-    return_url: returnUrl,
+    return_url: returnUrl, // proxy maps this to Squad's callback_url
   });
 
   const d = res?.data;
@@ -99,23 +174,16 @@ export const processPayment = async ({ email, amount, trans_ref, returnUrl }) =>
     d?.data?.data?.data?.checkout_url ||
     null;
 
-  if (!checkout) {
-    // log full payload if debugging:
-    // console.debug("initiate payload", res?.data);
-    throw new Error("No checkout_url from server");
-  }
+  if (!checkout) throw new Error("No checkout_url from server");
 
-  // Redirect to Squad; DO NOT do any router.push after this
-  window.location.href = checkout;
+  window.location.href = checkout; // Do not router.push after this
   return { status: "redirected", checkout_url: checkout };
 };
 
-
 /**
- * Verifies a Squad transaction by reference (optional; webhooks are the source of truth).
- *
- * @param {string} transRef - Transaction reference you passed in initiate.
- * @returns {Promise<Object>} Upstream payload (e.g., { data: { transaction_status: "success", ... } })
+ * Verify payment (UI-friendly envelope is returned).
+ * @param {string} transRef
+ * @returns {Promise<any>}
  */
 export const verifyPayment = async (transRef) => {
   const res = await api.post(PROXY_SQUAD_VERIFY, { reference: transRef });
@@ -123,18 +191,9 @@ export const verifyPayment = async (transRef) => {
 };
 
 /**
- * Updates an order in your backend after successful verification.
- *
- * @param {string|number} transactionReference - Your order_id / transaction_ref
- * @param {string} transactionType             - e.g. "Card"
- * @param {number} transactionAmount           - Amount paid (NGN)
- * @returns {Promise<Object|null>} Upstream payload or null on error
+ * (Optional legacy) Update order status after verification.
  */
-export const updateOrderStatus = async (
-  transactionReference,
-  transactionType,
-  transactionAmount
-) => {
+export const updateOrderStatus = async (transactionReference, transactionType, transactionAmount) => {
   try {
     const res = await api.post(PROXY_ACTION, {
       action_type: "complete_order",
