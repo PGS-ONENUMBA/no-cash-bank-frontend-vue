@@ -301,27 +301,6 @@ export default {
       }
     };
 
-        const response = await createOrder(canonical);
-        if (!response?.order_id) {
-          alert(`Error: ${response?.message || 'Could not create order.'}`);
-          return;
-        }
-
-        const txRef = response.order_id;
-        const returnUrl = `${window.location.origin}/thank-you?reference=${encodeURIComponent(txRef)}`;
-        await processPayment({
-          email: `${formData.value.customerPhone}@paybychance.com`,
-          amount: Number(totalTicketCost.value),
-          trans_ref: txRef,
-          returnUrl,
-        });
-        // NOTE: processPayment redirects the browser; no code runs after this.
-      } catch (error) {
-        console.error('❌ Submission error:', error);
-        const serverMsg = error?.response?.data?.message || error?.message || 'Failed to submit order. Please try again.';
-        alert(`Error: ${serverMsg}`);
-      }
-    };
 
     onMounted(bootstrap);
 
