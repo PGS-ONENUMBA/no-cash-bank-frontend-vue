@@ -15,11 +15,11 @@
             <h5 class="fw-bold"><i class="bi bi-lightbulb"></i> How It Works</h5>
             <ul class="list-unstyled">
               <li v-if="ticketCurrentPrice > 0">
-                  <i class="bi bi-1-circle text-success"></i>Current Ticket Price: {{ formatCurrency(ticketCurrentPrice) }}
+                  <i class="bi bi-1-circle text-success"></i> Current Ticket Price: {{ formatCurrency(ticketCurrentPrice) }}
               </li>
-              <li><i class="bi bi-1-circle text-success"></i> Enter your phone number.</li>
-              <li><i class="bi bi-2-circle text-success"></i> Select a registered vendor and buy tickets.</li>
-              <li><i class="bi bi-3-circle text-success"></i> If you win, your win is locked to that vendor—spend it there.</li>
+              <li><i class="bi bi-2-circle text-success"></i> Enter your phone number.</li>
+              <li><i class="bi bi-3-circle text-success"></i> Select a registered vendor and buy tickets.</li>
+              <li><i class="bi bi-4-circle text-success"></i> If you win, your win is locked to that vendor—spend it there.</li>
             </ul>
           </div>
         </div>
