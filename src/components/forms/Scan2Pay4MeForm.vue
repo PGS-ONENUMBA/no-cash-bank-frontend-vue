@@ -1,25 +1,31 @@
 <template>
   <main class="container py-2 mt-2">
     <div class="row g-4 d-flex align-items-stretch">
-      <!-- Left Column: Vendor Details -->
+      <!-- Left Column: Vendor Details / Instructions -->
       <div class="col-lg-6 d-flex">
         <div class="card w-100 shadow-sm">
           <div class="card-body">
-            <div class="text-center mb-4 mt-5">
-              <h3 class="fw-bold fs-4">
-                <i class="bi bi-qr-code-scan me-2"></i> Pay Vendor via QR Code Scan
-              </h3>
+            <h3 class="text-muted fs-4">
+              We can pay for you to cover expenses up to {{ formattedWinnableAmount }}
+              at the ticket price of:
+              <span v-if="ticketCurrentPrice > 0">{{ formatCurrency(ticketCurrentPrice) }}</span>
+            </h3>
+            <p class="text-success fs-5">Winnable Amount: {{ formattedWinnableAmount }}</p>
+
+            <div v-if="vendorDetails" class="mt-3">
+              <h5 class="fw-bold"><i class="bi bi-shop"></i> Vendor</h5>
+              <p class="mb-1"><strong>Name:</strong> {{ vendorDetails.business_name || vendorDetails.vendor_name }}</p>
+              <p class="mb-1"><strong>Address:</strong> {{ vendorDetails.business_address }}</p>
+              <p class="mb-1"><strong>Industry:</strong> {{ vendorDetails.industry }}</p>
+              <p class="mb-1" v-if="vendorDetails.contact_name"><strong>Contact:</strong> {{ vendorDetails.contact_name }}</p>
             </div>
-            <p class="text-success fs-5">
-              Spendable Amount: {{ formattedWinnableAmount }}
-            </p>
-            <div v-if="vendorDetails" class="mt-2">
-              <p><strong>Business Name:</strong> {{ vendorDetails.business_name }}</p>
-              <p><strong>Address:</strong> {{ vendorDetails.business_address }}</p>
-              <p><strong>Industry:</strong> {{ vendorDetails.industry }}</p>
-              <p><strong>Phone:</strong> {{ formData.recipient_phone_number }}</p>
-              <p><strong>Contact:</strong> {{ vendorDetails.contact_name }}</p>
-            </div>
+
+            <h5 class="fw-bold mt-4"><i class="bi bi-lightbulb"></i> How It Works</h5>
+            <ul class="list-unstyled">
+              <li><i class="bi bi-1-circle text-success"></i> Enter your phone number.</li>
+              <li><i class="bi bi-2-circle text-success"></i> Choose how many tickets to buy.</li>
+              <li><i class="bi bi-3-circle text-success"></i> If you win, your win is locked to this vendor—spend it there.</li>
+            </ul>
           </div>
         </div>
       </div>
@@ -28,47 +34,45 @@
       <div class="col-lg-6 d-flex">
         <div class="card w-100 shadow-sm">
           <div class="card-body">
-            <form @submit.prevent="handleSubmit">
-              <div class="mb-2">
-                <label for="phoneNumber" class="form-label">
+            <h2 class="card-title pb-3 fs-4">Pay Merchant Request</h2>
+
+            <!-- Loading State -->
+            <div v-if="isLoading" class="text-center">
+              <p>Loading raffle details...</p>
+            </div>
+
+            <!-- Step 1: Customer Phone (same as Pay4MeForm) -->
+            <form v-else-if="!showFullForm" @submit.prevent="showFullForm = true">
+              <div class="mb-3">
+                <label for="customerPhone" class="form-label">
                   <i class="bi bi-telephone me-2"></i> Your Phone Number
                 </label>
                 <input
-                  type="text"
+                  type="tel"
                   class="form-control"
-                  id="phoneNumber"
-                  v-model.trim="formData.phone_number"
+                  id="customerPhone"
+                  v-model.trim="formData.customerPhone"
                   required
+                  inputmode="numeric"
+                  autocomplete="tel"
+                  placeholder="e.g., 09012345678"
                 />
+                <small class="text-muted">Use your active mobile number.</small>
               </div>
+              <button type="submit" class="btn btn-orange custom-width mb-3">
+                <i class="bi bi-arrow-right-circle me-2"></i> Next
+              </button>
+            </form>
 
-              <div class="mb-2">
-                <label for="amountDue" class="form-label">
-                  <i class="bi bi-currency-exchange me-2"></i> Amount Due (NGN)
-                </label>
-                <input
-                  type="number"
-                  class="form-control"
-                  id="amountDue"
-                  v-model.number="formData.amount_due"
-                  required
-                  min="1"
-                />
-              </div>
-
-              <div class="mb-2">
+            <!-- Step 2: Tickets only (vendor & type come from URL) -->
+            <form v-else @submit.prevent="handleSubmit">
+              <div class="mb-3">
                 <label for="tickets" class="form-label">
                   <i class="bi bi-ticket me-2"></i> How Many Tickets?
                 </label>
-
-                <!-- Show ticket price per unit -->
-                <p class="text-muted mb-1">
-                  Ticket Price:
-                  <span class="fw-semibold">
-                    {{ Number(formData.ticket_price || 0).toLocaleString('en-NG', { style: 'currency', currency: 'NGN' }) }}
-                  </span>
-                </p>
-
+                <div class="mb-1" v-if="ticketCurrentPrice > 0">
+                  Current Ticket Price: {{ formatCurrency(ticketCurrentPrice) }}
+                </div>
                 <input
                   type="number"
                   class="form-control"
@@ -77,22 +81,32 @@
                   required
                   min="1"
                 />
-
-                <!-- Total cost preview -->
-                <p class="text-success fw-bold mt-1">
-                  You will pay: {{ totalTicketCost.toLocaleString('en-NG', { style: 'currency', currency: 'NGN' }) }}
+                <p class="text-success fw-bold">
+                  You will pay: {{ formatCurrency(totalTicketCost) }}
                 </p>
               </div>
 
-              <!-- Hidden Fields (canonical names) -->
+              <!-- Hidden Fields (bound to validated raffle data) -->
               <input type="hidden" v-model="formData.raffle_cycle_id" />
               <input type="hidden" v-model="formData.raffle_type_id" />
               <input type="hidden" v-model="formData.winnable_amount" />
-              <input type="hidden" v-model="formData.ticket_price" />
+              <input type="hidden" v-model="formData.price_of_ticket" />
               <input type="hidden" v-model="formData.vendor_id" />
 
-              <button type="submit" class="btn btn-orange custom-width mt-2" :disabled="isSubmitting">
-                <i class="bi bi-qr-code-scan me-2"></i> Pay By Chance
+              <button
+                type="submit"
+                class="btn btn-orange custom-width mb-3"
+                :disabled="!canSubmit"
+                :title="!canSubmit ? 'Enter phone, set tickets, and wait for price' : ''"
+              >
+                <i class="bi bi-cash-coin me-2"></i> Pay By Chance
+              </button>
+              <button
+                type="button"
+                class="btn btn-secondary custom-width mb-3 ms-2"
+                @click="showFullForm = false"
+              >
+                <i class="bi bi-arrow-left-circle me-2"></i> Back
               </button>
             </form>
           </div>
@@ -103,201 +117,192 @@
 </template>
 
 <script>
+/**
+ * Scan2Pay4Me.vue — aligned 1:1 with Pay4MeForm logic.
+ * Differences:
+ * - Vendor and Raffle Type are provided via URL: /scan2pay4me?raffle_type_id=2&vendor_id=3
+ * - No vendor search, no amount_due; all other logic mirrors Pay4MeForm.
+ */
 import { ref, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { fetchProducts, fetchVendorDetails } from '@/services/productService';
+import { fetchProducts, fetchVendorDetails, validateRaffleCycle } from '@/services/productService';
+import formatCurrency from '@/services/currencyFormatter';
 import { createOrder, processPayment } from '@/services/paymentService';
 
-/**
- * Canonical payload schema (agreed):
- * {
- *   phone_number: string,
- *   raffle_type_id: number,
- *   raffle_cycle_id: number,
- *   tickets: number,
- *   ticket_price: number,
- *   amount: number,                // tickets * ticket_price
- *   vendor_id?: string|number,     // present in vendor/QR flow
- *   amount_due?: number,           // vendor invoice/amount to settle
- *   recipient_phone_number?: string
- * }
- */
 export default {
   name: 'Scan2Pay4Me',
   setup() {
     const router = useRouter();
-    const route = useRoute();
+    const route  = useRoute();
 
-    const raffleData = ref({});
-    const vendorDetails = ref(null);
-    const isSubmitting = ref(false);
+    // ---- Route params ----
+    const raffleTypeIdFromUrl = Number(route.query.raffle_type_id || 0); // must be 2 for this flow
+    const vendorIdFromUrl     = Number(route.query.vendor_id || 0);
 
+    // ---- State ----
+    const raffleData         = ref({});
+    const ticketCurrentPrice = ref(0);
+    const showFullForm       = ref(false);
+    const isLoading          = ref(true);
+
+    const vendorDetails      = ref(null);
+
+    // Form model (aligned with Pay4MeForm)
     const formData = ref({
-      phone_number: '',
-      recipient_phone_number: '',
-      amount_due: null,
+      customerPhone: '',
       tickets: 1,
-      raffle_cycle_id: null,
-      raffle_type_id: null,
-      winnable_amount: null,
-      ticket_price: null,
-      vendor_id: null,
+      raffle_cycle_id: null,  // will be resolved from products -> validated via validateRaffleCycle
+      raffle_type_id: null,   // set from URL (2)
+      winnable_amount: '',
+      price_of_ticket: '',
+      vendor_id: null,        // set from URL
     });
 
+    /** Numeric winnable amount (from server). */
+    const winnableAmount = computed(() => Number(raffleData.value.winnable_amount || 0));
+
+    /** Winnable amount formatted in NGN. */
+    const formattedWinnableAmount = computed(() =>
+      winnableAmount.value
+        ? Number(winnableAmount.value).toLocaleString('en-NG', { style: 'currency', currency: 'NGN' })
+        : 'Loading...'
+    );
+
+    /** Total ticket cost based on current price and quantity. */
     const totalTicketCost = computed(() => {
-      const qty = Number(formData.value.tickets || 0);
-      const unit = Number(formData.value.ticket_price || 0);
-      return qty > 0 && unit > 0 ? qty * unit : 0;
+      const t = Number(formData.value.tickets) || 0;
+      const p = Number(ticketCurrentPrice.value) || 0;
+      return t > 0 && p > 0 ? t * p : 0;
     });
 
-    const formattedWinnableAmount = computed(() => {
-      return raffleData.value.winnable_amount
-        ? Number(raffleData.value.winnable_amount).toLocaleString('en-NG', {
-            style: 'currency',
-            currency: 'NGN',
-          })
-        : 'Loading...';
+    /** Form can submit only when all critical parts are present. */
+    const canSubmit = computed(() => {
+      return !!formData.value.customerPhone
+        && Number(formData.value.tickets) >= 1
+        && Number(ticketCurrentPrice.value) > 0
+        && Number(formData.value.raffle_cycle_id) > 0
+        && Number(formData.value.vendor_id) > 0
+        && Number(formData.value.raffle_type_id) > 0;
     });
 
-    const fetchRaffleDetails = async () => {
-      const raffleTypeId = Number(route.query.raffle_type_id);
-      const vendorId = route.query.vendor_id;
-
-      if (!raffleTypeId || !vendorId) {
+    /**
+     * Bootstrap: resolve raffle_cycle_id from products using raffle_type_id, then
+     * validate cycle & price; fetch vendor details from vendor_id.
+     */
+    const bootstrap = async () => {
+      if (!raffleTypeIdFromUrl || !vendorIdFromUrl) {
         console.warn('⚠ Missing QR code parameters.');
         router.push('/dashboard');
         return;
       }
-
       try {
+        // 1) Resolve raffle_cycle_id by scanning products for associated_types
         const cycles = await fetchProducts();
-        if (cycles && cycles.length) {
-          const cycle = cycles.find((c) =>
-            Array.isArray(c.associated_types) &&
-            c.associated_types.some((t) => Number(t.raffle_type_id) === raffleTypeId)
-          );
+        const cycle = Array.isArray(cycles) ?
+          cycles.find(c => Array.isArray(c.associated_types) && c.associated_types.some(t => Number(t.raffle_type_id) === raffleTypeIdFromUrl))
+          : null;
+        if (!cycle) {
+          console.error('❌ No matching raffle cycle found.');
+          router.push('/dashboard');
+          return;
+        }
 
-          if (cycle) {
-            raffleData.value = {
-              raffle_cycle_id: Number(cycle.raffle_cycle_id),
-              winnable_amount: Number(cycle.winnable_amount),
-              ticket_price: Number(cycle.ticket_price),
-              associated_types: cycle.associated_types,
-            };
-
-            formData.value.raffle_cycle_id = Number(cycle.raffle_cycle_id);
-            formData.value.raffle_type_id = raffleTypeId; // ✅ include explicitly (no inference)
-            formData.value.winnable_amount = Number(cycle.winnable_amount);
-            formData.value.ticket_price = Number(cycle.ticket_price);
-            formData.value.vendor_id = vendorId;
-          } else {
-            console.error('❌ No matching raffle cycle found.');
-            router.push('/dashboard');
-            return;
-          }
-        } else {
-          console.error('❌ No raffle cycles available.');
+        // 2) Validate via server to get authoritative price & IDs
+        const validated = await validateRaffleCycle(Number(cycle.raffle_cycle_id), raffleTypeIdFromUrl);
+        if (!validated) {
+          console.error('❌ Raffle validation failed.');
           router.push('/404');
           return;
         }
 
-        const vendor = await fetchVendorDetails(vendorId);
-        if (vendor) {
-          vendorDetails.value = {
-            business_name: vendor.business_name,
-            business_address: vendor.business_address,
-            industry: vendor.industry,
-            contact_name: vendor.contact_name,
-          };
-          formData.value.recipient_phone_number = vendor.phone_number || 'N/A';
-          formData.value.vendor_id = vendor.vendor_id ?? vendorId;
-        } else {
-          console.error('❌ Vendor details fetch failed.');
-          router.push('/dashboard');
-        }
-      } catch (error) {
-        console.error('❌ Error fetching details:', error);
-        router.push('/dashboard');
+        raffleData.value               = validated;
+        formData.value.raffle_cycle_id = Number(validated.raffle_cycle_id);
+        formData.value.raffle_type_id  = Number(validated.raffle_type_id || raffleTypeIdFromUrl);
+        formData.value.winnable_amount = validated.winnable_amount;
+        formData.value.price_of_ticket = validated.price_of_ticket;
+        ticketCurrentPrice.value       = Number(validated.price_of_ticket);
+
+        // 3) Set vendor from URL and fetch details for display
+        formData.value.vendor_id = Number(vendorIdFromUrl);
+        const vendor = await fetchVendorDetails(vendorIdFromUrl);
+        vendorDetails.value = vendor || null;
+      } catch (err) {
+        console.error('❌ Error during bootstrap:', err);
+      } finally {
+        isLoading.value = false;
       }
     };
 
-    const validateForm = () => {
-      const f = formData.value;
-      if (!f.phone_number || String(f.phone_number).length < 7) return 'Enter a valid phone number.';
-      if (!f.recipient_phone_number) return "Recipient's phone number missing.";
-      if (!f.amount_due || Number(f.amount_due) < 1) return 'Amount due must be at least ₦1.';
-      if (!f.tickets || Number(f.tickets) < 1) return 'Tickets must be at least 1.';
-      if (!f.raffle_cycle_id || !f.raffle_type_id) return 'Raffle identifiers are missing.';
-      if (!f.ticket_price || Number(f.ticket_price) <= 0) return 'Ticket price unavailable.';
-      return null;
-    };
-
+    /**
+     * Submit the form: create an order, then initiate payment via Squad.
+     * Squad will redirect back to /thank-you?reference=...
+     */
     const handleSubmit = async () => {
-      const errorMsg = validateForm();
-      if (errorMsg) {
-        alert(errorMsg);
+      if (!navigator.onLine) {
+        alert('You are offline. Please check your internet connection and try again.');
         return;
       }
-
-      isSubmitting.value = true;
+      if (!canSubmit.value) {
+        alert('Please complete all required fields.');
+        return;
+      }
       try {
-        const amount = totalTicketCost.value;
-
-        // ✅ Canonical payload aligned to backend + paymentService
-        const orderData = {
-          phone_number: String(formData.value.phone_number),
-          raffle_type_id: Number(formData.value.raffle_type_id),
+        // Canonical payload (what backend expects) — mirrors Pay4MeForm
+        const canonical = {
+          customer_phone: String(formData.value.customerPhone),
+          ticket_quantity: Number(formData.value.tickets),
+          order_amount: Number(totalTicketCost.value),
           raffle_cycle_id: Number(formData.value.raffle_cycle_id),
-          tickets: Number(formData.value.tickets),
-          ticket_price: Number(formData.value.ticket_price),
-          amount: Number(amount), // tickets * ticket_price
-          vendor_id: formData.value.vendor_id, // present in this QR/vendor flow
-          amount_due: Number(formData.value.amount_due),
-          recipient_phone_number: String(formData.value.recipient_phone_number || ''),
+          raffle_type_id: Number(formData.value.raffle_type_id), // 2 from URL
+          vendor_id: Number(formData.value.vendor_id),           // from URL
+          purchase_platform: 'web',
+          payment_method_used: 'card',
         };
 
-        const response = await createOrder(orderData);
-
-        if (response?.order_id) {
-          // Email derived from phone for payment modal consistency across flows
-          const paymentResponse = await processPayment({
-            email: `${orderData.phone_number}@paybychance.com`,
-            amount: Number(amount),
-            trans_ref: response.order_id,
-          });
-
-          // Align behavior with Pay4MeForm: redirect on success, stop on cancel
-          if (paymentResponse?.status === 'closed') {
-            console.log('❌ Payment Cancelled by user');
-            return;
-          }
-
-          if (paymentResponse?.status === 'success' || paymentResponse?.paid === true) {
-            router.push('/thank-you');
-          } else {
-            alert('Payment not completed. Please try again.');
-          }
-        } else {
+        const response = await createOrder(canonical);
+        if (!response?.order_id) {
           alert(`Error: ${response?.message || 'Could not create order.'}`);
+          return;
         }
+
+        const txRef = response.order_id;
+        const returnUrl = `${window.location.origin}/thank-you?reference=${encodeURIComponent(txRef)}`;
+        await processPayment({
+          email: `${formData.value.customerPhone}@paybychance.com`,
+          amount: Number(totalTicketCost.value),
+          trans_ref: txRef,
+          returnUrl,
+        });
+        // NOTE: processPayment redirects the browser; no code runs after this.
       } catch (error) {
         console.error('❌ Submission error:', error);
-        alert('Failed to process payment. Please try again.');
-      } finally {
-        isSubmitting.value = false;
+        const serverMsg = error?.response?.data?.message || error?.message || 'Failed to submit order. Please try again.';
+        alert(`Error: ${serverMsg}`);
       }
     };
 
-    onMounted(fetchRaffleDetails);
+    onMounted(bootstrap);
 
     return {
-      formData,
+      // state
       vendorDetails,
-      handleSubmit,
       raffleData,
+      ticketCurrentPrice,
+      isLoading,
+      showFullForm,
+
+      // form
+      formData,
+      handleSubmit,
+
+      // computed
+      winnableAmount,
       formattedWinnableAmount,
-      isSubmitting,
       totalTicketCost,
+      canSubmit,
+
+      // utils
+      formatCurrency,
     };
   },
 };
@@ -309,4 +314,6 @@ export default {
 .btn-orange:hover { background-color: #e65d00; }
 .custom-width { width: 200px; }
 .card-body { padding: 1.25rem; }
+.list-group-item-action:hover { cursor: pointer; background-color: #f8f9fa; }
+.dropdown-menu { display: block; }
 </style>
