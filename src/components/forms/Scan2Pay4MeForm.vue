@@ -41,9 +41,8 @@
               <p>Loading raffle details...</p>
             </div>
 
-            <!-- Single-step form: phone + tickets together -->
-            <form v-else @submit.prevent="handleSubmit">
-              <!-- Phone Number -->
+            <!-- Step 1: Customer Phone (same as Pay4MeForm) -->
+            <form v-else-if="!showFullForm" @submit.prevent="showFullForm = true">
               <div class="mb-3">
                 <label for="customerPhone" class="form-label">
                   <i class="bi bi-telephone me-2"></i> Your Phone Number
@@ -53,7 +52,6 @@
                   class="form-control"
                   id="customerPhone"
                   v-model.trim="formData.customerPhone"
-                  :disabled="isRedirecting"
                   required
                   inputmode="numeric"
                   autocomplete="tel"
@@ -61,8 +59,13 @@
                 />
                 <small class="text-muted">Use your active mobile number.</small>
               </div>
+              <button type="submit" class="btn btn-orange custom-width mb-3">
+                <i class="bi bi-arrow-right-circle me-2"></i> Next
+              </button>
+            </form>
 
-              <!-- Tickets -->
+            <!-- Step 2: Tickets only (vendor & type come from URL) -->
+            <form v-else @submit.prevent="handleSubmit">
               <div class="mb-3">
                 <label for="tickets" class="form-label">
                   <i class="bi bi-ticket me-2"></i> How Many Tickets?
@@ -75,7 +78,6 @@
                   class="form-control"
                   id="tickets"
                   v-model.number="formData.tickets"
-                  :disabled="isRedirecting"
                   required
                   min="1"
                 />
@@ -100,10 +102,18 @@
               >
                 <i v-if="!isRedirecting" class="bi bi-cash-coin"></i>
                 <span v-if="!isRedirecting">Pay By Chance</span>
-                <span v-else class="d-inline-flex align-items-center gap-2" aria-live="polite">
+                <span v-else class="d-inline-flex align-items-center gap-2">
                   <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                   <span>Redirecting…</span>
                 </span>
+              </button>
+              <button
+                type="button"
+                class="btn btn-secondary custom-width mb-3 ms-2"
+                @click="showFullForm = false"
+                :disabled="isRedirecting"
+              >
+                <i class="bi bi-arrow-left-circle me-2"></i> Back
               </button>
             </form>
           </div>
@@ -126,21 +136,6 @@ import { fetchProducts, fetchVendorDetails, validateRaffleCycle } from '@/servic
 import formatCurrency from '@/services/currencyFormatter';
 import { createOrder, processPayment } from '@/services/paymentService';
 
-/**
- * JSDoc Typedefs & Notes
- * ----------------------
- * These typedefs improve IntelliSense and editor diagnostics.
- *
- * Notes:
- * - Hidden fields are kept for parity with other forms; they are not required for submission.
- * - Inputs are disabled during redirect to prevent mid-flight changes.
- */
-/**
- * @typedef {{ business_name?:string, vendor_name?:string, business_address?:string, industry?:string, contact_name?:string }} VendorDetails
- * @typedef {{ raffle_cycle_id:number, raffle_type_id:number, price_of_ticket:number|string, winnable_amount:number|string }} RaffleData
- * @typedef {{ customerPhone:string, tickets:number, raffle_cycle_id:number|null, raffle_type_id:number|null, winnable_amount:number|string, price_of_ticket:number|string, vendor_id:number|null }} FormModel
- */
-
 export default {
   name: 'Scan2Pay4Me',
   setup() {
@@ -152,17 +147,15 @@ export default {
     const vendorIdFromUrl     = Number(route.query.vendor_id || 0);
 
     // ---- State ----
-    /** @type {import('vue').Ref<RaffleData|Record<string, any>>} */
     const raffleData         = ref({});
     const ticketCurrentPrice = ref(0);
+    const showFullForm       = ref(false);
     const isLoading          = ref(true);
     const isRedirecting      = ref(false);
 
-    /** @type {import('vue').Ref<VendorDetails|null>} */
     const vendorDetails      = ref(null);
 
     // Form model (aligned with Pay4MeForm)
-    /** @type {import('vue').Ref<FormModel>} */
     const formData = ref({
       customerPhone: '',
       tickets: 1,
@@ -204,7 +197,6 @@ export default {
      * Bootstrap: resolve raffle_cycle_id from products using raffle_type_id, then
      * validate cycle & price; fetch vendor details from vendor_id.
      */
-    /** @returns {Promise<void>} */
     const bootstrap = async () => {
       if (!raffleTypeIdFromUrl || !vendorIdFromUrl) {
         console.warn('⚠ Missing QR code parameters.');
@@ -253,7 +245,6 @@ export default {
      * Submit the form: create an order, then initiate payment via Squad.
      * Squad will redirect back to /thank-you?reference=...
      */
-    /** @returns {Promise<void>} */
     const handleSubmit = async () => {
       if (!navigator.onLine) {
         alert('You are offline. Please check your internet connection and try again.');
@@ -274,7 +265,6 @@ export default {
           vendor_id: Number(formData.value.vendor_id),           // from URL
           purchase_platform: 'web',
           payment_method_used: 'card',
-          customer_email: `${String(formData.value.customerPhone)}@paybychance.com`,
         };
 
         const response = await createOrder(canonical);
@@ -301,7 +291,6 @@ export default {
       }
     };
 
-
     onMounted(bootstrap);
 
     return {
@@ -310,6 +299,7 @@ export default {
       raffleData,
       ticketCurrentPrice,
       isLoading,
+      showFullForm,
       isRedirecting,
 
       // form
