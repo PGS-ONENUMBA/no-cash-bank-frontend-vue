@@ -41,8 +41,8 @@
               <p>Loading raffle details...</p>
             </div>
 
-            <!-- Step 1: Customer Phone (same as Pay4MeForm) -->
-            <form v-else-if="!showFullForm" @submit.prevent="showFullForm = true">
+            <!-- Combined Form: Phone and Tickets -->
+            <form v-else @submit.prevent="handleSubmit">
               <div class="mb-3">
                 <label for="customerPhone" class="form-label">
                   <i class="bi bi-telephone me-2"></i> Your Phone Number
@@ -59,13 +59,7 @@
                 />
                 <small class="text-muted">Use your active mobile number.</small>
               </div>
-              <button type="submit" class="btn btn-orange custom-width mb-3">
-                <i class="bi bi-arrow-right-circle me-2"></i> Next
-              </button>
-            </form>
 
-            <!-- Step 2: Tickets only (vendor & type come from URL) -->
-            <form v-else @submit.prevent="handleSubmit">
               <div class="mb-3">
                 <label for="tickets" class="form-label">
                   <i class="bi bi-ticket me-2"></i> How Many Tickets?
@@ -107,14 +101,6 @@
                   <span>Redirecting…</span>
                 </span>
               </button>
-              <button
-                type="button"
-                class="btn btn-secondary custom-width mb-3 ms-2"
-                @click="showFullForm = false"
-                :disabled="isRedirecting"
-              >
-                <i class="bi bi-arrow-left-circle me-2"></i> Back
-              </button>
             </form>
           </div>
         </div>
@@ -140,20 +126,19 @@ export default {
   name: 'Scan2Pay4Me',
   setup() {
     const router = useRouter();
-    const route  = useRoute();
+    const route = useRoute();
 
     // ---- Route params ----
     const raffleTypeIdFromUrl = Number(route.query.raffle_type_id || 0); // must be 2 for this flow
-    const vendorIdFromUrl     = Number(route.query.vendor_id || 0);
+    const vendorIdFromUrl = Number(route.query.vendor_id || 0);
 
     // ---- State ----
-    const raffleData         = ref({});
+    const raffleData = ref({});
     const ticketCurrentPrice = ref(0);
-    const showFullForm       = ref(false);
-    const isLoading          = ref(true);
-    const isRedirecting      = ref(false);
+    const isLoading = ref(true);
+    const isRedirecting = ref(false);
 
-    const vendorDetails      = ref(null);
+    const vendorDetails = ref(null);
 
     // Form model (aligned with Pay4MeForm)
     const formData = ref({
@@ -223,12 +208,12 @@ export default {
           return;
         }
 
-        raffleData.value               = validated;
+        raffleData.value = validated;
         formData.value.raffle_cycle_id = Number(validated.raffle_cycle_id);
-        formData.value.raffle_type_id  = Number(validated.raffle_type_id || raffleTypeIdFromUrl);
+        formData.value.raffle_type_id = Number(validated.raffle_type_id || raffleTypeIdFromUrl);
         formData.value.winnable_amount = validated.winnable_amount;
         formData.value.price_of_ticket = validated.price_of_ticket;
-        ticketCurrentPrice.value       = Number(validated.price_of_ticket);
+        ticketCurrentPrice.value = Number(validated.price_of_ticket);
 
         // 3) Set vendor from URL and fetch details for display
         formData.value.vendor_id = Number(vendorIdFromUrl);
@@ -299,7 +284,6 @@ export default {
       raffleData,
       ticketCurrentPrice,
       isLoading,
-      showFullForm,
       isRedirecting,
 
       // form
