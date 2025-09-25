@@ -95,16 +95,23 @@
 
               <button
                 type="submit"
-                class="btn btn-orange custom-width mb-3"
-                :disabled="!canSubmit"
+                class="btn btn-orange custom-width mb-3 d-inline-flex align-items-center gap-2"
+                :disabled="!canSubmit || isRedirecting"
+                :aria-busy="isRedirecting ? 'true' : 'false'"
                 :title="!canSubmit ? 'Enter phone, set tickets, and wait for price' : ''"
               >
-                <i class="bi bi-cash-coin me-2"></i> Pay By Chance
+                <i v-if="!isRedirecting" class="bi bi-cash-coin"></i>
+                <span v-if="!isRedirecting">Pay By Chance</span>
+                <span v-else class="d-inline-flex align-items-center gap-2">
+                  <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                  <span>Redirecting…</span>
+                </span>
               </button>
               <button
                 type="button"
                 class="btn btn-secondary custom-width mb-3 ms-2"
                 @click="showFullForm = false"
+                :disabled="isRedirecting"
               >
                 <i class="bi bi-arrow-left-circle me-2"></i> Back
               </button>
@@ -144,6 +151,7 @@ export default {
     const ticketCurrentPrice = ref(0);
     const showFullForm       = ref(false);
     const isLoading          = ref(true);
+    const isRedirecting      = ref(false);
 
     const vendorDetails      = ref(null);
 
@@ -242,11 +250,11 @@ export default {
         alert('You are offline. Please check your internet connection and try again.');
         return;
       }
-      if (!canSubmit.value) {
-        alert('Please complete all required fields.');
+      if (!canSubmit.value || isRedirecting.value) {
         return;
       }
       try {
+        isRedirecting.value = true;
         // Canonical payload (what backend expects) — mirrors Pay4MeForm
         const canonical = {
           customer_phone: String(formData.value.customerPhone),
@@ -261,6 +269,7 @@ export default {
 
         const response = await createOrder(canonical);
         if (!response?.order_id) {
+          isRedirecting.value = false;
           alert(`Error: ${response?.message || 'Could not create order.'}`);
           return;
         }
@@ -273,11 +282,12 @@ export default {
           trans_ref: txRef,
           returnUrl,
         });
-        // NOTE: processPayment redirects the browser; no code runs after this.
+        // processPayment redirects; no code runs after this point
       } catch (error) {
         console.error('❌ Submission error:', error);
         const serverMsg = error?.response?.data?.message || error?.message || 'Failed to submit order. Please try again.';
         alert(`Error: ${serverMsg}`);
+        isRedirecting.value = false;
       }
     };
 
@@ -290,6 +300,7 @@ export default {
       ticketCurrentPrice,
       isLoading,
       showFullForm,
+      isRedirecting,
 
       // form
       formData,
