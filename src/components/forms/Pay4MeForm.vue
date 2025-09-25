@@ -14,6 +14,9 @@
 
             <h5 class="fw-bold"><i class="bi bi-lightbulb"></i> How It Works</h5>
             <ul class="list-unstyled">
+              <li v-if="ticketCurrentPrice > 0">
+                  <i class="bi bi-1-circle text-success"></i>Current Ticket Price: {{ formatCurrency(ticketCurrentPrice) }}
+              </li>
               <li><i class="bi bi-1-circle text-success"></i> Enter your phone number.</li>
               <li><i class="bi bi-2-circle text-success"></i> Select a registered vendor and buy tickets.</li>
               <li><i class="bi bi-3-circle text-success"></i> If you win, your win is locked to that vendor—spend it there.</li>
@@ -100,9 +103,7 @@
                 <label for="tickets" class="form-label">
                   <i class="bi bi-ticket me-2"></i> How Many Tickets?
                 </label>
-                <div class="mb-1" v-if="ticketCurrentPrice > 0">
-                  Current Ticket Price: {{ formatCurrency(ticketCurrentPrice) }}
-                </div>
+
                 <input
                   type="number"
                   class="form-control"
@@ -124,16 +125,23 @@
 
               <button
                 type="submit"
-                class="btn btn-orange custom-width mb-3"
-                :disabled="!canSubmit"
+                class="btn btn-orange custom-width mb-3 d-inline-flex align-items-center gap-2"
+                :disabled="!canSubmit || isRedirecting"
+                :aria-busy="isRedirecting ? 'true' : 'false'"
                 :title="!canSubmit ? 'Enter phone, select vendor, set tickets, and wait for price' : ''"
               >
-                <i class="bi bi-cash-coin me-2"></i> Pay By Chance
+                <i v-if="!isRedirecting" class="bi bi-cash-coin"></i>
+                <span v-if="!isRedirecting">Pay By Chance</span>
+                <span v-else class="d-inline-flex align-items-center gap-2">
+                  <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                  <span>Redirecting…</span>
+                </span>
               </button>
               <button
                 type="button"
                 class="btn btn-secondary custom-width mb-3 ms-2"
                 @click="showFullForm = false"
+                :disabled="isRedirecting"
               >
                 <i class="bi bi-arrow-left-circle me-2"></i> Back
               </button>
@@ -171,6 +179,25 @@ import { createOrder, processPayment } from "@/services/paymentService";
  * @property {string} vendor_name
  */
 
+/**
+ * @typedef {Object} RaffleData
+ * @property {number|string} raffle_cycle_id
+ * @property {number|string} raffle_type_id
+ * @property {number|string} price_of_ticket
+ * @property {number|string} winnable_amount
+ */
+
+/**
+ * @typedef {Object} FormModel
+ * @property {string} customerPhone
+ * @property {number} tickets
+ * @property {number|null} raffle_cycle_id
+ * @property {number|null} raffle_type_id
+ * @property {number|string} winnable_amount
+ * @property {number|string} price_of_ticket
+ * @property {number|string} vendor_id
+ */
+
 export default {
   name: "Pay4MeForm",
   setup() {
@@ -182,10 +209,12 @@ export default {
     const raffleTypeId  = Number(route.query.raffle_type_id || 0); // may be missing
 
     // ---- State ----
+    /** @type {import('vue').Ref<RaffleData|Object>} */
     const raffleData         = ref({});
     const ticketCurrentPrice = ref(0);
     const showFullForm       = ref(false);
     const isLoading          = ref(true);
+    const isRedirecting      = ref(false);
 
     /** @type {import('vue').Ref<Vendor[]>} */
     const vendors         = ref([]);
@@ -195,6 +224,7 @@ export default {
     const showDropdown    = ref(false);
 
     // Form model
+    /** @type {import('vue').Ref<FormModel>} */
     const formData = ref({
       customerPhone: "",
       tickets: 1,
@@ -212,7 +242,8 @@ export default {
 
     /**
      * Fetch and validate raffle details for the given cycle and type.
-     * We always trust server-provided IDs and prices.
+     * Always trust server-provided IDs and prices.
+     * @returns {Promise<void>}
      */
     const fetchRaffleDetails = async () => {
       if (!raffleCycleId) {
@@ -242,7 +273,10 @@ export default {
       }
     };
 
-    /** Populate registered vendors for selection. */
+    /**
+     * Populate registered vendors for selection.
+     * @returns {Promise<void>}
+     */
     const fetchVendorList = async () => {
       try {
         const vendorData = await fetchVendors();
@@ -253,7 +287,10 @@ export default {
       }
     };
 
-    /** Live filter vendors by name. */
+    /**
+     * Live filter vendors by name.
+     * @returns {void}
+     */
     const filterVendors = () => {
       const searchTerm = vendorSearch.value.toLowerCase().trim();
       if (!searchTerm) {
@@ -266,7 +303,11 @@ export default {
       }
     };
 
-    /** Select a vendor; coerce ID to number for safety. */
+    /**
+     * Select a vendor; coerce ID to number for safety.
+     * @param {Vendor} vendor
+     * @returns {void}
+     */
     const selectVendor = (vendor) => {
       formData.value.vendor_id = Number(vendor.vendor_id);
       vendorSearch.value = vendor.vendor_name;
@@ -278,7 +319,10 @@ export default {
       }
     };
 
-    /** Selected vendor name for display. */
+    /**
+     * Selected vendor name for display.
+     * @returns {import('vue').ComputedRef<string>}
+     */
     const selectedVendorName = computed(() => {
       const vid = Number(formData.value.vendor_id || 0);
       const selected = vendors.value.find((v) => Number(v.vendor_id) === vid);
@@ -295,21 +339,30 @@ export default {
         : "Loading..."
     );
 
-    /** Total ticket cost based on current price and quantity. */
+    /**
+     * Total ticket cost based on current price and quantity.
+     * @returns {import('vue').ComputedRef<number>}
+     */
     const totalTicketCost = computed(() => {
       const t = Number(formData.value.tickets) || 0;
       const p = Number(ticketCurrentPrice.value) || 0;
       return t > 0 && p > 0 ? t * p : 0;
     });
 
-    /** Final raffle_type_id to send (explicit or inferred from vendor selection). */
+    /**
+     * Final raffle_type_id to send (explicit or inferred from vendor selection).
+     * @returns {import('vue').ComputedRef<number>}
+     */
     const resolvedRaffleTypeId = computed(() => {
       const explicit = Number(formData.value.raffle_type_id || 0);
       if (explicit > 0) return explicit;
       return Number(formData.value.vendor_id) > 0 ? 2 : 1;
     });
 
-    /** Form can submit only when all critical parts are present. */
+    /**
+     * Form can submit only when all critical parts are present.
+     * @returns {import('vue').ComputedRef<boolean>}
+     */
     const canSubmit = computed(() => {
       return !!formData.value.customerPhone
         && Number(formData.value.vendor_id) > 0
@@ -321,18 +374,21 @@ export default {
     /**
      * Submit the form: create an order, then initiate payment via Squad.
      * Squad will redirect back to /thank-you?reference=...
+     * Sets a preloader + disables controls during redirect.
+     * @returns {Promise<void>}
      */
     const handleSubmit = async () => {
       if (!navigator.onLine) {
         alert("You are offline. Please check your internet connection and try again.");
         return;
       }
-      if (!canSubmit.value) {
-        alert("Please complete all required fields.");
+      if (!canSubmit.value || isRedirecting.value) {
         return;
       }
 
       try {
+        isRedirecting.value = true;
+
         // Build canonical payload (what backend expects).
         const canonical = {
           action_type: 'create_order',                        // harmless if service already sets this
@@ -365,27 +421,26 @@ export default {
         const response = await createOrder(body);
 
         // 2) Initiate payment and redirect to Squad
-        if (response?.order_id) {
-          const txRef = response.order_id;
-          const returnUrl = `${window.location.origin}/thank-you?reference=${encodeURIComponent(txRef)}`;
-
-          const paymentResponse = await processPayment({
-            email: `${formData.value.customerPhone}@paybychance.com`,
-            amount: Number(totalTicketCost.value),
-            trans_ref: txRef,
-            returnUrl, // server uses this to set Squad callback_url
-          });
-
-          if (paymentResponse?.status === "closed") {
-            console.log("❌ Payment Cancelled by user");
-            return;
-          }
-          // No router.push here—Squad handles redirect to returnUrl.
+        if (!response?.order_id) {
+          isRedirecting.value = false;
+          alert(`Error: ${response?.message || 'Could not create order.'}`);
+          return;
         }
+
+        const txRef = response.order_id;
+        const returnUrl = `${window.location.origin}/thank-you?reference=${encodeURIComponent(txRef)}`;
+        await processPayment({
+          email: `${formData.value.customerPhone}@paybychance.com`,
+          amount: Number(totalTicketCost.value),
+          trans_ref: txRef,
+          returnUrl, // server uses this to set Squad callback_url
+        });
+        // processPayment redirects; no code runs after this.
       } catch (error) {
         console.error("❌ Submission error:", error);
         const serverMsg = error?.response?.data?.message || error?.message || "Failed to submit order. Please try again.";
         alert(`Error: ${serverMsg}`);
+        isRedirecting.value = false;
       }
     };
 
@@ -398,6 +453,7 @@ export default {
       formData,
       showFullForm,
       isLoading,
+      isRedirecting,
       vendorSearch,
       filteredVendors,
       showDropdown,
@@ -425,4 +481,6 @@ export default {
 .btn-orange:hover { background-color: #e65d00; }
 .list-group-item-action:hover { cursor: pointer; background-color: #f8f9fa; }
 .dropdown-menu { display: block; }
+.custom-width { width: 200px; }
+.spinner-border { vertical-align: -0.125em; }
 </style>
