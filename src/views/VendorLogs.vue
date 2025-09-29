@@ -1,3 +1,4 @@
+<!-- eslint-disable no-unused-vars -->
 <template>
   <div class="container py-4">
     <header class="d-flex flex-column flex-md-row align-items-md-center justify-content-md-between mb-3">
@@ -11,6 +12,7 @@
       </div>
     </header>
 
+    <!-- Filters -->
     <section class="card mb-3">
       <div class="card-header bg-light fw-semibold">Filters</div>
       <div class="card-body">
@@ -20,8 +22,12 @@
             <select v-model="filters.status" class="form-select">
               <option value="">All</option>
               <option value="pending">Pending</option>
+              <option value="locked">Locked</option>
+              <option value="open">Open</option>
               <option value="captured">Captured</option>
               <option value="settled">Settled</option>
+              <option value="consumed">Consumed</option>
+              <option value="released">Released</option>
               <option value="failed">Failed</option>
             </select>
           </div>
@@ -35,7 +41,7 @@
           </div>
           <div class="col-12 col-md-3">
             <label class="form-label">Search</label>
-            <input v-model.trim="filters.search" class="form-control" placeholder="ref / phone" />
+            <input v-model.trim="filters.search" class="form-control" placeholder="ref / phone / email / name" />
           </div>
           <div class="col-12 d-flex justify-content-end">
             <button class="btn btn-primary" :disabled="loading" type="submit">
@@ -47,7 +53,8 @@
       </div>
     </section>
 
-    <section class="card">
+    <!-- Incoming Payments (existing ledger) -->
+    <section class="card mb-3">
       <div class="card-header bg-light fw-semibold d-flex justify-content-between align-items-center">
         <span>Incoming Payments</span>
         <button class="btn btn-outline-secondary btn-sm" @click="reload" :disabled="loading">
@@ -95,6 +102,57 @@
         </div>
       </div>
     </section>
+
+    <!-- Reserved Credits (Locks) -->
+    <section class="card">
+      <div class="card-header bg-light fw-semibold d-flex justify-content-between align-items-center">
+        <span>Reserved Credits (Locks)</span>
+        <button class="btn btn-outline-secondary btn-sm" @click="reloadLocks" :disabled="loadingLocks">
+          <span v-if="loadingLocks" class="spinner-border spinner-border-sm me-1"></span> Refresh
+        </button>
+      </div>
+      <div class="card-body p-0">
+        <div v-if="errorLocks" class="alert alert-danger m-3">{{ errorLocks }}</div>
+        <div v-else>
+          <div v-if="locks.length === 0" class="p-3 text-muted">No locks.</div>
+          <div v-else class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Date</th>
+                  <th>Hold</th>
+                  <th>Status</th>
+                  <th>Customer</th>
+                  <th>Phone</th>
+                  <th class="text-end">Lock ID</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="l in locks" :key="l.lock_id">
+                  <td>{{ fmtDate(l.created_at) }}</td>
+                  <td>{{ naira(l.hold_amount ?? (Number(l.locked_amount||0) - Number(l.consumed_amount||0))) }}</td>
+                  <td><span class="badge bg-secondary text-uppercase">{{ l.status }}</span></td>
+                  <td>{{ l.customer_name || '—' }}</td>
+                  <td><code>{{ l.customer_phone || '—' }}</code></td>
+                  <td class="text-end"><code>{{ l.lock_id }}</code></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center p-3">
+            <small class="text-muted">
+              Page {{ lPage }} of {{ lTotalPages }} ({{ lTotal }} items)
+            </small>
+            <div class="btn-group">
+              <button class="btn btn-outline-secondary btn-sm" :disabled="lPage<=1||loadingLocks" @click="goLocks(lPage-1)">Prev</button>
+              <button class="btn btn-outline-secondary btn-sm" :disabled="lPage>=lTotalPages||loadingLocks" @click="goLocks(lPage+1)">Next</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
   </div>
 </template>
 
@@ -104,7 +162,6 @@ import { api } from '@/services/http';
 
 const loading = ref(false);
 const error = ref('');
-
 const balance = ref({ available: 0, pending: 0 });
 
 const page = ref(1);
@@ -113,8 +170,15 @@ const total = ref(0);
 const items = ref([]);
 
 const filters = ref({ status: '', from: '', to: '', search: '' });
-
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / perPage.value)));
+
+const loadingLocks = ref(false);
+const errorLocks = ref('');
+const lPage = ref(1);
+const lPerPage = ref(20);
+const lTotal = ref(0);
+const locks = ref([]);
+const lTotalPages = computed(() => Math.max(1, Math.ceil(lTotal.value / lPerPage.value)));
 
 /** Format NGN as ₦x,xxx.xx */
 function naira(n) {
@@ -149,23 +213,31 @@ async function postWithFallback(primaryPath, primaryBody, fallbackActionType, ma
   }
 }
 
-/** Load vendor balance: POST /context-proxy/v1/vendor/balance → fallback action vendor_wallet_summary */
+/** Load vendor balance: GET /context-proxy/v1/vendor/balance → fallback action get_vendor_wallet_summary */
 async function loadBalance() {
   try {
+    // first try new alias
+    try {
+      const r = await api.get('/context-proxy/v1/vendor/balance');
+      balance.value = unwrap(r.data) || { available: 0, pending: 0 };
+      return;
+    // eslint-disable-next-line no-unused-vars
+    } catch (e) {
+      // fall through to action
+    }
     const payload = await postWithFallback(
-      '/context-proxy/v1/vendor/balance',
+      '/context-proxy/v1/vendor/summary',
       {},
-      'vendor_wallet_summary',
+      'get_vendor_wallet_summary',
       (u) => u?.balance || u || { available: 0, pending: 0 }
     );
     balance.value = payload;
   } catch (e) {
-    // keep zeros but surface error on ledger pane, not here
     console.error(e);
   }
 }
 
-/** Load ledger: POST /context-proxy/v1/vendor/ledger → fallback action vendor_wallet_ledger */
+/** Load ledger: POST /context-proxy/v1/vendor/ledger → fallback action get_vendor_wallet_ledger */
 async function loadLedger() {
   const body = {
     page: page.value,
@@ -173,16 +245,15 @@ async function loadLedger() {
     status: filters.value.status || undefined,
     from: filters.value.from || undefined,
     to: filters.value.to || undefined,
-    q: filters.value.search || undefined,
+    search: filters.value.search || undefined,
   };
 
   try {
     const payload = await postWithFallback(
       '/context-proxy/v1/vendor/ledger',
       body,
-      'vendor_wallet_ledger',
+      'get_vendor_wallet_ledger',
       (u) => {
-        // Accept shapes: { items,total } OR { rows,total } OR { data:{...} }
         return {
           items: u?.items || u?.rows || [],
           total: Number(u?.total ?? u?.total_rows ?? 0),
@@ -196,6 +267,36 @@ async function loadLedger() {
   }
 }
 
+/** Load locks: POST /context-proxy/v1/vendor/locks → fallback action get_vendor_locks */
+async function loadLocks() {
+  const body = {
+    page: lPage.value,
+    per_page: lPerPage.value,
+    status: filters.value.status || undefined,
+    from: filters.value.from || undefined,
+    to: filters.value.to || undefined,
+    search: filters.value.search || undefined,
+  };
+
+  try {
+    const payload = await postWithFallback(
+      '/context-proxy/v1/vendor/locks',
+      body,
+      'get_vendor_locks',
+      (u) => {
+        return {
+          items: u?.items || u?.rows || u?.data || [],
+          total: Number(u?.total ?? u?.total_rows ?? 0),
+        };
+      }
+    );
+    locks.value = payload.items;
+    lTotal.value = payload.total;
+  } catch (e) {
+    errorLocks.value = e?.response?.data?.data?.error || e?.message || 'Failed to load locks.';
+  }
+}
+
 async function reload() {
   loading.value = true;
   error.value = '';
@@ -205,10 +306,26 @@ async function reload() {
     loading.value = false;
   }
 }
+async function reloadLocks() {
+  loadingLocks.value = true;
+  errorLocks.value = '';
+  try {
+    await loadLocks();
+  } finally {
+    loadingLocks.value = false;
+  }
+}
+
 function go(p) {
   page.value = Math.min(Math.max(1, p), totalPages.value);
   void reload();
 }
+function goLocks(p) {
+  lPage.value = Math.min(Math.max(1, p), lTotalPages.value);
+  void reloadLocks();
+}
 
+// initial load
 void reload();
+void reloadLocks();
 </script>
