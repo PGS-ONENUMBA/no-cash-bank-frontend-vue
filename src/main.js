@@ -13,6 +13,8 @@ if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/service-worker.js");
 }
 
+// src/main.js
+document.title = import.meta.env.VITE_SITE_NAME || "Pay by Chance";
 
 
 const pinia = createPinia();

@@ -10,13 +10,10 @@
   </head>
   <body>
     <div id="app"></div>
-    <script type="module">
-      // Dynamically set the site title using environment variables
-      document.getElementById("site-title").innerText = import.meta.env.VITE_SITE_NAME || "Pay by Chance";
-    </script>
     <script type="module" src="/src/main.js"></script>
 
-    <!-- Squad SDK -->
-    <script src="https://checkout.squadco.com/widget/squad.min.js"></script> 
+    <!-- Squad SDK --><!-- Load from your origin -->
+<script src="/vendor/squad.min.js" integrity="sha256-95cva954FLMR/Y2FJVuwzag2Y2gvL8iFYOxdrXHuYmM=" crossorigin="anonymous"></script>
+
   </body>
 </html>
