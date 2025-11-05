@@ -9,9 +9,9 @@ import './assets/main.css'
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/service-worker.js");
-}
+// if ("serviceWorker" in navigator) {
+//   navigator.serviceWorker.register("/service-worker.js");
+// }
 
 // src/main.js
 document.title = import.meta.env.VITE_SITE_NAME || "Pay by Chance";
