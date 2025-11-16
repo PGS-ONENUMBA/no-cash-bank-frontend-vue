@@ -188,48 +188,71 @@ export default {
       return true;
     });
 
-    // Fetch raffle details + current ticket price from backend
-    const bootstrapRaffle = async () => {
+    // Fetch raffle details + current ticket price from the products list
+const bootstrapRaffle = async () => {
   try {
-    // Use the same products endpoint you already know is working
     const all = await fetchProducts();
 
-    // Find the product that matches this page's cycle + type
-    const match = Array.isArray(all)
-      ? all.find(
-          (p) =>
-            Number(p.raffle_cycle_id) === raffleCycleIdFromUrl &&
-            Number(p.raffle_type_id) === raffleTypeId
-        )
-      : null;
+    if (!Array.isArray(all) || all.length === 0) {
+      console.warn("⚠ No products returned from fetchProducts");
+      return;
+    }
 
-    if (!match) {
+    // 1) Find the raffle cycle by ID (all 3 products share this cycle)
+    const cycle = all.find(
+      (p) => Number(p.raffle_cycle_id) === raffleCycleIdFromUrl
+    );
+
+    if (!cycle) {
       console.warn(
-        "⚠ No matching product found for",
+        "⚠ No raffle cycle found for",
         raffleCycleIdFromUrl,
-        raffleTypeId
+        "(type:",
+        raffleTypeId,
+        ")"
       );
       return;
     }
 
-    raffleData.value = match;
+    // 2) From that cycle, resolve the specific type (2,3,4) if present
+    const types = Array.isArray(cycle.associated_types)
+      ? cycle.associated_types
+      : [];
 
-    // Hidden fields used by backend
-    formData.raffle_cycle_id = Number(match.raffle_cycle_id);
-    formData.raffle_type_id =
-      Number(match.raffle_type_id || raffleTypeId);
-    formData.winnable_amount = Number(match.winnable_amount);
-
-    // Price may be ticket_price or price_of_ticket depending on payload
-    const price = Number(
-      match.ticket_price ?? match.price_of_ticket ?? 0
+    const typeMatch = types.find(
+      (t) => Number(t.raffle_type_id) === raffleTypeId
     );
+
+    const finalTypeId = typeMatch
+      ? Number(typeMatch.raffle_type_id)
+      : Number(raffleTypeId);
+
+    // 3) Set raffleData (for left-panel display)
+    const price = Number(
+      cycle.ticket_price ?? cycle.price_of_ticket ?? 0
+    );
+    const winAmount = Number(cycle.winnable_amount ?? 0);
+
+    raffleData.value = {
+      raffle_cycle_id: Number(cycle.raffle_cycle_id),
+      raffle_type_id: finalTypeId,
+      winnable_amount: winAmount,
+      price_of_ticket: price,
+    };
+
+    // 4) Fill hidden fields used by backend
+    formData.raffle_cycle_id = raffleData.value.raffle_cycle_id;
+    formData.raffle_type_id = finalTypeId;
+    formData.winnable_amount = winAmount;
     formData.price_of_ticket = price;
+
+    // 5) Update ticket price used for total computation
     ticketCurrentPrice.value = price;
   } catch (err) {
     console.error("Error bootstrapping raffle from products list:", err);
   }
-    };
+};
+
 
 
     // Build canonical payload sent to backend create_order handler
