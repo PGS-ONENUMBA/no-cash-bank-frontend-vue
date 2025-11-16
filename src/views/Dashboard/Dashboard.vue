@@ -176,7 +176,7 @@ import DashboardFooter from "@/components/dashboard/DashboardFooter.vue";
 import downloadQrCode from "@/services/generateQRCodePdf";
 
 export default {
-  name: "Dashboard",
+  name: "DashboardView",
   components: {
     WalletBalance,
     FeatureCard,
