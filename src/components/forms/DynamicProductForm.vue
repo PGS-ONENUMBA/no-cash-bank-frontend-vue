@@ -237,48 +237,53 @@ export default {
      * matching the backend "create_order" handler requirements.
      */
     const buildCanonicalPayload = () => {
-      const base = {
-        raffle_cycle_id: Number(formData.raffle_cycle_id),
-        raffle_type_id: Number(formData.raffle_type_id || raffleTypeId),
-        ticket_quantity: Number(formData.tickets),
-        order_amount: Number(totalTicketCost.value),
-        purchase_platform: "web",
-        payment_method_used: "card",
+  // Shared base payload for all products
+  const base = {
+    raffle_cycle_id: Number(formData.raffle_cycle_id),
+    raffle_type_id: Number(formData.raffle_type_id || raffleTypeId),
+    ticket_quantity: Number(formData.tickets),
+    order_amount: Number(totalTicketCost.value),
+    purchase_platform: "web",
+    payment_method_used: "card",
+  };
+
+  switch (props.config.key) {
+    case "pay-merchant":
+      // Pay Merchant - vendor based
+      return {
+        ...base,
+        customer_phone: String(formData.customerPhone),
+        vendor_id: Number(formData.vendor_id),
       };
 
-      switch (props.config.key) {
-        case "pay-merchant":
-          return {
-            ...base,
-            customer_phone: String(formData.customerPhone),
-            vendor_id: Number(formData.vendor_id),
-          };
+    case "transfer-moni":
+      // Transfer Moni - sender plus recipient details
+      return {
+        ...base,
+        customer_phone: String(formData.senderPhone),
+        recipient_phone: String(formData.recipientPhone),
+        recipient_email:
+          formData.recipientEmail ||
+          `${formData.recipientPhone}@paybychance.com`,
+      };
 
-        case "transfer-moni":
-          return {
-            ...base,
-            customer_phone: String(formData.senderPhone),
-            recipient_phone: String(formData.recipientPhone),
-            recipient_email:
-              formData.recipientEmail ||
-              `${formData.recipientPhone}@paybychance.com`,
-          };
-
-        case "on-the-house":
-        case "withdraw-cash":
-        default:
-          return {
-            ...base,
-            customer_phone: String(
-              formData.phoneNumber || formData.customerPhone
-            ),
-            recipient_phone: null,
-            recipient_email:
-              formData.email ||
-              `${formData.phoneNumber || formData.customerPhone}@paybychance.com`,
-          };
-      }
+    case "on-the-house":
+    case "withdraw-cash":
+    default:
+      // On The House and Withdraw Cash - simple phone and optional email
+      return {
+        ...base,
+        customer_phone: String(
+          formData.phoneNumber || formData.customerPhone
+        ),
+        recipient_phone: null,
+        recipient_email:
+          formData.email ||
+          `${formData.phoneNumber || formData.customerPhone}@paybychance.com`,
+      };
+  }
     };
+
 
     /**
      * Submit workflow:
@@ -287,51 +292,75 @@ export default {
      * 3. Redirect user to Squad for payment
      */
     const handleSubmit = async () => {
-      if (!navigator.onLine) {
-        alert("You are offline. Please check your internet connection.");
-        return;
-      }
-      if (!canSubmit.value || isSubmitting.value) return;
+  if (!navigator.onLine) {
+    alert("You are offline. Please check your internet connection.");
+    return;
+  }
+  if (!canSubmit.value || isSubmitting.value) return;
 
-      try {
-        isSubmitting.value = true;
+  try {
+    isSubmitting.value = true;
 
-        const canonical = buildCanonicalPayload();
-        const response = await createOrder(canonical);
+    // Build canonical payload from current formData + config
+    const canonical = buildCanonicalPayload();
 
-        if (!response?.order_id) {
-          alert(response?.message || "Could not create order");
-          isSubmitting.value = false;
-          return;
-        }
+    // Default payload is the canonical object
+    let payload = canonical;
 
-        const txRef = response.order_id;
+    // For Pay Merchant, keep existing "create_order" shape with params
+    if (props.config.key === "pay-merchant") {
+      // Ensure action_type is set
+      canonical.action_type = "create_order";
 
-        // Fallback email if none provided
-        const emailForPayment =
-          canonical.recipient_email ||
-          canonical.customer_phone + "@paybychance.com";
+      payload = {
+        ...canonical,
+        params: {
+          ...canonical,
+          phoneNumber: canonical.customer_phone,         // legacy
+          tickets: canonical.ticket_quantity,            // legacy
+          amount: canonical.order_amount,                // legacy
+          platform: canonical.purchase_platform,         // legacy
+          paymentMethod: canonical.payment_method_used,  // legacy
+        },
+      };
+    }
 
-        const returnUrl = `${window.location.origin}/thank-you?reference=${encodeURIComponent(
-          txRef
-        )}`;
+    // Call backend to create order
+    const response = await createOrder(payload);
 
-        await processPayment({
-          email: emailForPayment,
-          amount: canonical.order_amount,
-          trans_ref: txRef,
-          returnUrl,
-        });
+    if (!response?.order_id) {
+      alert(response?.message || "Could not create order");
+      isSubmitting.value = false;
+      return;
+    }
 
-        // After this point, Squad handles redirection
-      } catch (err) {
-        console.error("Submission error:", err);
-        const serverMsg =
-          err?.response?.data?.message || err?.message || "Submit failed";
-        alert(`Error: ${serverMsg}`);
-        isSubmitting.value = false;
-      }
+    const txRef = response.order_id;
+
+    // Fallback email if none provided
+    const emailForPayment =
+      canonical.recipient_email ||
+      canonical.customer_phone + "@paybychance.com";
+
+    const returnUrl = `${window.location.origin}/thank-you?reference=${encodeURIComponent(
+      txRef
+    )}`;
+
+    await processPayment({
+      email: emailForPayment,
+      amount: canonical.order_amount,
+      trans_ref: txRef,
+      returnUrl,
+    });
+    // Squad redirects the user, no code runs after this
+  } catch (err) {
+    console.error("Submission error:", err);
+    const serverMsg =
+      err?.response?.data?.message || err?.message || "Submit failed";
+    alert(`Error: ${serverMsg}`);
+    isSubmitting.value = false;
+  }
     };
+
 
     onMounted(bootstrapRaffle);
 
