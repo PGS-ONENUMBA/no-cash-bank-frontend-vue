@@ -120,23 +120,18 @@
 <script>
 import { ref, reactive, computed, onMounted } from "vue";
 import { useRoute } from "vue-router";
-
-// Product + raffle API services
-import { validateRaffleCycle, validateProductPricing } from "@/services/productService";
-import { createOrder, processPayment } from "@/services/paymentService";
-
-// Utils
+import { validateRaffleCycle } from "@/services/productService";
+import { validateProductPricing, createOrder, processPayment } from "@/services/paymentService";
 import formatCurrency from "@/services/currencyFormatter";
-
-// Optional reusable vendor selector
 import VendorSelect from "@/components/common/VendorSelect.vue";
+
 
 export default {
   name: "DynamicProductForm",
   components: { VendorSelect },
 
   props: {
-    // Config generated from PRODUCT_CONFIG
+    // Product config from PRODUCT_CONFIG
     config: {
       type: Object,
       required: true,
@@ -146,46 +141,41 @@ export default {
   setup(props) {
     const route = useRoute();
 
-    // The raffle cycle comes from URL params
+    // Raffle cycle comes from URL query; default to 1 if missing
     const raffleCycleIdFromUrl = route.query.raffle_cycle_id
       ? Number(route.query.raffle_cycle_id)
       : 1;
 
-    // Default raffle type comes from product config
+    // Default raffle type for the product (from config)
     const raffleTypeId = props.config.raffleTypeId;
 
-    // Reactive data holders
+    // State
     const raffleData = ref({});
     const ticketCurrentPrice = ref(0);
     const isSubmitting = ref(false);
 
-    // Build form model based on the config
-    const formData = reactive(
-      props.config.fields.reduce((acc, field) => {
-        // default numeric fields start at 1, others empty string
-        acc[field.name] = field.type === "number" ? 1 : "";
-        return acc;
-      }, {})
-    );
+    // Build reactive form model from config fields
+    const formData = reactive({});
+    props.config.fields.forEach((field) => {
+      formData[field.name] = field.type === "number" ? 1 : "";
+    });
 
-    // Fields that show on UI
+    // Fields to render vs hidden fields
     const visibleFields = computed(() =>
       props.config.fields.filter((f) => f.type !== "hidden")
     );
-
-    // Fields sent as hidden values to API
     const hiddenFields = computed(() =>
       props.config.fields.filter((f) => f.type === "hidden")
     );
 
-    // Compute total amount user will pay
+    // Total ticket cost (for display and backend)
     const totalTicketCost = computed(() => {
       const tickets = Number(formData.tickets || 0);
       if (!tickets || !ticketCurrentPrice.value) return 0;
       return tickets * ticketCurrentPrice.value;
     });
 
-    // Quick client-side validation
+    // Simple client-side required-field check
     const canSubmit = computed(() => {
       for (const field of props.config.fields) {
         if (!field.required) continue;
@@ -196,10 +186,7 @@ export default {
       return true;
     });
 
-    /**
-     * Load raffle details based on raffle_cycle_id + raffle_type_id.
-     * This ensures price, winnable_amount, etc. are accurate.
-     */
+    // Fetch raffle details + current ticket price from backend
     const bootstrapRaffle = async () => {
       try {
         const validated = await validateRaffleCycle(
@@ -214,13 +201,13 @@ export default {
 
         raffleData.value = validated;
 
-        // Populate hidden fields
+        // Hidden fields for API
         formData.raffle_cycle_id = Number(validated.raffle_cycle_id);
         formData.raffle_type_id = Number(validated.raffle_type_id);
         formData.winnable_amount = validated.winnable_amount;
         formData.price_of_ticket = validated.price_of_ticket;
 
-        // Always fetch current price from validateProductPricing
+        // Always fetch current ticket price from pricing endpoint
         const priceResp = await validateProductPricing(
           Number(validated.raffle_cycle_id)
         );
@@ -232,135 +219,116 @@ export default {
       }
     };
 
-    /**
-     * Convert generic formData into a canonical request
-     * matching the backend "create_order" handler requirements.
-     */
+    // Build canonical payload sent to backend create_order handler
     const buildCanonicalPayload = () => {
-  // Shared base payload for all products
-  const base = {
-    raffle_cycle_id: Number(formData.raffle_cycle_id),
-    raffle_type_id: Number(formData.raffle_type_id || raffleTypeId),
-    ticket_quantity: Number(formData.tickets),
-    order_amount: Number(totalTicketCost.value),
-    purchase_platform: "web",
-    payment_method_used: "card",
-  };
-
-  switch (props.config.key) {
-    case "pay-merchant":
-      // Pay Merchant - vendor based
-      return {
-        ...base,
-        customer_phone: String(formData.customerPhone),
-        vendor_id: Number(formData.vendor_id),
+      const base = {
+        raffle_cycle_id: Number(formData.raffle_cycle_id),
+        raffle_type_id: Number(formData.raffle_type_id || raffleTypeId),
+        ticket_quantity: Number(formData.tickets),
+        order_amount: Number(totalTicketCost.value),
+        purchase_platform: "web",
+        payment_method_used: "card",
       };
 
-    case "transfer-moni":
-      // Transfer Moni - sender plus recipient details
-      return {
-        ...base,
-        customer_phone: String(formData.senderPhone),
-        recipient_phone: String(formData.recipientPhone),
-        recipient_email:
-          formData.recipientEmail ||
-          `${formData.recipientPhone}@paybychance.com`,
-      };
+      switch (props.config.key) {
+        case "pay-merchant":
+          // Pay Merchant: customer phone + vendor_id
+          return {
+            ...base,
+            customer_phone: String(formData.customerPhone),
+            vendor_id: Number(formData.vendor_id),
+          };
 
-    case "on-the-house":
-    case "withdraw-cash":
-    default:
-      // On The House and Withdraw Cash - simple phone and optional email
-      return {
-        ...base,
-        customer_phone: String(
-          formData.phoneNumber || formData.customerPhone
-        ),
-        recipient_phone: null,
-        recipient_email:
-          formData.email ||
-          `${formData.phoneNumber || formData.customerPhone}@paybychance.com`,
-      };
-  }
+        case "transfer-moni":
+          // Transfer Moni: sender + recipient
+          return {
+            ...base,
+            customer_phone: String(formData.senderPhone),
+            recipient_phone: String(formData.recipientPhone),
+            recipient_email:
+              formData.recipientEmail ||
+              `${formData.recipientPhone}@paybychance.com`,
+          };
+
+        case "on-the-house":
+        case "withdraw-cash":
+        default:
+          // Simple flows: one phone number and optional email
+          return {
+            ...base,
+            customer_phone: String(
+              formData.phoneNumber || formData.customerPhone
+            ),
+            recipient_phone: null,
+            recipient_email:
+              formData.email ||
+              `${formData.phoneNumber || formData.customerPhone}@paybychance.com`,
+          };
+      }
     };
 
-
-    /**
-     * Submit workflow:
-     * 1. Validate minimal fields
-     * 2. Create order in backend
-     * 3. Redirect user to Squad for payment
-     */
+    // Submit handler: create order then redirect to Squad
     const handleSubmit = async () => {
-  if (!navigator.onLine) {
-    alert("You are offline. Please check your internet connection.");
-    return;
-  }
-  if (!canSubmit.value || isSubmitting.value) return;
+      if (!navigator.onLine) {
+        alert("You are offline. Please check your internet connection.");
+        return;
+      }
+      if (!canSubmit.value || isSubmitting.value) return;
 
-  try {
-    isSubmitting.value = true;
+      try {
+        isSubmitting.value = true;
 
-    // Build canonical payload from current formData + config
-    const canonical = buildCanonicalPayload();
+        const canonical = buildCanonicalPayload();
+        let payload = canonical;
 
-    // Default payload is the canonical object
-    let payload = canonical;
+        // For Pay Merchant keep the legacy shape with params
+        if (props.config.key === "pay-merchant") {
+          canonical.action_type = "create_order";
 
-    // For Pay Merchant, keep existing "create_order" shape with params
-    if (props.config.key === "pay-merchant") {
-      // Ensure action_type is set
-      canonical.action_type = "create_order";
+          payload = {
+            ...canonical,
+            params: {
+              ...canonical,
+              phoneNumber: canonical.customer_phone,
+              tickets: canonical.ticket_quantity,
+              amount: canonical.order_amount,
+              platform: canonical.purchase_platform,
+              paymentMethod: canonical.payment_method_used,
+            },
+          };
+        }
 
-      payload = {
-        ...canonical,
-        params: {
-          ...canonical,
-          phoneNumber: canonical.customer_phone,         // legacy
-          tickets: canonical.ticket_quantity,            // legacy
-          amount: canonical.order_amount,                // legacy
-          platform: canonical.purchase_platform,         // legacy
-          paymentMethod: canonical.payment_method_used,  // legacy
-        },
-      };
-    }
+        const response = await createOrder(payload);
 
-    // Call backend to create order
-    const response = await createOrder(payload);
+        if (!response?.order_id) {
+          alert(response?.message || "Could not create order");
+          isSubmitting.value = false;
+          return;
+        }
 
-    if (!response?.order_id) {
-      alert(response?.message || "Could not create order");
-      isSubmitting.value = false;
-      return;
-    }
+        const txRef = response.order_id;
+        const emailForPayment =
+          canonical.recipient_email ||
+          canonical.customer_phone + "@paybychance.com";
+        const returnUrl = `${window.location.origin}/thank-you?reference=${encodeURIComponent(
+          txRef
+        )}`;
 
-    const txRef = response.order_id;
-
-    // Fallback email if none provided
-    const emailForPayment =
-      canonical.recipient_email ||
-      canonical.customer_phone + "@paybychance.com";
-
-    const returnUrl = `${window.location.origin}/thank-you?reference=${encodeURIComponent(
-      txRef
-    )}`;
-
-    await processPayment({
-      email: emailForPayment,
-      amount: canonical.order_amount,
-      trans_ref: txRef,
-      returnUrl,
-    });
-    // Squad redirects the user, no code runs after this
-  } catch (err) {
-    console.error("Submission error:", err);
-    const serverMsg =
-      err?.response?.data?.message || err?.message || "Submit failed";
-    alert(`Error: ${serverMsg}`);
-    isSubmitting.value = false;
-  }
+        await processPayment({
+          email: emailForPayment,
+          amount: canonical.order_amount,
+          trans_ref: txRef,
+          returnUrl,
+        });
+        // Squad handles redirect from here
+      } catch (err) {
+        console.error("Submission error:", err);
+        const serverMsg =
+          err?.response?.data?.message || err?.message || "Submit failed";
+        alert(`Error: ${serverMsg}`);
+        isSubmitting.value = false;
+      }
     };
-
 
     onMounted(bootstrapRaffle);
 
@@ -379,6 +347,7 @@ export default {
   },
 };
 </script>
+
 
 <style scoped>
 .btn-orange {
