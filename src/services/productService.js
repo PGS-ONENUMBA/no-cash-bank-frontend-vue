@@ -351,16 +351,32 @@ export const getIcon = (typeId) => {
  * @param {number|string} typeId
  * @returns {string}
  */
+/**
+ * Map raffle type to a route path.
+ *
+ * Types (as used in hero buttons):
+ *  1 = OnTheHouse Deals
+ *  2 = Pay Merchant Service
+ *  3 = WithDraw Cash Deals
+ *  4 = Transfer Moni
+ *
+ * @param {number|string} typeId
+ * @returns {string}
+ */
 export const getRoute = (typeId) => {
   const key = Number(typeId);
+
   const routes = {
-    1: "/get-cash",
-    2: "/pay4me",
-    3: "/on-the-house",
+    1: "/on-the-house",    // OnTheHouse Deals
+    2: "/pay-merchant",    // Pay Merchant Service
+    3: "/withdraw-cash",   // WithDraw Cash Deals
+    4: "/transfer-moni",   // Transfer Moni
   };
+
   const route = routes[key];
   if (!route) {
     console.warn(`⚠ No specific route defined for raffle_type_id=${typeId}. Redirecting to Coming Soon.`);
   }
   return route || "/coming-soon";
 };
+
