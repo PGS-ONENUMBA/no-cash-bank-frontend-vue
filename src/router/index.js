@@ -11,15 +11,15 @@ import About from "@/views/Public/About.vue";
 import Team from "@/views/Public/Team.vue";
 import HowItWorks from "@/views/Public/How-It-Works.vue";
 import Login from "@/views/Public/Login.vue";
-import PublicGetCash from "@/views/Public/GetCash.vue";
-import PublicPay4Me from "@/views/Public/Pay4Me.vue";
-import PublicOnTheHouse from "@/views/Public/OnTheHouse.vue";
+// import PublicGetCash from "@/views/Public/GetCash.vue";
+// import PublicPay4Me from "@/views/Public/Pay4Me.vue";
+// import PublicOnTheHouse from "@/views/Public/OnTheHouse.vue";
+// import PublicScan2Pay4Me from "@/views/Public/Scan2Pay4Me.vue";
 import Privacy from "@/views/Privacy.vue";
 import Terms from "@/views/Terms.vue";
 import ResetPassword from "@/views/Public/ResetPassword.vue";
 import ThankYou from "@/views/common/ThankYouPage.vue";
 import NotFound from "@/views/404.vue";
-import PublicScan2Pay4Me from "@/views/Public/Scan2Pay4Me.vue";
 import ComingSoon from "@/views/ComingSoon.vue"; // Import ComingSoon component
 
 import SpendAtMerchant from '@/views/SpendAtMerchant.vue';
@@ -35,6 +35,7 @@ import Transfer from "@/views/Dashboard/Transfer.vue";
 import Reports from "@/views/Dashboard/Reports.vue";
 import Profile from "@/views/Dashboard/Profile.vue";
 import VendorLogs from '@/views/VendorLogs.vue';
+import PublicProduct from "@/views/Public/PublicProduct.vue";
 /**
  * Route Definitions
  */
@@ -49,14 +50,60 @@ const routes = [
       { path: "about", name: "About", component: About, meta: { title: "About Us" } },
       { path: "team", name: "Team", component: Team, meta: { title: "Our Team" } },
       { path: "how-it-works", name: "HowItWorks", component: HowItWorks, meta: { title: "How It Works" } },
-      { path: "get-cash", name: "PublicGetCash", component: PublicGetCash, meta: { title: "Get Cash" } },
-      { path: "pay4me", name: "PublicPay4Me", component: PublicPay4Me, meta: { title: "Pay-4-Me" } },
-      { path: "on-the-house", name: "PublicOnTheHouse", component: PublicOnTheHouse, meta: { title: "On The House" } },
+      {
+        path: "/pay-merchant",
+        name: "PayMerchant",
+        component: PublicProduct,
+        props: route => ({
+          productKey: "pay-merchant",
+          raffle_cycle_id: Number(route.query.raffle_cycle_id || 0),
+          raffle_type_id: Number(route.query.raffle_type_id || 0),
+          mode: "normal",
+        }),
+      },
+      {
+        path: "/withdraw-cash",
+        name: "WithdrawCash",
+        component: PublicProduct,
+        props: route => ({
+          productKey: "withdraw-cash",
+          raffle_cycle_id: Number(route.query.raffle_cycle_id || 0),
+          raffle_type_id: Number(route.query.raffle_type_id || 0),
+          mode: "normal",
+        }),
+      },
+      {
+        path: "/transfer-moni",
+        name: "TransferMoni",
+        component: PublicProduct,
+        props: route => ({
+          productKey: "transfer-moni",
+          raffle_cycle_id: Number(route.query.raffle_cycle_id || 0),
+          raffle_type_id: Number(route.query.raffle_type_id || 0),
+          mode: "normal",
+        }),
+      },
+      {
+        // QR route – same underlying product as Pay Merchant
+        path: "/scan2pay4me",
+        name: "Scan2Pay4Me",
+        component: PublicProduct,
+        props: route => ({
+          productKey: "pay-merchant",
+          raffle_cycle_id: null, // we can resolve from products if needed
+          raffle_type_id: Number(route.query.raffle_type_id || 2),
+          vendor_id: Number(route.query.vendor_id || 0),
+          mode: "qr",
+        }),
+      },
+      // { path: "get-cash", name: "PublicGetCash", component: PublicGetCash, meta: { title: "Get Cash" } },
+      // { path: "pay4me", name: "PublicPay4Me", component: PublicPay4Me, meta: { title: "Pay-4-Me" } },
+      // { path: "on-the-house", name: "PublicOnTheHouse", component: PublicOnTheHouse, meta: { title: "On The House" } },
       { path: "login", name: "Login", component: Login, meta: { title: "Login" } },
       { path: "privacy", name: "Privacy", component: Privacy, meta: { title: "Privacy" } },
       { path: "terms", name: "Terms", component: Terms, meta: { title: "Terms & Conditions" } },
       { path: "reset-password", name: "ResetPassword", component: ResetPassword, meta: { title: "Reset Password" } },
-      { path: "scan2pay4me", name: "PublicScan2Pay4Me", component: PublicScan2Pay4Me, meta: { title: "Scan to Pay4Me" } }, // New route
+      // { path: "scan2pay4me", name: "PublicScan2Pay4Me", component: PublicScan2Pay4Me, meta: { title: "Scan to Pay4Me" } }, // New route
       { path: "test", name: "Test", component: Test, meta: { title: "Test" } },
       { path: "404", name: "ExplicitNotFound", component: NotFound, meta: { title: "404 - Page Not Found" } }, // Explicit 404
       { path: "coming-soon", name: "ComingSoon", component: ComingSoon, meta: { title: "Coming Soon" } }, // ComingSoon

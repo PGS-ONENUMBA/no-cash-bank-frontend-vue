@@ -33,7 +33,7 @@
 
             <!-- Loading State -->
             <div v-if="isLoading" class="text-center">
-              <p>Loading raffle details...</p>
+              <p>Please wait, loading service details...</p>
             </div>
 
             <!-- Step 1: Customer Phone -->
