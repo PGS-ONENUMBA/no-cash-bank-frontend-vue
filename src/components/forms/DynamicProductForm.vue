@@ -118,10 +118,11 @@
 </template>
 
 <script>
+
 import { ref, reactive, computed, onMounted } from "vue";
 import { useRoute } from "vue-router";
-import { validateRaffleCycle } from "@/services/productService";
-import { validateProductPricing, createOrder, processPayment } from "@/services/paymentService";
+import { fetchProducts } from "@/services/productService";     // ← use products list only
+import { createOrder, processPayment } from "@/services/paymentService";
 import formatCurrency from "@/services/currencyFormatter";
 import VendorSelect from "@/components/common/VendorSelect.vue";
 
@@ -188,36 +189,47 @@ export default {
 
     // Fetch raffle details + current ticket price from backend
     const bootstrapRaffle = async () => {
-      try {
-        const validated = await validateRaffleCycle(
-          raffleCycleIdFromUrl,
-          raffleTypeId
-        );
+  try {
+    // Use the same products endpoint you already know is working
+    const all = await fetchProducts();
 
-        if (!validated) {
-          console.error("Raffle validation failed");
-          return;
-        }
+    // Find the product that matches this page's cycle + type
+    const match = Array.isArray(all)
+      ? all.find(
+          (p) =>
+            Number(p.raffle_cycle_id) === raffleCycleIdFromUrl &&
+            Number(p.raffle_type_id) === raffleTypeId
+        )
+      : null;
 
-        raffleData.value = validated;
+    if (!match) {
+      console.warn(
+        "⚠ No matching product found for",
+        raffleCycleIdFromUrl,
+        raffleTypeId
+      );
+      return;
+    }
 
-        // Hidden fields for API
-        formData.raffle_cycle_id = Number(validated.raffle_cycle_id);
-        formData.raffle_type_id = Number(validated.raffle_type_id);
-        formData.winnable_amount = validated.winnable_amount;
-        formData.price_of_ticket = validated.price_of_ticket;
+    raffleData.value = match;
 
-        // Always fetch current ticket price from pricing endpoint
-        const priceResp = await validateProductPricing(
-          Number(validated.raffle_cycle_id)
-        );
-        ticketCurrentPrice.value = Number(
-          priceResp?.raffle_cycle?.ticket_price || validated.price_of_ticket
-        );
-      } catch (err) {
-        console.error("Error bootstrapping raffle:", err);
-      }
+    // Hidden fields used by backend
+    formData.raffle_cycle_id = Number(match.raffle_cycle_id);
+    formData.raffle_type_id =
+      Number(match.raffle_type_id || raffleTypeId);
+    formData.winnable_amount = Number(match.winnable_amount);
+
+    // Price may be ticket_price or price_of_ticket depending on payload
+    const price = Number(
+      match.ticket_price ?? match.price_of_ticket ?? 0
+    );
+    formData.price_of_ticket = price;
+    ticketCurrentPrice.value = price;
+  } catch (err) {
+    console.error("Error bootstrapping raffle from products list:", err);
+  }
     };
+
 
     // Build canonical payload sent to backend create_order handler
     const buildCanonicalPayload = () => {
