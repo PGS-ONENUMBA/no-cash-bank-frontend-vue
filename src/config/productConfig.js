@@ -146,7 +146,7 @@ export const PRODUCT_CONFIG = {
   "transfer-moni": {
     key: "transfer-moni",
     label: "Transfer Moni",
-    winnableAmountLabel: "Transferable Limit",
+    winnableAmountLabel: "Transfer Limit",
     raffleTypeId: 4,
     layout: "standard",
     fields: [
