@@ -120,10 +120,11 @@
 <script>
 import { ref, reactive, computed, onMounted } from "vue";
 import { useRoute } from "vue-router";
-import { validateRaffleCycle, validateProductPricing } from "@/services/productService";
-import { createOrder, processPayment } from "@/services/paymentService";
+import { validateRaffleCycle } from "@/services/productService";
+import { validateProductPricing, createOrder, processPayment } from "@/services/paymentService";
 import formatCurrency from "@/services/currencyFormatter";
 import VendorSelect from "@/components/common/VendorSelect.vue";
+
 
 export default {
   name: "DynamicProductForm",
