@@ -189,6 +189,7 @@ export default {
     });
 
     // Fetch raffle details + current ticket price from the products list
+    // Fetch raffle details + current ticket price from the products list
 const bootstrapRaffle = async () => {
   try {
     const all = await fetchProducts();
@@ -198,7 +199,7 @@ const bootstrapRaffle = async () => {
       return;
     }
 
-    // 1) Find the raffle cycle by ID (all 3 products share this cycle)
+    // 1) Find the raffle cycle by ID
     const cycle = all.find(
       (p) => Number(p.raffle_cycle_id) === raffleCycleIdFromUrl
     );
@@ -214,7 +215,7 @@ const bootstrapRaffle = async () => {
       return;
     }
 
-    // 2) From that cycle, resolve the specific type (2,3,4) if present
+    // 2) Resolve the specific type (2,3,4) from associated_types
     const types = Array.isArray(cycle.associated_types)
       ? cycle.associated_types
       : [];
@@ -227,7 +228,7 @@ const bootstrapRaffle = async () => {
       ? Number(typeMatch.raffle_type_id)
       : Number(raffleTypeId);
 
-    // 3) Set raffleData (for left-panel display)
+    // 3) Set raffleData for the left panel
     const price = Number(
       cycle.ticket_price ?? cycle.price_of_ticket ?? 0
     );
@@ -240,18 +241,19 @@ const bootstrapRaffle = async () => {
       price_of_ticket: price,
     };
 
-    // 4) Fill hidden fields used by backend
+    // 4) Populate hidden fields for backend
     formData.raffle_cycle_id = raffleData.value.raffle_cycle_id;
     formData.raffle_type_id = finalTypeId;
     formData.winnable_amount = winAmount;
     formData.price_of_ticket = price;
 
-    // 5) Update ticket price used for total computation
+    // 5) Use this for displayed ticket price
     ticketCurrentPrice.value = price;
   } catch (err) {
     console.error("Error bootstrapping raffle from products list:", err);
   }
 };
+
 
 
 
