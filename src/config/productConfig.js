@@ -74,6 +74,7 @@ export const PRODUCT_CONFIG = {
   "pay-merchant": {
     key: "pay-merchant",
     label: "Pay Merchant",
+    winnableAmountLabel: "Payment Limit",
     raffleTypeId: 2,
     layout: "requiresVendor",
     fields: [
@@ -113,6 +114,7 @@ export const PRODUCT_CONFIG = {
   "withdraw-cash": {
     key: "withdraw-cash",
     label: "WithDraw Cash",
+    winnableAmountLabel: "Withdrawal Limit",
     raffleTypeId: 3,
     layout: "standard",
     fields: [
@@ -144,6 +146,7 @@ export const PRODUCT_CONFIG = {
   "transfer-moni": {
     key: "transfer-moni",
     label: "Transfer Moni",
+    winnableAmountLabel: "Transferable Limit",
     raffleTypeId: 4,
     layout: "standard",
     fields: [

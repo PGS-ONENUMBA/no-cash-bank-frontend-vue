@@ -10,7 +10,7 @@
 
             <!-- Winnable amount -->
             <p class="text-muted fs-4">
-              Winnable amount:
+              {{ config.winnableAmountLabel }}:
               <span v-if="raffleData.winnable_amount">
                 {{ formatCurrency(raffleData.winnable_amount) }}
               </span>
