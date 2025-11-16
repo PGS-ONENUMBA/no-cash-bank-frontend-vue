@@ -34,7 +34,7 @@
 export const PRODUCT_CONFIG = {
   "on-the-house": {
     key: "on-the-house",
-    label: import.meta.env.VITE_PRODUCT_ONE || "OnTheHouse Deals",
+    label: "OnTheHouse Deals",
     raffleTypeId: 1,
     layout: "standard",
     fields: [
@@ -73,7 +73,7 @@ export const PRODUCT_CONFIG = {
 
   "pay-merchant": {
     key: "pay-merchant",
-    label: import.meta.env.VITE_PRODUCT_TWO || "Pay Merchant Service",
+    label: "Pay Merchant",
     raffleTypeId: 2,
     layout: "requiresVendor",
     fields: [
@@ -112,8 +112,8 @@ export const PRODUCT_CONFIG = {
 
   "withdraw-cash": {
     key: "withdraw-cash",
-    label: import.meta.env.VITE_PRODUCT_THREE || "WithDraw Cash Deals",
-    raffleTypeId: 1,
+    label: "WithDraw Cash",
+    raffleTypeId: 3,
     layout: "standard",
     fields: [
       /** User phone */
@@ -143,8 +143,8 @@ export const PRODUCT_CONFIG = {
 
   "transfer-moni": {
     key: "transfer-moni",
-    label: import.meta.env.VITE_PRODUCT_FOUR || "Transfer Moni",
-    raffleTypeId: 1,
+    label: "Transfer Moni",
+    raffleTypeId: 4,
     layout: "standard",
     fields: [
       /** Sender phone */
