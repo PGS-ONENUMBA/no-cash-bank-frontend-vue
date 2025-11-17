@@ -13,7 +13,7 @@
         <div class="d-flex align-items-center">
           <!-- <img src="/spar_logo.png" height="90" alt="Vendor Logo" /> -->
           <img :src="vendorLogo" height="90" alt="Vendor Logo" />
-          <h3 class="fw-bold">{{ user.vendor_details.business_name }}</h3>
+          <!-- <h3 class="fw-bold">{{ user.vendor_details.business_name }}</h3> -->
         </div>
 
         <div
@@ -204,6 +204,7 @@ export default {
       import.meta.env.VITE_WINNABLE_AMOUNT_LABEL || "Winnable Amount";
 
     const user = computed(() => authStore.user);
+    console.log("User data:", user.value);
     // Vendor id comes from vendor_details (this does not touch authStore)
     const vendorId = computed(
       () => user.value?.vendor_details?.vendor_id ?? null
