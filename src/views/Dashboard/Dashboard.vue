@@ -217,7 +217,7 @@ export default {
     const vendorLogo = computed(() => {
       const id = vendorId.value;
       if (id === 3) return "/spar_logo.png";
-      if (id === 22) return "/mattoris_logo.jpg";
+      if (id === 23) return "/mattoris_logo.jpg";
       return "/spar_logo.png";
     });
 
