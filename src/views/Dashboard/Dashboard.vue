@@ -30,7 +30,7 @@
       <div class="d-flex justify-content-between align-items-center my-4">
         <!--- Greeting Message  -->
         <div>
-          <p class="fst-normal h5">{{ getGreeting() }} Admin, welcome back!</p>
+          <p class="fst-normal h5">{{ getGreeting() }} {{ user.vendor_details.business_name.toUpperCase() }} Admin, welcome back!</p>
         </div>
 
         <!--- Date --->
