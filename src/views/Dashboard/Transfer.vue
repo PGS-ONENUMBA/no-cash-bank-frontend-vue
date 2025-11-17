@@ -99,7 +99,7 @@ import DashboardFooter from "@/components/dashboard/DashboardFooter.vue";
 import WalletBalance from "@/components/common/WalletBalance.vue";
 
 export default {
-  name: "Transfer",
+  name: "TransferView",
   components: {
     WalletBalance, // ✅ Use WalletBalance here
     DashboardFooter,
