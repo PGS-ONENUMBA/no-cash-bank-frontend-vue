@@ -7,102 +7,115 @@
       <h1 class="fs-3"><i class="bi bi-house-door"></i> Dashboard</h1>
     </div>
 
+    <!-- VENDOR VIEW -->
     <div class=" " v-if="user?.user_role === 'vendor'">
-      <!--- Logo -->
+      <!-- Logo + date -->
       <div class="mb-4 d-flex justify-content-between align-items-center">
         <div class="d-flex align-items-center">
-          <img src="/spar_logo.png" height="90" alt="Vendor Logo" />
-          <h3 class="fw-bold">{{ user.vendor_details.business_name }}</h3>
+          <!-- Dynamic logo based on vendor id (MVP rule) -->
+          <img :src="vendorLogo" height="90" alt="Vendor Logo" />
+          <h3 class="fw-bold ms-3">{{ user.vendor_details.business_name }}</h3>
         </div>
 
         <div
           class="d-flex flex-column align-items-center justify-content-center"
         >
-
-          <p  class="fw-bold" style="cursor: pointer;" >
+          <p class="fw-bold" style="cursor: pointer;">
             {{ getFormattedDate() }}
           </p>
         </div>
       </div>
 
-      <!--- Greeting --->
+      <!-- Greeting -->
       <div class="d-flex justify-content-between align-items-center my-4">
-        <!--- Greeting Message  -->
         <div>
           <p class="fst-normal h5">{{ getGreeting() }} Admin, welcome back!</p>
         </div>
 
-        <!--- Date --->
         <div>
-          <!-- <h5>{{ getFormattedDate() }}</h5> -->
+          <!-- Reserved for extra stats/date if needed -->
         </div>
       </div>
 
-      <!---Vendor Financials -->
+      <!-- Vendor financials + QR section -->
       <div class="container">
         <div class="row gap-4" style="height: 200px;">
-          <div class="col card border-0 shadow-sm text-bg-success" >
+          <!-- Business Details -->
+          <div class="col card border-0 shadow-sm text-bg-success">
             <div class="card-body">
               <h5 class="fw-bold">Business Details</h5>
 
               <div class="d-flex">
-                <p class="fst-normal">Bank Name:</p>
-                <p class="fst-normal">{{ user.vendor_details.bank_name }}</p>
+                <p class="fst-normal me-1 mb-0">Bank Name:</p>
+                <p class="fst-normal mb-0">
+                  {{ user.vendor_details.bank_name }}
+                </p>
               </div>
               <div class="d-flex">
-                <p class="fst-normal">Bank Account Number:</p>
-                <p class="fst-normal">
+                <p class="fst-normal me-1 mb-0">Bank Account Number:</p>
+                <p class="fst-normal mb-0">
                   {{ user.vendor_details.bank_account_number }}
                 </p>
               </div>
             </div>
           </div>
+
+          <!-- Wallet Details -->
           <div class="col card border-0 shadow-sm">
             <div class="card-body">
               <h5 class="fw-bold">Wallet Details</h5>
 
               <div class="d-flex text-success fst-normal">
-                <p class="fst-normal">Balance:</p>
-                <p class="fst-normal">{{ user.wallet_balance }}</p>
+                <p class="fst-normal me-1 mb-0">Balance:</p>
+                <p class="fst-normal mb-0">{{ user.wallet_balance }}</p>
               </div>
-              <!-- <div class="d-flex">
-                <p class="fst-normal">Bank Account Number:</p>
-                <p class="fst-normal">
-                  {{ user.vendor_details.bank_account_number }}
-                </p>
-              </div> -->
             </div>
           </div>
+
+          <!-- QR code: generate & download on button click only -->
           <div class="col card shadow-sm border-0">
-            <div @click="downloadQrCode(user)" style="cursor:pointer" class="card-body" title="Customers can scan this QR code to make payments">
+            <div
+              class="card-body text-center"
+              title="Customers can scan this QR code to make payments"
+            >
               <h5 class="fw-bold text-center">Download QR Code</h5>
 
+              <p class="small mb-3">
+                Click the button to generate your Scan2Pay QR code and download it as a PDF.
+              </p>
 
-              <!-- <div class="d-flex justify-content-center">
-                <img
-                  :src="user.vendor_details.qr_code"
-                  height="100%"
-                  alt="Vendor QR COde"
-                />
-              </div> -->
+              <button
+                type="button"
+                class="btn btn-success"
+                @click="handleDownloadQr"
+                :disabled="!vendorQrValue"
+              >
+                Generate and Download
+              </button>
+
+              <!-- Optional: show URL for debugging or printing on standee -->
+              <p v-if="vendorQrValue" class="small text-muted mt-2">
+                {{ vendorQrValue }}
+              </p>
             </div>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- CUSTOMER VIEW -->
     <div v-if="user?.user_role === 'customer'">
-      <!-- ✅ Display Available Balance -->
+      <!-- Display Available Balance -->
       <WalletBalance title="Available Balance" />
 
-      <!-- ✅ Show Preloader while Loading -->
+      <!-- Show Preloader while Loading -->
       <div v-if="loadingProducts" class="text-center py-3">
         <div class="spinner-border text-success" role="status">
           <span class="visually-hidden">Loading products...</span>
         </div>
       </div>
 
-      <!-- ✅ @TODO: Dynamically Render Product Cards with Dynamic Columns -->
+      <!-- Dynamically Render Product Cards with Dynamic Columns -->
       <div
         v-else-if="availableProducts.length > 0"
         class="row row-cols-1 g-4"
@@ -139,7 +152,7 @@
           description="Easily send money to others."
           link="/dashboard/transfer"
         />
-        <!--@todo Add Spend FeatureCard -->
+        <!-- @todo Add Spend FeatureCard -->
         <FeatureCard
           title="Spend at Merchant"
           icon="bi bi-bag-check"
@@ -173,6 +186,7 @@ import WalletBalance from "@/components/common/WalletBalance.vue";
 import FeatureCard from "@/components/dashboard/FeatureCard.vue";
 import DashboardFooter from "@/components/dashboard/DashboardFooter.vue";
 
+// New QR generator that builds QR from URL and downloads PDF
 import downloadQrCode from "@/services/generateQRCodePdf";
 
 export default {
@@ -189,7 +203,50 @@ export default {
     const winnableAmountLabel =
       import.meta.env.VITE_WINNABLE_AMOUNT_LABEL || "Winnable Amount";
 
+    // Keep your original user binding
     const user = computed(() => authStore.user);
+
+    // Vendor id comes from vendor_details (this does not touch authStore)
+    const vendorId = computed(
+      () => user.value?.vendor_details?.vendor_id ?? null
+    );
+
+    // MVP logo logic
+    // vendor_id 3 => spar_logo
+    // vendor_id 22 => mattoris_logo
+    // default => spar_logo (you can change default later)
+    const vendorLogo = computed(() => {
+      const id = vendorId.value;
+      if (id === 3) return "/spar_logo.png";
+      if (id === 22) return "/mattoris_logo.jpg";
+      return "/spar_logo.png";
+    });
+
+    // QR content URL:
+    // https://www.paybychance.com/scan2pay4me?raffle_type_id=2&vendor_id={vendorId}
+    const vendorQrValue = computed(() => {
+      if (!vendorId.value) return "";
+      const baseUrl = "https://www.paybychance.com";
+      const raffleTypeId = 2; // fixed for Scan2Pay4Me
+      return `${baseUrl}/scan2pay4me?raffle_type_id=${raffleTypeId}&vendor_id=${vendorId.value}`;
+    });
+
+    // Generate and download QR PDF on click
+    const handleDownloadQr = async () => {
+      if (!vendorQrValue.value) {
+        console.error("QR value missing, cannot generate QR");
+        return;
+      }
+
+      try {
+        await downloadQrCode({
+          qrValue: vendorQrValue.value,
+          vendorName: user.value?.vendor_details?.business_name || "Vendor",
+        });
+      } catch (error) {
+        console.error("Failed to generate QR PDF:", error);
+      }
+    };
 
     /**
      * Transform raw raffle data into displayable product format
@@ -216,8 +273,8 @@ export default {
     };
 
     /**
-     *  Greeting Message
-     **/
+     * Greeting Message
+     */
     const getGreeting = () => {
       const hour = new Date().getHours();
 
@@ -231,8 +288,8 @@ export default {
     };
 
     /**
-     *  Get Date
-     **/
+     * Get Date
+     */
     const getFormattedDate = () => {
       const now = new Date();
 
@@ -314,7 +371,11 @@ export default {
       winnableAmountLabel,
       getGreeting,
       getFormattedDate,
-      downloadQrCode,
+
+      // new vendor-related helpers
+      vendorLogo,
+      vendorQrValue,
+      handleDownloadQr,
     };
   },
 };
