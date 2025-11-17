@@ -11,7 +11,8 @@
       <!--- Logo -->
       <div class="mb-4 d-flex justify-content-between align-items-center">
         <div class="d-flex align-items-center">
-          <img src="/spar_logo.png" height="90" alt="Vendor Logo" />
+          <!-- <img src="/spar_logo.png" height="90" alt="Vendor Logo" /> -->
+          <img :src="vendorLogo" height="90" alt="Vendor Logo" />
           <h3 class="fw-bold">{{ user.vendor_details.business_name }}</h3>
         </div>
 
@@ -29,7 +30,7 @@
       <div class="d-flex justify-content-between align-items-center my-4">
         <!--- Greeting Message  -->
         <div>
-          <p class="fst-normal h5">{{ getGreeting() }} Admin, welcome back!</p>
+          <p class="fst-normal h5">{{ getGreeting() }} {{ user.vendor_details.business_name.toUpperCase() }} Admin, welcome back!</p>
         </div>
 
         <!--- Date --->
@@ -73,18 +74,31 @@
               </div> -->
             </div>
           </div>
+           <!-- QR code: generate & download on button click only -->
           <div class="col card shadow-sm border-0">
-            <div @click="downloadQrCode(user)" style="cursor:pointer" class="card-body" title="Customers can scan this QR code to make payments">
+            <div
+              class="card-body text-center"
+              title="Customers can scan this QR code to make payments"
+            >
               <h5 class="fw-bold text-center">Download QR Code</h5>
 
+              <p class="small mb-3">
+                Click the button to generate your Scan2Pay QR code and download it as a PDF.
+              </p>
 
-              <div class="d-flex justify-content-center">
-                <img
-                  :src="user.vendor_details.qr_code"
-                  height="100%"
-                  alt="Vendor QR COde"
-                />
-              </div>
+              <button
+                type="button"
+                class="btn btn-success"
+                @click="handleDownloadQr"
+                :disabled="!vendorQrValue"
+              >
+                Generate and Download
+              </button>
+
+              <!-- Optional: show URL for debugging or printing on standee -->
+              <p v-if="vendorQrValue" class="small text-muted mt-2">
+                {{ vendorQrValue }}
+              </p>
             </div>
           </div>
         </div>
@@ -190,6 +204,47 @@ export default {
       import.meta.env.VITE_WINNABLE_AMOUNT_LABEL || "Winnable Amount";
 
     const user = computed(() => authStore.user);
+    // Vendor id comes from vendor_details (this does not touch authStore)
+    const vendorId = computed(
+      () => user.value?.vendor_details?.vendor_id ?? null
+    );
+
+    // MVP logo logic
+    // vendor_id 3 => spar_logo
+    // vendor_id 22 => mattoris_logo
+    // default => spar_logo (you can change default later)
+    const vendorLogo = computed(() => {
+      const id = vendorId.value;
+      if (id === 3) return "/spar_logo.png";
+      if (id === 22) return "/mattoris_logo.jpg";
+      return "/spar_logo.png";
+    });
+
+    // QR content URL:
+    // https://www.paybychance.com/scan2pay4me?raffle_type_id=2&vendor_id={vendorId}
+    const vendorQrValue = computed(() => {
+      if (!vendorId.value) return "";
+      const baseUrl = "https://www.paybychance.com";
+      const raffleTypeId = 2; // fixed for Scan2Pay4Me
+      return `${baseUrl}/scan2pay4me?raffle_type_id=${raffleTypeId}&vendor_id=${vendorId.value}`;
+    });
+
+    // Generate and download QR PDF on click
+    const handleDownloadQr = async () => {
+      if (!vendorQrValue.value) {
+        console.error("QR value missing, cannot generate QR");
+        return;
+      }
+
+      try {
+        await downloadQrCode({
+          qrValue: vendorQrValue.value,
+          vendorName: user.value?.vendor_details?.business_name || "Vendor",
+        });
+      } catch (error) {
+        console.error("Failed to generate QR PDF:", error);
+      }
+    };
 
     /**
      * Transform raw raffle data into displayable product format
