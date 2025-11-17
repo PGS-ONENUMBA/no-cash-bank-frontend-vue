@@ -7,42 +7,40 @@
       <h1 class="fs-3"><i class="bi bi-house-door"></i> Dashboard</h1>
     </div>
 
+    <!-- VENDOR VIEW -->
     <div class=" " v-if="user?.user_role === 'vendor'">
-      <!--- Logo -->
+      <!-- Logo -->
       <div class="mb-4 d-flex justify-content-between align-items-center">
         <div class="d-flex align-items-center">
-          <!-- <img src="/spar_logo.png" height="90" alt="Vendor Logo" /> -->
+          <!-- Dynamic logo -->
           <img :src="vendorLogo" height="90" alt="Vendor Logo" />
-          <!-- <h3 class="fw-bold">{{ user.vendor_details.business_name }}</h3> -->
         </div>
 
         <div
           class="d-flex flex-column align-items-center justify-content-center"
         >
-
-          <p  class="fw-bold" style="cursor: pointer;" >
+          <p class="fw-bold" style="cursor: pointer;">
             {{ getFormattedDate() }}
           </p>
         </div>
       </div>
 
-      <!--- Greeting --->
+      <!-- Greeting -->
       <div class="d-flex justify-content-between align-items-center my-4">
-        <!--- Greeting Message  -->
         <div>
-          <p class="fst-normal h5">{{ getGreeting() }} {{ user.vendor_details.business_name.toUpperCase() }} Admin, welcome back!</p>
+          <p class="fst-normal h5">
+            {{ getGreeting() }}
+            {{ user.vendor_details.business_name.toUpperCase() }}
+            Admin, welcome back!
+          </p>
         </div>
-
-        <!--- Date --->
-        <div>
-          <!-- <h5>{{ getFormattedDate() }}</h5> -->
-        </div>
+        <div></div>
       </div>
 
-      <!---Vendor Financials -->
+      <!-- Vendor Financials -->
       <div class="container">
         <div class="row gap-4" style="height: 200px;">
-          <div class="col card border-0 shadow-sm text-bg-success" >
+          <div class="col card border-0 shadow-sm text-bg-success">
             <div class="card-body">
               <h5 class="fw-bold">Business Details</h5>
 
@@ -58,6 +56,7 @@
               </div>
             </div>
           </div>
+
           <div class="col card border-0 shadow-sm">
             <div class="card-body">
               <h5 class="fw-bold">Wallet Details</h5>
@@ -66,15 +65,10 @@
                 <p class="fst-normal">Balance:</p>
                 <p class="fst-normal">{{ user.wallet_balance }}</p>
               </div>
-              <!-- <div class="d-flex">
-                <p class="fst-normal">Bank Account Number:</p>
-                <p class="fst-normal">
-                  {{ user.vendor_details.bank_account_number }}
-                </p>
-              </div> -->
             </div>
           </div>
-           <!-- QR code: generate & download on button click only -->
+
+          <!-- QR code: generate & download on button click only -->
           <div class="col card shadow-sm border-0">
             <div
               class="card-body text-center"
@@ -95,7 +89,7 @@
                 Generate and Download
               </button>
 
-              <!-- Optional: show URL for debugging or printing on standee -->
+              <!-- Optional debug display -->
               <p v-if="vendorQrValue" class="small text-muted mt-2">
                 {{ vendorQrValue }}
               </p>
@@ -105,18 +99,16 @@
       </div>
     </div>
 
+    <!-- CUSTOMER VIEW -->
     <div v-if="user?.user_role === 'customer'">
-      <!-- ✅ Display Available Balance -->
       <WalletBalance title="Available Balance" />
 
-      <!-- ✅ Show Preloader while Loading -->
       <div v-if="loadingProducts" class="text-center py-3">
         <div class="spinner-border text-success" role="status">
           <span class="visually-hidden">Loading products...</span>
         </div>
       </div>
 
-      <!-- ✅ @TODO: Dynamically Render Product Cards with Dynamic Columns -->
       <div
         v-else-if="availableProducts.length > 0"
         class="row row-cols-1 g-4"
@@ -140,12 +132,10 @@
         />
       </div>
 
-      <!-- No Products Found Message -->
       <div v-else class="text-center text-danger py-3">
         <p>No active products available.</p>
       </div>
 
-      <!-- Static Features -->
       <div class="row row-cols-1 row-cols-md-3 g-4 mt-3">
         <FeatureCard
           title="Transfer Funds"
@@ -153,7 +143,6 @@
           description="Easily send money to others."
           link="/dashboard/transfer"
         />
-        <!--@todo Add Spend FeatureCard -->
         <FeatureCard
           title="Spend at Merchant"
           icon="bi bi-bag-check"
@@ -169,7 +158,6 @@
       </div>
     </div>
 
-    <!-- Mobile Footer Menu -->
     <DashboardFooter />
   </div>
 </template>
@@ -205,32 +193,39 @@ export default {
 
     const user = computed(() => authStore.user);
     console.log("User data:", user.value);
-    // Vendor id comes from vendor_details (this does not touch authStore)
-    const vendorId = computed(
-      () => user.value?.vendor_details?.vendor_id ?? null
-    );
 
-    // MVP logo logic
-    // vendor_id 3 => spar_logo
-    // vendor_id 22 => mattoris_logo
-    // default => spar_logo (you can change default later)
+    // User id from auth store (different logins will have different ids)
+    const userId = computed(() => {
+      const u = user.value;
+      return u?.id ?? u?.ID ?? null;
+    });
+
+    // Vendor id from vendor_details, fallback to userId if needed
+    const vendorId = computed(() => {
+      const u = user.value;
+      return u?.vendor_details?.vendor_id ?? userId.value ?? null;
+    });
+
+    // MVP logo mapping by user id (update IDs as you prefer)
+    // - id 3  -> SPAR
+    // - id 23 -> Mattoris
     const vendorLogo = computed(() => {
-      const id = vendorId.value;
+      const id = userId.value;
       if (id === 3) return "/spar_logo.png";
       if (id === 23) return "/mattoris_logo.jpg";
       return "/spar_logo.png";
     });
 
-    // QR content URL:
-    // https://www.paybychance.com/scan2pay4me?raffle_type_id=2&vendor_id={vendorId}
+    // QR content URL used for Scan2Pay
     const vendorQrValue = computed(() => {
-      if (!vendorId.value) return "";
+      const vid = vendorId.value;
+      if (!vid) return "";
       const baseUrl = "https://www.paybychance.com";
-      const raffleTypeId = 2; // fixed for Scan2Pay4Me
-      return `${baseUrl}/scan2pay4me?raffle_type_id=${raffleTypeId}&vendor_id=${vendorId.value}`;
+      const raffleTypeId = 2;
+      return `${baseUrl}/scan2pay4me?raffle_type_id=${raffleTypeId}&vendor_id=${vid}`;
     });
 
-    // Generate and download QR PDF on click
+    // Click handler for QR generation
     const handleDownloadQr = async () => {
       if (!vendorQrValue.value) {
         console.error("QR value missing, cannot generate QR");
@@ -247,11 +242,6 @@ export default {
       }
     };
 
-    /**
-     * Transform raw raffle data into displayable product format
-     * @param {Array} raffles - Raw raffle data from API
-     * @returns {Array} Transformed product array
-     */
     const transformProducts = (raffles) => {
       const transformed = [];
 
@@ -271,9 +261,6 @@ export default {
       return transformed;
     };
 
-    /**
-     *  Greeting Message
-     **/
     const getGreeting = () => {
       const hour = new Date().getHours();
 
@@ -286,13 +273,8 @@ export default {
       }
     };
 
-    /**
-     *  Get Date
-     **/
     const getFormattedDate = () => {
       const now = new Date();
-
-      // Get the day of the month with ordinal suffix
       const day = now.getDate();
       const suffix =
         day % 10 === 1 && day !== 11
@@ -303,7 +285,6 @@ export default {
           ? "rd"
           : "th";
 
-      // Get the month abbreviation
       const months = [
         "Jan",
         "Feb",
@@ -319,16 +300,11 @@ export default {
         "Dec",
       ];
       const month = months[now.getMonth()];
-
-      // Get the year
       const year = now.getFullYear();
 
       return `Today's date is ${day}${suffix} ${month} ${year}.`;
     };
 
-    /**
-     * Load and transform products using cached service
-     */
     const loadProducts = async () => {
       try {
         const rawProducts = await fetchProducts();
@@ -339,17 +315,11 @@ export default {
       }
     };
 
-    /**
-     * Compute dynamic grid class based on product count
-     */
     const dynamicGridClass = computed(() => {
       const count = availableProducts.value.length;
       return count ? `row-cols-md-${Math.min(count, 4)}` : "row-cols-md-1";
     });
 
-    /**
-     * Format currency for display
-     */
     const formatCurrency = (amount) => {
       return new Intl.NumberFormat("en-NG", {
         style: "currency",
@@ -370,7 +340,11 @@ export default {
       winnableAmountLabel,
       getGreeting,
       getFormattedDate,
-      downloadQrCode,
+
+      // vendor helpers
+      vendorLogo,
+      vendorQrValue,
+      handleDownloadQr,
     };
   },
 };
