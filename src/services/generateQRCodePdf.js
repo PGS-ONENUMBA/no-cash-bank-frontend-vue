@@ -1,51 +1,65 @@
+// src/services/generateQRCodePdf.js
+
+// Frontend only QR and PDF generation
+// Install dependencies first:
+//   npm install qrcode jspdf
+
+import QRCode from "qrcode";
 import { jsPDF } from "jspdf";
 
-export default function downloadQrCode(user) {
-  const doc = new jsPDF();
+/**
+ * Generate a QR code from the given value and download as PDF.
+ *
+ * @param {Object} params
+ * @param {string} params.qrValue - The URL or text to encode in the QR code.
+ * @param {string} [params.vendorName] - Vendor name to show in the PDF title and filename.
+ */
+export default async function downloadQrCode({ qrValue, vendorName }) {
+  if (!qrValue) {
+    throw new Error("qrValue is required for QR generation");
+  }
+
+  // Generate QR as a data URL (PNG)
+  const qrDataUrl = await QRCode.toDataURL(qrValue, {
+    errorCorrectionLevel: "M",
+    margin: 1,
+    width: 512,
+  });
+
+  // Create a new A4 PDF document
+  const doc = new jsPDF({
+    orientation: "portrait",
+    unit: "pt",
+    format: "a4",
+  });
+
   const pageWidth = doc.internal.pageSize.getWidth();
 
-  // Define spacing values
-  const marginTop = 20;
-  const lineSpacing = 10;
+  // Title text at top
+  const titleText = vendorName
+    ? `${vendorName} Scan2Pay QR`
+    : "Scan2Pay QR Code";
 
-  // Add Business Logo (Centered)
-  const logoSize = 40; // Increased for visibility
-  const logoX = (pageWidth - logoSize) / 2;
-  const logoY = marginTop; // Start at marginTop
-  doc.addImage("/spar_logo.png", "PNG", logoX, logoY, logoSize, logoSize);
+  doc.setFontSize(16);
+  doc.text(titleText, pageWidth / 2, 40, { align: "center" });
 
-  // Add Horizontal Line (Positioned Below Logo)
-  const lineY = logoY + logoSize + lineSpacing; // Space below logo
-  doc.setDrawColor(0);
-  doc.setLineWidth(0.1);
-  doc.line(10, lineY, pageWidth - 10, lineY);
+  // Centered QR image
+  const qrSize = 250;
+  const x = (pageWidth - qrSize) / 2;
+  const y = 80;
 
-  // Add "Scan to Pay" Text (Below Line)
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(40);
-  const scanToPayText = "Scan To Pay";
-  const scanTextWidth = doc.getTextWidth(scanToPayText);
-  const scanTextY = lineY + lineSpacing + 10; // More space after line
-  doc.text(scanToPayText, (pageWidth - scanTextWidth) / 2, scanTextY);
+  doc.addImage(qrDataUrl, "PNG", x, y, qrSize, qrSize);
 
-  // Load and Add QR Code Image (Centered)
-  const qrSize = 100; // Large QR code
-  const qrX = (pageWidth - qrSize) / 2;
-  const qrY = scanTextY + 20; // Space after "Scan to Pay"
+  // Show the encoded URL/text below the QR
+  doc.setFontSize(10);
+  doc.text(qrValue, pageWidth / 2, y + qrSize + 30, {
+    align: "center",
+    maxWidth: pageWidth - 80,
+  });
 
-  const img = new Image();
-  img.src = user.vendor_details.qr_code;
-  img.onload = () => {
-    doc.addImage(img, "PNG", qrX, qrY, qrSize, qrSize);
+  // Build a safe filename from vendor name
+  const safeVendorName =
+    vendorName?.toLowerCase().replace(/[^a-z0-9]+/gi, "_") || "vendor";
 
-    // Add "Thank You" Text (Below QR Code)
-    doc.setFontSize(40);
-    const thankYouText = "Thank you!";
-    const thankYouWidth = doc.getTextWidth(thankYouText);
-    const thankYouY = qrY + qrSize + 20; // More space below QR code
-    doc.text(thankYouText, (pageWidth - thankYouWidth) / 2, thankYouY);
-
-    // Save the PDF with the business name
-    doc.save(`${user.vendor_details.business_name}_ScanToPay.pdf`);
-  };
+  doc.save(`${safeVendorName}_scan2pay_qr.pdf`);
 }
