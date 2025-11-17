@@ -210,10 +210,8 @@ export default {
     // - id 3  -> SPAR
     // - id 23 -> Mattoris
     const vendorLogo = computed(() => {
-      const id = userId.value;
-      if (id === 3) return "/spar_logo.png";
-      if (id === 23) return "/mattoris_logo.jpg";
-      return "/spar_logo.png";
+      const logo = user.value?.vendor_details?.logo_url;
+      return logo && logo.length > 0 ? logo : "/icon.png";
     });
 
     // QR content URL used for Scan2Pay
