@@ -3,8 +3,11 @@
     <!-- Dashboard Header -->
     <header class="navbar navbar-light sticky-top bg-white shadow px-3">
       <!-- Left: Logo + Site Name -->
-      <a class="navbar-brand d-flex align-items-center gap-2 col-md-3 col-lg-2"
-         href="#" @click="goToDashboard">
+      <a
+        class="navbar-brand d-flex align-items-center gap-2 col-md-3 col-lg-2"
+        href="#"
+        @click.prevent="goToDashboard"
+      >
         <img :src="logoUrl" :alt="siteName" class="brand-logo img-fluid" />
         <!-- <span class="site-name d-none d-sm-inline">{{ siteName }}</span> -->
       </a>
@@ -22,6 +25,13 @@
             <i class="bi bi-person-circle me-2"></i> {{ userDisplayName }}
           </span>
         </div>
+
+        <!-- Optional: add a Logout button/icon here if you want -->
+        <!--
+        <button class="btn btn-outline-danger btn-sm" @click="handleLogout">
+          <i class="bi bi-box-arrow-right me-1"></i> Logout
+        </button>
+        -->
       </div>
     </header>
 
@@ -36,35 +46,15 @@
         </main>
       </div>
     </div>
-
-    <!-- Inactivity Warning Modal -->
-    <div v-if="showWarning" class="modal fade show d-block" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header"><h5 class="modal-title">Session Expiring</h5></div>
-          <div class="modal-body">
-            <p>You have been inactive. You will be logged out soon.</p>
-            <p>Do you want to stay logged in?</p>
-          </div>
-          <div class="modal-footer">
-            <button class="btn btn-secondary" @click="cancelLogout">Stay Logged In</button>
-            <button class="btn btn-danger" @click="handleLogout">Logout</button>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div v-if="showWarning" class="modal-backdrop fade show"></div>
   </div>
 </template>
 
 <script>
 import SidebarMenu from "@/components/dashboard/SidebarMenu.vue";
 import { useAuthStore } from "@/stores/authStore";
-import { computed, onMounted, onUnmounted } from "vue";
-import { debounce } from "lodash";
+import { computed } from "vue";
 import { useRouter } from "vue-router";
 
-/* Keep logo import (it's in src/assets, so import is correct) */
 import logoPng from "@/assets/logo.png";
 
 export default {
@@ -74,49 +64,26 @@ export default {
     const authStore = useAuthStore();
     const router = useRouter();
 
-    const userDisplayName = computed(() => authStore.user?.nicename || "User");
-    const showWarning = computed(() => authStore.showWarning);
+    const userDisplayName = computed(
+      () => authStore.user?.nicename || authStore.user?.email || "User"
+    );
     const siteName = import.meta.env.VITE_SITE_NAME || "PayByChance";
 
     const logoUrl = logoPng;
-
-    // icon.png is in /public, so reference by URL (no import)
     const iconUrl = `${import.meta.env.BASE_URL}icon.png`;
 
-    const trackActivity = debounce(() => {
-      if (authStore.isAuthenticated) {
-        authStore.resetTimers();
-        authStore.startInactivityTimer(router);
-      }
-    }, 500);
-
-    const handleLogout = () => {
-      authStore.logout(router);
-      router.push("/login");
+    const handleLogout = async () => {
+      await authStore.logout(router); // store will redirect to /login
     };
 
-    const cancelLogout = () => authStore.cancelLogout();
-    const goToDashboard = () => router.push("/dashboard");
-
-    onMounted(() => {
-      window.addEventListener("mousemove", trackActivity);
-      window.addEventListener("keydown", trackActivity);
-      window.addEventListener("click", trackActivity);
-      authStore.startInactivityTimer(router);
-    });
-
-    onUnmounted(() => {
-      window.removeEventListener("mousemove", trackActivity);
-      window.removeEventListener("keydown", trackActivity);
-      window.removeEventListener("click", trackActivity);
-    });
+    const goToDashboard = () => {
+      router.push("/dashboard").catch(() => {});
+    };
 
     return {
       siteName,
       userDisplayName,
-      showWarning,
       handleLogout,
-      cancelLogout,
       goToDashboard,
       logoUrl,
       iconUrl,
@@ -151,6 +118,8 @@ export default {
 }
 
 @media (max-width: 380px) {
-  .site-name { display: none; }
+  .site-name {
+    display: none;
+  }
 }
 </style>
