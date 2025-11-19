@@ -95,39 +95,31 @@ export default {
     const errorMessage = ref(null);
     const showPassword = ref(false);
 
-    /**
-     * ✅ Toggles password visibilityj
-     */
     const togglePasswordVisibility = () => {
       showPassword.value = !showPassword.value;
     };
 
-    /**
-     * ✅ Handles user login
-     */
-     const handleLogin = async () => {
-        loading.value = true;
-        errorMessage.value = null;
+    const handleLogin = async () => {
+      loading.value = true;
+      errorMessage.value = null;
 
-        try {
-          console.log("🚀 Logging in with:", { username: username.value, password: password.value });
-          await authStore.login(username.value, password.value, router);
+      try {
+        console.log("🚀 Logging in with:", {
+          username: username.value,
+          password: password.value,
+        });
 
-          console.log("✅ Login successful. Redirecting...");
-          setTimeout(() => {
-            router.push("/dashboard").catch(err =>
-              console.error("❌ Router navigation error:", err)
-            );
-          }, 500); // Small delay to allow state updates
-        } catch (error) {
-          console.error("❌ Login error:", error.message);
-          errorMessage.value = error.message || "Login failed. Try again.";
-        } finally {
-          loading.value = false;
-        }
-      };
+        // Let the store handle redirect to /dashboard
+        await authStore.login(username.value, password.value, router);
 
-
+        console.log("✅ Login successful. Redirecting...");
+      } catch (error) {
+        console.error("❌ Login error:", error.message);
+        errorMessage.value = error.message || "Login failed. Try again.";
+      } finally {
+        loading.value = false;
+      }
+    };
 
     return {
       username,
@@ -141,6 +133,7 @@ export default {
   },
 };
 </script>
+
 
 <style scoped>
   /* Ensures button aligns properly inside password field */
