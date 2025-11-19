@@ -28,9 +28,9 @@ import Test from "@/views/Public/Test.vue";
 
 // Dashboard Views (Protected Routes)
 import Dashboard from "@/views/Dashboard/Dashboard.vue";
-import DashboardGetCash from "@/views/Dashboard/GetCash.vue";
-import DashboardPay4Me from "@/views/Dashboard/Pay4Me.vue";
-import DashboardOnTheHouse from "@/views/Dashboard/OnTheHouse.vue";
+// import DashboardGetCash from "@/views/Dashboard/GetCash.vue";
+// import DashboardPay4Me from "@/views/Dashboard/Pay4Me.vue";
+// import DashboardOnTheHouse from "@/views/Dashboard/OnTheHouse.vue";
 import Transfer from "@/views/Dashboard/Transfer.vue";
 import Reports from "@/views/Dashboard/Reports.vue";
 import Profile from "@/views/Dashboard/Profile.vue";
@@ -117,9 +117,9 @@ const routes = [
     meta: { requiresAuth: true }, // Authentication required
     children: [
       { path: "", name: "Dashboard", component: Dashboard, meta: { title: "Dashboard", role: ["customer", "vendor"] } },
-      { path: "get-cash", name: "DashboardGetCash", component: DashboardGetCash, meta: { title: "Get Cash" } },
-      { path: "pay4me", name: "DashboardPay4Me", component: DashboardPay4Me, meta: { title: "Pay-4-Me" } },
-      { path: "on-the-house", name: "DashboardOnTheHouse", component: DashboardOnTheHouse, meta: { title: "On The House" } },
+      // { path: "get-cash", name: "DashboardGetCash", component: DashboardGetCash, meta: { title: "Get Cash" } },
+      // { path: "pay4me", name: "DashboardPay4Me", component: DashboardPay4Me, meta: { title: "Pay-4-Me" } },
+      // { path: "on-the-house", name: "DashboardOnTheHouse", component: DashboardOnTheHouse, meta: { title: "On The House" } },
       { path: "transfer", name: "DashboardTransfer", component: Transfer, meta: { title: "Transfer", role:["customer"] } },
       { path: "reports", name: "DashboardReports", component: Reports, meta: { title: "Reports", role: ["customer", "vendor"] } },
       { path: "profile", name: "DashboardProfile", component: Profile, meta: { title: "Profile Page", role: ["customer", "vendor"] } },
