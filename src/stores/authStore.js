@@ -1,22 +1,16 @@
 // src/stores/authStore.js
 import { defineStore } from "pinia";
 import router from "@/router";
-import {
-  loginUser,
-  refreshToken,
-  logout as logoutAPI,
-} from "@/services/authService";
+import { loginUser, refreshToken, logout as logoutAPI } from "@/services/authService";
 
 export const useAuthStore = defineStore("auth", {
   state: () => ({
     user: null,
 
     token: localStorage.getItem("auth_token") || null,
+    // Kept for now in case you still use it; but refresh is via HttpOnly cookie primarily
     refreshToken: localStorage.getItem("refresh_token") || null,
     tokenExpiry: Number(localStorage.getItem("token_expiry")) || null,
-
-    // Only keep this for silent refresh loop, no inactivity logout
-    tokenRefreshInterval: null,
   }),
 
   getters: {
@@ -26,16 +20,15 @@ export const useAuthStore = defineStore("auth", {
 
   actions: {
     /**
-     * Login and initialize token refresh.
-     * No inactivity timer, no warning popup.
+     * Login and set auth state.
+     * Router navigation handled here.
      */
     async login(username, password, routerInstance) {
       if (this.token) return; // already logged in
 
       const data = await loginUser(username, password);
 
-      const tokenExpiryMin =
-        parseInt(import.meta.env.VITE_TOKEN_EXPIRY_MIN) || 20;
+      const tokenExpiryMin = parseInt(import.meta.env.VITE_TOKEN_EXPIRY_MIN) || 20;
 
       this.token = data?.data?.token || null;
       this.refreshToken = data?.data?.refresh_token || null;
@@ -44,32 +37,24 @@ export const useAuthStore = defineStore("auth", {
 
       localStorage.setItem("auth_token", this.token || "");
       localStorage.setItem("token_expiry", String(this.tokenExpiry));
-      if (this.refreshToken) {
-        localStorage.setItem("refresh_token", this.refreshToken);
-      }
-
-      // Only do background token refresh, no inactivity auto logout
-      this.startTokenRefreshLoop();
+      if (this.refreshToken) localStorage.setItem("refresh_token", this.refreshToken);
 
       const r = routerInstance || router;
       if (r) {
-        setTimeout(() => {
-          r.push("/dashboard").catch((err) =>
-            console.error("❌ Router navigation error:", err)
-          );
-        }, 300);
+        r.push("/dashboard").catch((err) =>
+          console.error("❌ Router navigation error:", err)
+        );
       }
     },
 
     /**
-     * Silent JWT refresh using HttpOnly cookie.
+     * Optional: still keep token refresh helper if you call it from an interceptor.
      */
     async refreshTokenIfNeeded() {
       const bufferMs =
         (parseInt(import.meta.env.VITE_TOKEN_REFRESH_BUFFER_MIN) || 2) *
         60 *
         1000;
-
       if (this.tokenExpiry && Date.now() > this.tokenExpiry - bufferMs) {
         try {
           const data = await refreshToken();
@@ -99,46 +84,25 @@ export const useAuthStore = defineStore("auth", {
     },
 
     /**
-     * Explicit logout only.
-     * No auto logout from timers.
+     * Logout: clear state, tell server to clear cookie, redirect to login.
      */
     async logout(routerInstance = null) {
-      this.stopTokenRefreshLoop();
-
+      // Clear store & localStorage
       this.$reset();
-      localStorage.removeItem("auth");
+      localStorage.removeItem("auth"); // pinia persist key
       localStorage.removeItem("auth_token");
       localStorage.removeItem("refresh_token");
       localStorage.removeItem("token_expiry");
       localStorage.removeItem("user");
 
       try {
-        await logoutAPI();
+        await logoutAPI(); // clears HttpOnly refresh cookie server-side
       } catch (err) {
         console.warn("⚠ Logout API failed (continuing):", err);
       }
 
       const r = routerInstance || router;
-      if (r) {
-        r.push("/login").catch(() => {});
-      }
-    },
-
-    /**
-     * Background token refresh loop, no logout behavior.
-     */
-    startTokenRefreshLoop() {
-      this.stopTokenRefreshLoop();
-      this.tokenRefreshInterval = setInterval(() => {
-        this.refreshTokenIfNeeded();
-      }, 60 * 1000);
-    },
-
-    stopTokenRefreshLoop() {
-      if (this.tokenRefreshInterval) {
-        clearInterval(this.tokenRefreshInterval);
-        this.tokenRefreshInterval = null;
-      }
+      if (r) r.push("/login").catch(() => {});
     },
 
     setToken(token) {
@@ -149,11 +113,8 @@ export const useAuthStore = defineStore("auth", {
 
     setUser(userData) {
       this.user = userData;
-      if (userData) {
-        localStorage.setItem("user", JSON.stringify(userData));
-      } else {
-        localStorage.removeItem("user");
-      }
+      if (userData) localStorage.setItem("user", JSON.stringify(userData));
+      else localStorage.removeItem("user");
     },
 
     clearAuth() {
@@ -162,7 +123,6 @@ export const useAuthStore = defineStore("auth", {
       this.tokenExpiry = null;
       localStorage.removeItem("token_expiry");
       localStorage.removeItem("refresh_token");
-      this.stopTokenRefreshLoop();
     },
   },
 
