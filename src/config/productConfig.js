@@ -45,7 +45,7 @@ export const PRODUCT_CONFIG = {
     label: "Pay Merchant",
     winnableAmountLabel: "Payment Limit",
     serviceDescription:
-      "We can help you meet your needs or cover expenses of up to {{winnableAmount}} — all for just {{ticketPrice}}.",
+      "We can help you meet your needs or cover expenses of up to {{winnableAmount}}, all for just {{ticketPrice}}.",
     raffleTypeId: 2,
     fields: [
       {

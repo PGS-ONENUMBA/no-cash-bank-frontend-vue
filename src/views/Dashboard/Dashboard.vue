@@ -45,11 +45,13 @@
               <h5 class="fw-bold">Business Details</h5>
 
               <div class="d-flex">
-                <p class="fst-normal">Bank Name:</p>
-                <p class="fst-normal">{{ user.vendor_details.bank_name }}</p>
+                <p class="fst-normal me-1">Bank Name:</p>
+                <p class="fst-normal">
+                  {{ user.vendor_details.bank_name || user.vendor_details.bank_code }}
+                </p>
               </div>
               <div class="d-flex">
-                <p class="fst-normal">Bank Account Number:</p>
+                <p class="fst-normal me-1">Bank Account Number:</p>
                 <p class="fst-normal">
                   {{ user.vendor_details.bank_account_number }}
                 </p>
