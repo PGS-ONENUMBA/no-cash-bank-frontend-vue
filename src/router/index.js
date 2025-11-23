@@ -36,6 +36,7 @@ import Reports from "@/views/Dashboard/Reports.vue";
 import Profile from "@/views/Dashboard/Profile.vue";
 import VendorLogs from '@/views/VendorLogs.vue';
 import PublicProduct from "@/views/Public/PublicProduct.vue";
+
 /**
  * Route Definitions
  */
