@@ -92,9 +92,9 @@
               </button>
 
               <!-- Optional debug display -->
-              <p v-if="vendorQrValue" class="small text-muted mt-2">
+              <!-- <p v-if="vendorQrValue" class="small text-muted mt-2">
                 {{ vendorQrValue }}
-              </p>
+              </p> -->
             </div>
           </div>
         </div>

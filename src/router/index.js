@@ -31,7 +31,7 @@ import Dashboard from "@/views/Dashboard/Dashboard.vue";
 // import DashboardGetCash from "@/views/Dashboard/GetCash.vue";
 // import DashboardPay4Me from "@/views/Dashboard/Pay4Me.vue";
 // import DashboardOnTheHouse from "@/views/Dashboard/OnTheHouse.vue";
-import Transfer from "@/views/Dashboard/Transfer.vue";
+import Transfer from "@/views/Dashboard/TransferView.vue";
 import Reports from "@/views/Dashboard/Reports.vue";
 import Profile from "@/views/Dashboard/Profile.vue";
 import VendorLogs from '@/views/VendorLogs.vue';
