@@ -141,16 +141,19 @@ export default {
       loading.value = true;
 
       try {
-        const payload = {
+        // const payload = {
+        //   action_type: "request_vendor_withdrawal",
+        //   amount: amt,
+        //   description: description.value,
+        // };
+
+        // CORRECT ROUTE: proxy to nocash-bank/v1/action
+        const response = await apiService.post("/context-proxy/v1/action", {
           action_type: "request_vendor_withdrawal",
           amount: amt,
           description: description.value,
-        };
+        });
 
-        // CORRECT ROUTE: proxy to nocash-bank/v1/action
-        const response = await apiService.post("/action", payload);
-        // If your baseURL is /wp-json, then use:
-        // const response = await apiService.post("/context-proxy/v1/action", payload);
 
         if (response?.data?.ok === true) {
           alert(
