@@ -101,12 +101,10 @@ export default {
     const authStore = useAuthStore();
     const loading = ref(false);
 
-    // raw string balance from Pinia (often "1,234.00" from backend)
     const walletBalanceRaw = computed(
       () => authStore.user?.wallet_balance || "0.00"
     );
 
-    // numeric wallet balance for validation
     const walletBalanceNumeric = computed(() => {
       const cleaned = walletBalanceRaw.value.toString().replace(/,/g, "");
       const n = parseFloat(cleaned);
@@ -123,13 +121,6 @@ export default {
     const amount = ref("");
     const description = ref("");
 
-    /**
-     * Submit payout request to NoCash Bank action (request_vendor_withdrawal).
-     * Backend:
-     *  - Stores pending withdrawal based on vendors stored bank account
-     *  - Emails admin
-     *  - Admin processes offline and updates status
-     */
     const submitPayoutRequest = async () => {
       if (!amount.value) {
         alert("Please enter an amount.");
@@ -143,9 +134,7 @@ export default {
       }
 
       if (amt > walletBalanceNumeric.value) {
-        alert(
-          `You cannot request more than your wallet balance (${formattedWalletBalance.value}).`
-        );
+        alert(`You cannot request more than your wallet balance (${formattedWalletBalance.value}).`);
         return;
       }
 
@@ -158,13 +147,15 @@ export default {
           description: description.value,
         };
 
-        // Context proxy endpoint that forwards to nocash-bank/v1/action
-        const response = await apiService.post("/nocash-bank/action", payload);
+        // CORRECT ROUTE: proxy to nocash-bank/v1/action
+        const response = await apiService.post("/action", payload);
+        // If your baseURL is /wp-json, then use:
+        // const response = await apiService.post("/context-proxy/v1/action", payload);
 
-        if (response?.data?.success) {
+        if (response?.data?.ok === true) {
           alert(
-            response.data.message ||
-              "Your payout request has been submitted. You will receive an email once it is processed."
+            response.data.data?.message ||
+            "Your payout request has been submitted. You will receive an email once it is processed."
           );
 
           if (authStore.fetchUserData) {
@@ -174,14 +165,11 @@ export default {
           amount.value = "";
           description.value = "";
         } else {
-          throw new Error(response?.data?.message || "Request failed.");
+          throw new Error(response?.data?.data?.message || "Request failed.");
         }
       } catch (error) {
         console.error("Payout request error:", error);
-        alert(
-          error?.message ||
-            "Could not submit your request. Please try again later."
-        );
+        alert(error?.message || "Could not submit your request. Please try again later.");
       } finally {
         loading.value = false;
       }
