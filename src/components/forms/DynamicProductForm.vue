@@ -21,9 +21,8 @@
                 <i class="bi bi-arrow-repeat text-muted"></i> Loading...
               </span>
             </p>
-
-
             <!-- Simple guide -->
+             <h5 class="fw-bold mt-4"><i class="bi bi-lightbulb"></i> How It Works</h5>
             <ul class="list-unstyled">
               <li><i class="bi bi-1-circle text-success"></i> Fill the form.</li>
               <li><i class="bi bi-2-circle text-success"></i> Submit and pay.</li>
