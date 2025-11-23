@@ -44,6 +44,8 @@ export const PRODUCT_CONFIG = {
     key: "pay-merchant",
     label: "Pay Merchant",
     winnableAmountLabel: "Payment Limit",
+    serviceDescription:
+      "We can help you meet your needs or cover expenses of up to {{winnableAmount}} — all for just {{ticketPrice}}.",
     raffleTypeId: 2,
     fields: [
       {
@@ -198,3 +200,23 @@ export const PRODUCT_CONFIG = {
     ],
   },
 };
+export function buildServiceDescription(config, {
+  winnableAmount,
+  ticketPrice,
+  formatCurrency,
+}) {
+  if (!config?.serviceDescription) return "";
+
+  const wText = winnableAmount
+    ? (formatCurrency ? formatCurrency(winnableAmount) : String(winnableAmount))
+    : config.winnableAmountLabel;
+
+  const pText = ticketPrice
+    ? (formatCurrency ? formatCurrency(ticketPrice) : String(ticketPrice))
+    : "the ticket price";
+
+  return config.serviceDescription
+    .replace("{{winnableAmount}}", wText)
+    .replace("{{ticketPrice}}", pText);
+}
+

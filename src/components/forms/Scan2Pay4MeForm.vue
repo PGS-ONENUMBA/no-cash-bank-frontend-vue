@@ -5,12 +5,19 @@
       <div class="col-lg-6 d-flex">
         <div class="card w-100 shadow-sm">
           <div class="card-body">
-            <h3 class="text-muted fs-4">
-              We can pay for you to cover expenses up to {{ formattedWinnableAmount }}
-              at the ticket price of:
-              <span v-if="ticketCurrentPrice > 0">{{ formatCurrency(ticketCurrentPrice) }}</span>
+            <h3 class="text-muted fs-4" v-if="serviceDescriptionText">
+                {{ serviceDescriptionText }}
             </h3>
-            <p class="text-success fs-5">Winnable Amount: {{ formattedWinnableAmount }}</p>
+             <p class="text-success fs-5">
+              Reward Value:
+              <span v-if="winnableAmount > 0">
+                {{ formattedWinnableAmount }}
+              </span>
+              <span v-else>
+                <i class="bi bi-arrow-repeat text-muted"></i> Loading...
+              </span>
+            </p>
+
 
             <div v-if="vendorDetails" class="mt-3">
               <h5 class="fw-bold"><i class="bi bi-shop"></i> Vendor</h5>
@@ -111,7 +118,7 @@
 
 <script>
 /**
- * Scan2Pay4Me.vue — aligned 1:1 with Pay4MeForm logic.
+ * Scan2Pay4Me.vue aligned 1:1 with Pay4MeForm logic.
  * Differences:
  * - Vendor and Raffle Type are provided via URL: /scan2pay4me?raffle_type_id=2&vendor_id=3
  * - No vendor search, no amount_due; all other logic mirrors Pay4MeForm.
@@ -121,12 +128,15 @@ import { useRouter, useRoute } from 'vue-router';
 import { fetchProducts, fetchVendorDetails, validateRaffleCycle } from '@/services/productService';
 import formatCurrency from '@/services/currencyFormatter';
 import { createOrder, processPayment } from '@/services/paymentService';
+import { PRODUCT_CONFIG, buildServiceDescription } from '@/config/productConfig';
 
 export default {
   name: 'Scan2Pay4Me',
   setup() {
     const router = useRouter();
     const route = useRoute();
+
+    const payMerchantConfig = PRODUCT_CONFIG['pay-merchant'];
 
     // ---- Route params ----
     const raffleTypeIdFromUrl = Number(route.query.raffle_type_id || 0); // must be 2 for this flow
@@ -144,7 +154,7 @@ export default {
     const formData = ref({
       customerPhone: '',
       tickets: 1,
-      raffle_cycle_id: null,  // will be resolved from products -> validated via validateRaffleCycle
+      raffle_cycle_id: null,  // will be resolved from products then validated
       raffle_type_id: null,   // set from URL (2)
       winnable_amount: '',
       price_of_ticket: '',
@@ -159,6 +169,15 @@ export default {
       winnableAmount.value
         ? Number(winnableAmount.value).toLocaleString('en-NG', { style: 'currency', currency: 'NGN' })
         : 'Loading...'
+    );
+
+    /** Description string from config template. */
+    const serviceDescriptionText = computed(() =>
+      buildServiceDescription(payMerchantConfig, {
+        winnableAmount: raffleData.value.winnable_amount,
+        ticketPrice: ticketCurrentPrice.value,
+        formatCurrency,
+      })
     );
 
     /** Total ticket cost based on current price and quantity. */
@@ -179,31 +198,38 @@ export default {
     });
 
     /**
-     * Bootstrap: resolve raffle_cycle_id from products using raffle_type_id, then
-     * validate cycle & price; fetch vendor details from vendor_id.
+     * Bootstrap: resolve raffle_cycle_id from products using raffle_type_id,
+     * then validate cycle and price; fetch vendor details from vendor_id.
      */
     const bootstrap = async () => {
       if (!raffleTypeIdFromUrl || !vendorIdFromUrl) {
-        console.warn('⚠ Missing QR code parameters.');
+        console.warn('Missing QR code parameters.');
         router.push('/dashboard');
         return;
       }
       try {
         // 1) Resolve raffle_cycle_id by scanning products for associated_types
         const cycles = await fetchProducts();
-        const cycle = Array.isArray(cycles) ?
-          cycles.find(c => Array.isArray(c.associated_types) && c.associated_types.some(t => Number(t.raffle_type_id) === raffleTypeIdFromUrl))
+        const cycle = Array.isArray(cycles)
+          ? cycles.find(c =>
+              Array.isArray(c.associated_types) &&
+              c.associated_types.some(t => Number(t.raffle_type_id) === raffleTypeIdFromUrl)
+            )
           : null;
+
         if (!cycle) {
-          console.error('❌ No matching raffle cycle found.');
+          console.error('No matching raffle cycle found.');
           router.push('/dashboard');
           return;
         }
 
-        // 2) Validate via server to get authoritative price & IDs
-        const validated = await validateRaffleCycle(Number(cycle.raffle_cycle_id), raffleTypeIdFromUrl);
+        // 2) Validate via server to get authoritative price and IDs
+        const validated = await validateRaffleCycle(
+          Number(cycle.raffle_cycle_id),
+          raffleTypeIdFromUrl
+        );
         if (!validated) {
-          console.error('❌ Raffle validation failed.');
+          console.error('Raffle validation failed.');
           router.push('/404');
           return;
         }
@@ -220,7 +246,7 @@ export default {
         const vendor = await fetchVendorDetails(vendorIdFromUrl);
         vendorDetails.value = vendor || null;
       } catch (err) {
-        console.error('❌ Error during bootstrap:', err);
+        console.error('Error during bootstrap:', err);
       } finally {
         isLoading.value = false;
       }
@@ -240,14 +266,13 @@ export default {
       }
       try {
         isRedirecting.value = true;
-        // Canonical payload (what backend expects) — mirrors Pay4MeForm
         const canonical = {
           customer_phone: String(formData.value.customerPhone),
           ticket_quantity: Number(formData.value.tickets),
           order_amount: Number(totalTicketCost.value),
           raffle_cycle_id: Number(formData.value.raffle_cycle_id),
-          raffle_type_id: Number(formData.value.raffle_type_id), // 2 from URL
-          vendor_id: Number(formData.value.vendor_id),           // from URL
+          raffle_type_id: Number(formData.value.raffle_type_id),
+          vendor_id: Number(formData.value.vendor_id),
           purchase_platform: 'web',
           payment_method_used: 'card',
         };
@@ -267,10 +292,10 @@ export default {
           trans_ref: txRef,
           returnUrl,
         });
-        // processPayment redirects; no code runs after this point
       } catch (error) {
-        console.error('❌ Submission error:', error);
-        const serverMsg = error?.response?.data?.message || error?.message || 'Failed to submit order. Please try again.';
+        console.error('Submission error:', error);
+        const serverMsg =
+          error?.response?.data?.message || error?.message || 'Failed to submit order. Please try again.';
         alert(`Error: ${serverMsg}`);
         isRedirecting.value = false;
       }
@@ -293,6 +318,7 @@ export default {
       // computed
       winnableAmount,
       formattedWinnableAmount,
+      serviceDescriptionText,
       totalTicketCost,
       canSubmit,
 
@@ -302,6 +328,7 @@ export default {
   },
 };
 </script>
+
 
 <style scoped>
 .text-purple { color: #6f42c1; }
