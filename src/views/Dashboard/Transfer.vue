@@ -430,39 +430,39 @@ export default {
 </script>
 
 <style scoped>
-.card {
-  height: 100%;
-}
-
-.text-success {
-  color: #09b850 !important;
-}
-
-.btn-light {
-  background-color: #6609b8;
-  color: white;
-  border: none;
-  text-align: left;
-}
-
-.btn-light:hover {
-  background-color: #723ba2;
-}
-
-#transfer {
-  color: #fff !important;
-}
-
-.compact-input {
-  display: inline-block;
-  width: 100%;
-  padding: 6px;
-  font-size: 0.9rem;
-}
-
-@media (max-width: 768px) {
-  .sidebar {
-    display: none;
+  .card {
+    height: 100%;
   }
-}
+
+  .text-success {
+    color: #09b850 !important;
+  }
+
+  .btn-light {
+    background-color: #6609b8;
+    color: white;
+    border: none;
+    text-align: left;
+  }
+
+  .btn-light:hover {
+    background-color: #723ba2;
+  }
+
+  #transfer {
+    color: #fff !important;
+  }
+
+  .compact-input {
+    display: inline-block;
+    width: 100%;
+    padding: 6px;
+    font-size: 0.9rem;
+  }
+
+  @media (max-width: 768px) {
+    .sidebar {
+      display: none;
+    }
+  }
 </style>
