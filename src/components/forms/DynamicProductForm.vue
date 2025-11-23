@@ -9,8 +9,11 @@
           <div class="card-body">
 
             <!-- Winnable amount -->
-            <p class="text-muted fs-4">
-              {{ config.winnableAmountLabel }}:
+           <h3 class="text-muted fs-4" v-if="config.key === 'pay-merchant' && serviceDescriptionText">
+                {{ serviceDescriptionText }}
+            </h3>           <!-- Ticket price -->
+            <p class="text-success fs-5">
+              Reward Value:
               <span v-if="raffleData.winnable_amount">
                 {{ formatCurrency(raffleData.winnable_amount) }}
               </span>
@@ -19,16 +22,6 @@
               </span>
             </p>
 
-            <!-- Ticket price -->
-            <p class="text-success fs-5">
-              Current ticket price:
-              <span v-if="ticketCurrentPrice > 0">
-                {{ formatCurrency(ticketCurrentPrice) }}
-              </span>
-              <span v-else>
-                <i class="bi bi-arrow-repeat text-muted"></i> Loading...
-              </span>
-            </p>
 
             <!-- Simple guide -->
             <ul class="list-unstyled">
@@ -195,6 +188,7 @@ import { fetchProducts, fetchVendorDetails } from "@/services/productService";
 import { createOrder, processPayment } from "@/services/paymentService";
 import formatCurrency from "@/services/currencyFormatter";
 import VendorSelect from "@/components/common/VendorSelect.vue";
+import { buildServiceDescription } from "@/config/productConfig"; // <- add this
 
 export default {
   name: "DynamicProductForm",
@@ -241,7 +235,16 @@ export default {
     const ticketCurrentPrice = ref(0);
     const isSubmitting = ref(false);
     const vendorDetails = ref(null);
-
+    // Computed service description text for display
+    // from config with dynamic values
+    //
+    const serviceDescriptionText = computed(() =>
+      buildServiceDescription(props.config, {
+        winnableAmount: raffleData.value.winnable_amount,
+        ticketPrice: ticketCurrentPrice.value,
+        formatCurrency,
+      })
+    );
     // Form model
     const formData = reactive({});
     props.config.fields.forEach((field) => {
@@ -489,6 +492,7 @@ export default {
       vendorDetails,
       vendorDisplayName,
       titleText,
+      serviceDescriptionText,
     };
   },
 };
