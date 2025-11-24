@@ -138,6 +138,13 @@ export default {
         return;
       }
 
+            // Try to pick vendor ID from authStore
+      const vendorId =
+        authStore.user?.id ||
+        authStore.user?.ID ||
+        authStore.user?.user_id ||
+        null;
+
       loading.value = true;
 
       try {
@@ -152,6 +159,7 @@ export default {
           action_type: "request_vendor_withdrawal",
           amount: amt,
           description: description.value,
+           acting_vendor_id: vendorId,
         });
 
 
