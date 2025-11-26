@@ -16,17 +16,17 @@
 
               <!-- Render vendor or customer-->
               <div v-if="user?.user_role === 'vendor'">
-              
+
                 <div class="mb-3">
                   <strong>Name:</strong>
                   <p class="text-muted">{{ user?.vendor_details.business_name || "N/A" }}</p>
                 </div>
-  
+
                 <div class="mb-3">
                   <strong>Address:</strong>
                   <p class="text-muted">{{ user?.vendor_details.business_address || "N/A" }}</p>
                 </div>
-  
+
                 <div class="mb-3">
                   <strong>Phone Number:</strong>
                   <p class="text-muted">{{ user?.phone_number || "N/A" }}</p>
@@ -48,22 +48,22 @@
                 <div v-if="errorMessage" class="alert alert-danger text-center">
                   {{ errorMessage }}
                 </div>
-  
+
                 <div class="mb-3">
                   <strong>Username:</strong>
                   <p class="text-muted">{{ user?.nicename || "N/A" }}</p>
                 </div>
-  
+
                 <div class="mb-3">
                   <strong>Email:</strong>
                   <p class="text-muted">{{ user?.email || "N/A" }}</p>
                 </div>
-  
+
                 <div class="mb-3">
                   <strong>Phone Number:</strong>
                   <p class="text-muted">{{ user?.phone_number || "N/A" }}</p>
                 </div>
-  
+
                 <div class="mb-3">
                   <WalletBalance title="Available Balance" />
                 </div>
@@ -71,7 +71,7 @@
 
             </div>
 
-           
+
           </div>
         </div>
       </div>
@@ -90,7 +90,7 @@ import DashboardFooter from "@/components/dashboard/DashboardFooter.vue";
 import WalletBalance from "@/components/common/WalletBalance.vue";
 
 export default {
-  name: "Profile",
+  name: "ProfileView",
   components: {
     WalletBalance,
     DashboardFooter,
@@ -124,7 +124,7 @@ export default {
         }
       } catch (error) {
         console.error("Error fetching user data:", error);
-        
+
         // ✅ Only show error if user data is missing
         if (!authStore.user) {
           errorMessage.value = "Failed to load profile data. Please try again.";
