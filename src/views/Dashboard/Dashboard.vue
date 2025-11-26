@@ -40,6 +40,7 @@
       <!-- Vendor Financials -->
       <div class="container">
         <div class="row gap-4" style="height: 200px;">
+          <!-- Business details -->
           <div class="col card border-0 shadow-sm text-bg-success">
             <div class="card-body">
               <h5 class="fw-bold">Business Details</h5>
@@ -59,15 +60,9 @@
             </div>
           </div>
 
-          <div class="col card border-0 shadow-sm">
-            <div class="card-body">
-              <h5 class="fw-bold">Wallet Details</h5>
-
-              <div class="d-flex text-success fst-normal">
-                <p class="fst-normal">Balance:</p>
-                <p class="fst-normal">{{ user.wallet_balance }}</p>
-              </div>
-            </div>
+          <!-- Wallet details (live from API via WalletBalance) -->
+          <div class="col">
+            <WalletBalance title="Wallet Details" />
           </div>
 
           <!-- QR code: generate & download on button click only -->
@@ -90,11 +85,6 @@
               >
                 Generate and Download
               </button>
-
-              <!-- Optional debug display -->
-              <!-- <p v-if="vendorQrValue" class="small text-muted mt-2">
-                {{ vendorQrValue }}
-              </p> -->
             </div>
           </div>
         </div>
@@ -165,19 +155,19 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from "vue";
-import { useAuthStore } from "@/stores/authStore";
-import {
-  fetchProducts,
-  isLoading,
-  getIcon,
-  getRoute,
-} from "@/services/productService";
-import WalletBalance from "@/components/common/WalletBalance.vue";
-import FeatureCard from "@/components/dashboard/FeatureCard.vue";
-import DashboardFooter from "@/components/dashboard/DashboardFooter.vue";
+  import { ref, computed, onMounted } from "vue";
+  import { useAuthStore } from "@/stores/authStore";
+  import {
+    fetchProducts,
+    isLoading,
+    getIcon,
+    getRoute,
+  } from "@/services/productService";
+  import WalletBalance from "@/components/common/WalletBalance.vue";
+  import FeatureCard from "@/components/dashboard/FeatureCard.vue";
+  import DashboardFooter from "@/components/dashboard/DashboardFooter.vue";
 
-import downloadQrCode from "@/services/generateQRCodePdf";
+  import downloadQrCode from "@/services/generateQRCodePdf";
 
 export default {
   name: "DashboardView",
@@ -196,27 +186,21 @@ export default {
     const user = computed(() => authStore.user);
     console.log("User data:", user.value);
 
-    // User id from auth store (different logins will have different ids)
     const userId = computed(() => {
       const u = user.value;
       return u?.id ?? u?.ID ?? null;
     });
 
-    // Vendor id from vendor_details, fallback to userId if needed
     const vendorId = computed(() => {
       const u = user.value;
       return u?.vendor_details?.vendor_id ?? userId.value ?? null;
     });
 
-    // MVP logo mapping by user id (update IDs as you prefer)
-    // - id 3  -> SPAR
-    // - id 23 -> Mattoris
     const vendorLogo = computed(() => {
       const logo = user.value?.vendor_details?.logo_url;
       return logo && logo.length > 0 ? logo : "/icon.png";
     });
 
-    // QR content URL used for Scan2Pay
     const vendorQrValue = computed(() => {
       const vid = vendorId.value;
       if (!vid) return "";
@@ -225,7 +209,6 @@ export default {
       return `${baseUrl}/scan2pay4me?raffle_type_id=${raffleTypeId}&vendor_id=${vid}`;
     });
 
-    // Click handler for QR generation
     const handleDownloadQr = async () => {
       if (!vendorQrValue.value) {
         console.error("QR value missing, cannot generate QR");
@@ -341,7 +324,6 @@ export default {
       getGreeting,
       getFormattedDate,
 
-      // vendor helpers
       vendorLogo,
       vendorQrValue,
       handleDownloadQr,
