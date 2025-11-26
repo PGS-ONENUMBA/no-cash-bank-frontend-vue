@@ -90,7 +90,7 @@ import DashboardFooter from "@/components/dashboard/DashboardFooter.vue";
 import WalletBalance from "@/components/common/WalletBalance.vue";
 
 export default {
-  name: "DashboardProfile",
+  name: "ProfileView",
   components: {
     WalletBalance,
     DashboardFooter,
