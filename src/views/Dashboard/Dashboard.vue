@@ -155,19 +155,19 @@
 </template>
 
 <script>
-  import { ref, computed, onMounted } from "vue";
-  import { useAuthStore } from "@/stores/authStore";
-  import {
-    fetchProducts,
-    isLoading,
-    getIcon,
-    getRoute,
-  } from "@/services/productService";
-  import WalletBalance from "@/components/common/WalletBalance.vue";
-  import FeatureCard from "@/components/dashboard/FeatureCard.vue";
-  import DashboardFooter from "@/components/dashboard/DashboardFooter.vue";
+import { ref, computed, onMounted } from "vue";
+import { useAuthStore } from "@/stores/authStore";
+import {
+  fetchProducts,
+  isLoading,
+  getIcon,
+  getRoute,
+} from "@/services/productService";
+import WalletBalance from "@/components/common/WalletBalance.vue";
+import FeatureCard from "@/components/dashboard/FeatureCard.vue";
+import DashboardFooter from "@/components/dashboard/DashboardFooter.vue";
 
-  import downloadQrCode from "@/services/generateQRCodePdf";
+import downloadQrCode from "@/services/generateQRCodePdf";
 
 export default {
   name: "DashboardView",
@@ -331,6 +331,7 @@ export default {
   },
 };
 </script>
+
 
 <style scoped>
 .card {
