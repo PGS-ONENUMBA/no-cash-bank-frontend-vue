@@ -28,7 +28,7 @@ export default {
   },
   setup() {
     const authStore = useAuthStore();
-    const walletBalance = ref(null);
+    const walletBalance = ref(0);
     const loading = ref(false);
 
     const loadBalance = async () => {
@@ -38,16 +38,18 @@ export default {
         if (authStore.user?.user_role === "vendor") {
           const summary = await fetchVendorWalletSummary();
 
+          // backed by user meta on the backend, but exposed via summary API
           const raw =
             summary.balance_ngn ??
             summary.wallet_balance ??
+            summary.available ??
             summary.available_balance ??
             0;
 
           const n = parseFloat(String(raw).replace(/,/g, ""));
           walletBalance.value = Number.isNaN(n) ? 0 : n;
         } else {
-          // customers use authStore for now
+          // customers: use auth store wallet_balance
           const raw = authStore.user?.wallet_balance ?? "0.00";
           const n = parseFloat(String(raw).replace(/,/g, ""));
           walletBalance.value = Number.isNaN(n) ? 0 : n;

@@ -85,143 +85,140 @@
 </template>
 
 <script>
-  import { ref, computed, onMounted } from "vue";
-  import { useAuthStore } from "@/stores/authStore";
-  import apiService from "@/services/apiService";
-  import DashboardFooter from "@/components/dashboard/DashboardFooter.vue";
-  import WalletBalance from "@/components/common/WalletBalance.vue";
-  import { fetchVendorWalletSummary } from "@/services/walletService";
+import { ref, computed, onMounted } from "vue";
+import { useAuthStore } from "@/stores/authStore";
+import apiService from "@/services/apiService";
+import { fetchVendorWalletSummary } from "@/services/walletService";
+import DashboardFooter from "@/components/dashboard/DashboardFooter.vue";
+import WalletBalance from "@/components/common/WalletBalance.vue";
 
-  export default {
-    name: "TransferView",
-    components: { WalletBalance, DashboardFooter },
-    setup() {
-      const authStore = useAuthStore();
-      const loading = ref(false);
+export default {
+  name: "TransferView",
+  components: {
+    WalletBalance,
+    DashboardFooter,
+  },
+  setup() {
+    const authStore = useAuthStore();
+    const loading = ref(false);
 
-      // live balance fetched from backend (not from store)
-      const availableBalance = ref(0);
-      const loadingBalance = ref(false);
+    const amount = ref("");
+    const description = ref("");
 
-      const formattedWalletBalance = computed(() =>
-        new Intl.NumberFormat("en-NG", {
-          style: "currency",
-          currency: "NGN",
-        }).format(availableBalance.value)
-      );
+    // unified numeric balance used for validation and "Max you can request now"
+    const walletBalance = ref(0);
 
-      const amount = ref("");
-      const description = ref("");
+    const formattedWalletBalance = computed(() =>
+      new Intl.NumberFormat("en-NG", {
+        style: "currency",
+        currency: "NGN",
+      }).format(walletBalance.value)
+    );
 
-      const refreshBalance = async () => {
-        try {
-          loadingBalance.value = true;
+    const loadWalletBalance = async () => {
+      try {
+        // vendor: use vendor wallet summary (backed by user meta in backend)
+        if (authStore.user?.user_role === "vendor") {
           const summary = await fetchVendorWalletSummary();
 
-          // adjust field name to what your PHP returns (common patterns below)
           const raw =
             summary.balance_ngn ??
             summary.wallet_balance ??
+            summary.available ??
             summary.available_balance ??
             0;
 
           const n = parseFloat(String(raw).replace(/,/g, ""));
-          availableBalance.value = Number.isNaN(n) ? 0 : n;
-        } catch (e) {
-          console.error("Failed to fetch wallet summary:", e);
-          availableBalance.value = 0;
-        } finally {
-          loadingBalance.value = false;
+          walletBalance.value = Number.isNaN(n) ? 0 : n;
+        } else {
+          // customer: use wallet_balance from auth store
+          const raw = authStore.user?.wallet_balance ?? "0.00";
+          const n = parseFloat(String(raw).replace(/,/g, ""));
+          walletBalance.value = Number.isNaN(n) ? 0 : n;
         }
-      };
+      } catch (e) {
+        console.error("Failed to load wallet balance for payout:", e);
+        walletBalance.value = 0;
+      }
+    };
 
-      const submitPayoutRequest = async () => {
-        // always refresh just before validation so user cannot bypass with stale UI
-        await refreshBalance();
+    const submitPayoutRequest = async () => {
+      if (!amount.value) {
+        alert("Please enter an amount.");
+        return;
+      }
 
-        if (!amount.value) {
-          alert("Please enter an amount.");
-          return;
-        }
+      const amt = Number(amount.value);
+      if (!amt || amt <= 0) {
+        alert("Amount must be greater than zero.");
+        return;
+      }
 
-        const amt = Number(amount.value);
-        if (!amt || amt <= 0) {
-          alert("Amount must be greater than zero.");
-          return;
-        }
+      if (amt > walletBalance.value) {
+        alert(
+          `You cannot request more than your wallet balance (${formattedWalletBalance.value}).`
+        );
+        return;
+      }
 
-        if (amt > availableBalance.value) {
+      loading.value = true;
+
+      try {
+        const payload = {
+          action_type: "request_vendor_withdrawal",
+          amount: amt,
+          description: description.value,
+        };
+
+        // proxy endpoint
+        const response = await apiService.post("/nocash-bank/action", payload);
+
+        if (response?.data?.success) {
           alert(
-            `You cannot request more than your wallet balance (${formattedWalletBalance.value}).`
+            response.data.message ||
+              "Your payout request has been submitted. You will receive an email once it is processed."
           );
-          return;
-        }
 
-        const vendorId =
-          authStore.user?.vendor_details?.vendor_id ??
-          authStore.user?.id ??
-          authStore.user?.ID ??
-          null;
-
-        loading.value = true;
-
-        try {
-          const response = await apiService.post("/context-proxy/v1/action", {
-            action_type: "request_vendor_withdrawal",
-            amount: amt,
-            description: description.value,
-            acting_vendor_id: vendorId,
-          });
-
-          if (response?.data?.ok === true) {
-            alert(
-              response.data.data?.message ||
-                "Your payout request has been submitted. You will receive an email once it is processed."
-            );
-
-            // optional: refresh JWT profile
-            if (authStore.fetchUserData) {
-              await authStore.fetchUserData();
-            }
-
-            // refresh balance after successful request
-            await refreshBalance();
-
-            amount.value = "";
-            description.value = "";
-          } else {
-            throw new Error(response?.data?.data?.message || "Request failed.");
+          if (authStore.fetchUserData) {
+            await authStore.fetchUserData();
           }
-        } catch (error) {
-          console.error("Payout request error:", error);
-          alert(
-            error?.message ||
-              "Could not submit your request. Please try again later."
-          );
-        } finally {
-          loading.value = false;
-        }
-      };
 
-      onMounted(async () => {
-        if (!authStore.user) {
-          await authStore.fetchUserData();
-        }
-        await refreshBalance();
-      });
+          // refresh wallet balance after successful request
+          await loadWalletBalance();
 
-      return {
-        amount,
-        description,
-        loading,
-        formattedWalletBalance,
-        submitPayoutRequest,
-        loadingBalance,
-      };
-    },
-  };
+          amount.value = "";
+          description.value = "";
+        } else {
+          throw new Error(response?.data?.message || "Request failed.");
+        }
+      } catch (error) {
+        console.error("Payout request error:", error);
+        alert(
+          error?.message ||
+            "Could not submit your request. Please try again later."
+        );
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    onMounted(async () => {
+      if (!authStore.user && authStore.fetchUserData) {
+        await authStore.fetchUserData();
+      }
+      await loadWalletBalance();
+    });
+
+    return {
+      amount,
+      description,
+      loading,
+      submitPayoutRequest,
+      formattedWalletBalance,
+    };
+  },
+};
 </script>
-
 
 <style scoped>
 .card {
